@@ -1,0 +1,8 @@
+INVOICE {{no}}                     Date: {{date}}
+Bill to: {{name}}
+
+Description                 Qty     Rate      Amount
+{{item}}                    {{qty}}     {{rate}}      {{total}}
+
+Total due: {{total}}
+Payment: {{payment}}

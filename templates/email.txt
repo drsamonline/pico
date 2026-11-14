@@ -1,0 +1,9 @@
+To: {{to}}
+Subject: {{subject}}
+
+Hi {{name}},
+
+{{body}}
+
+Thanks,
+{{sender}}

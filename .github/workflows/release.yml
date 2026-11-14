@@ -1,0 +1,127 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "version to label (e.g. 1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  binaries:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-x86_64
+            artifact: pico-linux-x86_64
+          - os: windows-latest
+            label: windows-x86_64
+            artifact: pico-windows-x86_64.exe
+          - os: macos-latest
+            label: macos-arm64
+            artifact: pico-macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pyinstaller
+
+      - name: Build one-file binary
+        run: pyinstaller --clean --noconfirm pico.spec
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          mkdir -p out
+          if [ -f dist/pico.exe ]; then
+            cp dist/pico.exe "out/${{ matrix.artifact }}"
+          else
+            cp dist/pico "out/${{ matrix.artifact }}"
+          fi
+          ls -l out
+
+      - name: Smoke test the binary
+        shell: bash
+        run: |
+          export PICO_HOME="$RUNNER_TEMP/pico"
+          BIN="out/${{ matrix.artifact }}"
+          "$BIN" --version
+          "$BIN" add "buy milk"
+          "$BIN" tasks | grep -q "buy milk"
+          echo "binary works"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: out/*
+
+  source:
+    name: source zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify before packaging
+        run: |
+          python -m compileall -q pico.py pico packs tests
+          python tests/smoke_test.py
+      - name: Build source archive
+        run: |
+          mkdir -p out
+          zip -r "out/pico-source.zip" pico.py pico packs web templates tests docs \
+            README.md LICENSE CHANGELOG.md PRIVACY.md SECURITY.md PROJECT_OVERVIEW.md \
+            install.sh install.ps1 pico.spec -x "*/__pycache__/*" -x "*.pyc"
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: out/*
+
+  publish:
+    name: publish release
+    needs: [binaries, source]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find dist -type f -exec cp {} release/ \;
+          ls -l release
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: pico ${{ github.ref_name }}
+          draft: false
+          generate_release_notes: true
+          body: |
+            Deterministic personal automation on the Python standard library.
+
+            | asset | for |
+            | --- | --- |
+            | `pico-windows-x86_64.exe` | Windows 10/11, one file, no Python needed |
+            | `pico-linux-x86_64` | Linux x86_64, one file |
+            | `pico-macos-arm64` | Apple silicon, one file |
+            | `pico-source.zip` | everything, run `sh install.sh` |
+
+            No installer, no account, no network at runtime.
+
+            ```bash
+            ./pico-linux-x86_64 --ui      # console on 127.0.0.1:8765
+            ./pico-linux-x86_64 tasks
+            ```
+          files: release/*

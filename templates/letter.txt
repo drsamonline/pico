@@ -1,0 +1,10 @@
+Date: {{date}}
+To: {{name}}
+Subject: {{subject}}
+
+Dear {{name}},
+
+{{body}}
+
+Regards,
+{{sender}}
