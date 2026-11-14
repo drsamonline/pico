@@ -3,6 +3,12 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.2 — shipped
+
+95 rules. Replay from snapshots, the full quarantine lifecycle, net worth and debt avalanche,
+subscription audit, `csv filter/sort/join`, `chart`. Approval codes now also go to the bound phone.
+68 acceptance tests.
+
 ## 1.1 — shipped
 
 83 rules, four risk tiers, universal undo, slot dialogue, two-key approval, quarantine, recurring
@@ -17,11 +23,9 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Replay** | `timeline` reads the log; rebuilding state needs snapshots | `replay <ts>` reproduces state from the nearest snapshot plus the log |
 | **CSV as a loop** | `for each row in clients.csv then fill letter name={name}` turns a mail merge into one line | 50-row CSV produces 50 letters, one ledger line each |
-| **Quarantine sweep** | `safe delete` keeps files forever today | `quarantine sweep 30d` empties anything older than the window |
-| **Phone approval for two-key** | the code prints on the desktop; it should also go to the bound chat | with a token set, `approve` works from the phone only |
-| **Blast radius on every danger handler** | `tidy` and `safe delete` preview; `restore` does not | `dry restore` names the file count |
+| **Trigger DSL** | `when 22:30 unless away then backup ~/Documents ; tidy` — `daily` is the only trigger today | a rule fires on time, file, or clipboard match |
+| **Approval from the phone only** | the code reaches the chat, but `approve` also works at the desk | with a token set, the desktop refuses `approve` |
 
 ## Next — cheap and useful
 
@@ -29,8 +33,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv filter/sort/join` | the sqlite pack covers query; the shell verbs are still missing | `csv filter age>30 people.csv` prints the rows |
-| `ascii chart` | `report` prints numbers; a sparkline reads faster | `chart 1,4,9,16` draws bars in the terminal |
+| `csv pivot` | `join` and `filter` exist; grouping is the missing verb | `csv pivot cat sum amt spend.csv` |
+| `watch FOLDER then CMD` | the last trigger that needs no DSL | a new file in a folder fires a command |
 
 ## Deliberately not built
 

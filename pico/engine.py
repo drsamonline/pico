@@ -6,7 +6,7 @@ No third-party imports. Python 3.8+.
 import ast, difflib, json, operator, os, pathlib, re, secrets, sys, threading, time
 import datetime
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 STATE_DEFAULT = {
     "tasks": [], "notes": {}, "spend": [], "events": [], "sites": {},
@@ -127,6 +127,8 @@ class Engine:
         self.privacy = {"never_send": []}
         self.slot_rules = []
         self.history = []
+        self.snapshots = self.home / "snapshots"
+        self._since_snap = 0
         self._busy = False
         self.api = self._build_api()
         self.register_core()
@@ -369,6 +371,7 @@ class Engine:
             pass
         if self._dirty:
             self.save()
+            self._maybe_snapshot()
         self.history.append(cmd)
         del self.history[:-20]
         return out
@@ -458,6 +461,8 @@ class Engine:
                 return "Wrong code. Still waiting."
             self.pending = {}
             return self._run(held["cmd"], "approved")
+        if low.startswith("replay "):
+            return self.replay(t[7:].strip())
         if low == "timeline" or low.startswith("timeline "):
             since = t[8:].strip()
             return self.timeline(since)
@@ -496,6 +501,10 @@ class Engine:
             if rk == "danger" and self.S.get("two_key"):
                 held["code"] = secrets.token_hex(3)
                 gate = "\nTwo-key: approve " + held["code"]
+                try:
+                    self.notify("pico approval needed: approve " + held["code"])
+                except Exception:
+                    pass
             self.pending = {"confirm": held, "at": time.time()}
             fn, m = self.match_rule(cmd)
             preview = ""
@@ -513,6 +522,69 @@ class Engine:
     reply = handle
 
     # -- ledger / undo
+    def _maybe_snapshot(self):
+        """Keep a rolling 12 snapshots, written every 25 mutating commands."""
+        self._since_snap += 1
+        if self._since_snap < 25:
+            return
+        self._since_snap = 0
+        try:
+            self.snapshots.mkdir(exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+            f = self.snapshots / (ts + ".json")
+            f.write_text(json.dumps(self.S, ensure_ascii=False), "utf-8")
+            files = sorted(self.snapshots.glob("*.json"))
+            for old in files[:-12]:
+                old.unlink()
+        except Exception:
+            pass
+
+    def replay(self, target):
+        """Rebuild state as of an ISO timestamp, into a side directory. Live state untouched."""
+        if not target:
+            return "Usage: replay 2026-11-14T09:30"
+        snaps = sorted(self.snapshots.glob("*.json")) if self.snapshots.exists() else []
+        base, base_ts = None, ""
+        for f in snaps:
+            try:
+                stamp = datetime.datetime.strptime(f.stem, "%Y%m%dT%H%M%S").isoformat(
+                    timespec="seconds")
+            except Exception:
+                continue
+            if stamp <= target:
+                base, base_ts = f, stamp
+        if base is None:
+            return ("No snapshot at or before %s. Snapshots are kept for the last 20 "
+                    "write bursts." % target)
+        work = self.home / ("replay-" + target.replace(":", ""))
+        work.mkdir(parents=True, exist_ok=True)
+        (work / "state.json").write_text(base.read_text("utf-8"), "utf-8")
+        import os as _os
+        _os.environ["PICO_NO_THREADS"] = "1"
+        try:
+            side = Engine(home=work, load_packs=True, quiet=True)
+        finally:
+            _os.environ.pop("PICO_NO_THREADS", None)
+        n = 0
+        for line in self.ledger_file.read_text("utf-8").splitlines():
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            ts = r.get("ts", "")
+            if not (base_ts < ts <= target):
+                continue
+            if r.get("tier") in ("send", "danger"):
+                continue
+            side.handle(r.get("cmd", ""))
+            n += 1
+        s2 = side.S
+        return ("Replayed %d command(s) after the %s snapshot.\n"
+                "State at %s: %d task(s), %d expense(s), %d note(s).\n"
+                "Written to %s (live state untouched)."
+                % (n, base_ts, target, len(s2.get("tasks", [])),
+                   len(s2.get("spend", [])), len(s2.get("notes", {})), work))
+
     def timeline(self, since=""):
         if not self.ledger_file.exists():
             return "Ledger empty."

@@ -393,13 +393,100 @@ def t20_files():
     shutil.rmtree(d, True)
 
 
+def t21_quarantine():
+    e, d = fresh("t21")
+    f = d / "notes.txt"
+    f.write_text("hello", "utf-8")
+    e.handle("safe delete %s" % f)
+    e.handle("confirm")
+    listing = e.handle("quarantine")
+    check("T21 quarantine: the file is listed", "notes.txt" in listing, listing[:60])
+    e.handle("restore 1")
+    out = e.handle("confirm")
+    check("T21 quarantine: restore puts it back at the original path",
+          f.exists() and "Restored" in out, out[:60])
+    check("T21 quarantine: the listing empties", "empty" in e.handle("quarantine"))
+    shutil.rmtree(d, True)
+
+
+def t22_net_worth():
+    e, d = fresh("t22")
+    e.handle("asset cash 50000")
+    e.handle("asset gold 120000")
+    e.handle("debt card 40000 36")
+    out = e.handle("net worth")
+    check("T22 net worth: assets minus debts",
+          "170,000" in out and "40,000" in out and "130,000" in out, out.replace("\n", " | ")[:90])
+    order = e.handle("debt snowball 5000")
+    check("T22 net worth: avalanche puts the dearest debt first",
+          order.startswith("avalanche order: card"), order[:60])
+    check("T22 net worth: the payoff terminates", "month(s)" in order)
+    shutil.rmtree(d, True)
+
+
+def t23_subs():
+    e, d = fresh("t23")
+    e.S["spend"] = [{"d": "2026-10-05", "amt": 199.0, "cat": "netflix"},
+                    {"d": "2026-11-05", "amt": 199.0, "cat": "netflix"},
+                    {"d": "2026-11-06", "amt": 40.0, "cat": "misc"}]
+    e.save()
+    out = e.handle("subs audit")
+    check("T23 subs: a charge repeating across months is flagged",
+          "netflix" in out and "2 months" in out, out[:70])
+    check("T23 subs: one-off spend is not flagged", "misc" not in out, out[:70])
+    shutil.rmtree(d, True)
+
+
+def t24_csv():
+    e, d = fresh("t24")
+    a = d / "a.csv"
+    b = d / "b.csv"
+    a.write_text("id,name,age\n1,Asha,34\n2,Ravi,41\n3,Meera,29\n", "utf-8")
+    b.write_text("id,city\n1,Pune\n2,Surat\n3,Bhopal\n", "utf-8")
+    out = e.handle("csv filter age>30 %s" % a)
+    check("T24 csv: filter keeps the matching rows",
+          "Asha" in out and "Ravi" in out and "Meera" not in out, out.replace("\n", " ")[:80])
+    out = e.handle("csv sort age desc %s" % a)
+    check("T24 csv: sort orders numerically",
+          out.splitlines()[1].startswith("2"), out.splitlines()[1][:40])
+    out = e.handle("csv join id %s %s" % (a, b))
+    check("T24 csv: join adds the right-hand columns",
+          "Pune" in out and "city" in out and "3 joined" in out, out[-60:])
+    chart = e.handle("chart 3,7,12")
+    check("T24 csv: chart scales bars to the max",
+          chart.splitlines()[2].count("#") == 40, chart.splitlines()[2][:50])
+    shutil.rmtree(d, True)
+
+
+def t25_replay():
+    e, d = fresh("t25")
+    e.handle("add one")
+    for i in range(30):          # snapshots are written every 25 mutating commands
+        e.handle("add t%d" % i)
+    snaps = sorted((d / "snapshots").glob("*.json"))
+    check("T25 replay: snapshots are written on write bursts", len(snaps) >= 1, str(len(snaps)))
+    if not snaps:
+        shutil.rmtree(d, True)
+        return
+    stamp = datetime.datetime.strptime(snaps[0].stem, "%Y%m%dT%H%M%S").isoformat(timespec="seconds")
+    before = len(e.S["tasks"])
+    out = e.handle("replay " + stamp)
+    check("T25 replay: it reports a reconstruction", "Replayed" in out, out[:70])
+    check("T25 replay: live state is untouched", len(e.S["tasks"]) == before)
+    side = d / ("replay-" + stamp.replace(":", ""))
+    check("T25 replay: the reconstruction is written to a side directory",
+          (side / "state.json").exists(), str(side))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
                t6_lattice, t7_distillation, t8_privacy, t9_scheduler,
                t10_maths, t11_state, t12_ledger, t13_slots, t14_context,
                t15_recur, t16_two_key, t17_safe_delete, t18_learn, t19_data,
-               t20_files):
+               t20_files, t21_quarantine, t22_net_worth, t23_subs, t24_csv,
+               t25_replay):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

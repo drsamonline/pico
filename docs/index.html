@@ -122,17 +122,17 @@ footer a{color:var(--tx2)}
 
 <header class="hero"><div class="wrap">
   <h1>Your machine, told what to do in plain words.</h1>
-  <p class="lede">pico is a personal automation engine with <strong>83 rules and zero dependencies</strong>.
+  <p class="lede">pico is a personal automation engine with <strong>95 rules and zero dependencies</strong>.
   Every command resolves deterministically, every write is invertible, and the optional model can only
   propose a command — never run one. No account, no telemetry, no network at runtime.</p>
 
   <div class="badges">
     <img src="assets/badge-licence.svg" alt="licence: PolyForm Noncommercial 1.0.0">
     <img src="assets/badge-python.svg" alt="python 3.8+">
-    <img src="assets/badge-tests.svg" alt="tests: 52 passed">
+    <img src="assets/badge-tests.svg" alt="tests: 68 passed">
     <img src="assets/badge-deps.svg" alt="dependencies: zero">
     <img src="assets/badge-offline.svg" alt="no network at runtime">
-    <img src="assets/badge-version.svg" alt="version 1.1.0">
+    <img src="assets/badge-version.svg" alt="version 1.2.0">
   </div>
 
   <div class="cta">
@@ -202,7 +202,7 @@ footer a{color:var(--tx2)}
 </div></section>
 
 <section id="commands"><div class="wrap">
-  <h2>Command reference — 83 rules</h2>
+  <h2>Command reference — 95 rules</h2>
   <div class="grid2">
     <div class="tblwrap"><table>
       <tr><th>Capture</th><th></th></tr>
@@ -224,7 +224,8 @@ footer a{color:var(--tx2)}
       <tr><th>Files and text</th><th></th></tr>
       <tr><td>tidy [PATH] · backup PATH · find NAME</td><td>organise, archive, locate</td></tr>
       <tr><td>templates · fill TPL k=v</td><td>letter, invoice, email</td></tr>
-      <tr><td>safe delete PATH · big files · old files Nd</td><td>quarantine and disk questions</td></tr>
+      <tr><td>safe delete PATH · quarantine · restore N</td><td>quarantine lifecycle</td></tr>
+      <tr><td>big files · old files Nd · dedupe files PATH</td><td>disk questions</td></tr>
       <tr><td>count PATH · extract TYPE PATH · dedupe files</td><td>size, pull, find copies</td></tr>
       <tr><td>sortlines PATH · dedupe PATH · redact PATH</td><td>clean a text file</td></tr>
     </table></div>
@@ -235,9 +236,10 @@ footer a{color:var(--tx2)}
       <tr><td>wa NAME MSG · mail NAME SUBJ</td><td>deep links, you send</td></tr>
       <tr><td>daily HH:MM CMD · jobs · unjob N</td><td>scheduled commands</td></tr>
       <tr><td>dry CMD · why · log · undo N · aliases</td><td>safety and provenance</td></tr>
-      <tr><td>2key on · approve CODE · timeline · report weekly</td><td>two-key, history, the week</td></tr>
+      <tr><td>2key on · approve CODE · timeline · replay TS</td><td>two-key, history, rebuild</td></tr>
       <tr><td>card add Q|A · review · grade 5 · decide A|B</td><td>spaced repetition, a seeded pick</td></tr>
       <tr><td>importcsv PATH TABLE · sql SELECT …</td><td>CSV into sqlite, read-only out</td></tr>
+      <tr><td>csv filter/sort/join · chart 1,4,9 · net worth</td><td>shell data verbs, payoff, position</td></tr>
     </table></div>
   </div>
 </div></section>
@@ -248,13 +250,13 @@ footer a{color:var(--tx2)}
     <div class="tblwrap"><table>
       <tr><th>Property</th><th>Measured</th></tr>
       <tr><td>dependencies</td><td>0 — Python standard library only</td></tr>
-      <tr><td>rules / catalogue / slots</td><td>83 / 85 / 6</td></tr>
+      <tr><td>rules / catalogue / slots</td><td>95 / 97 / 6</td></tr>
       <tr><td>packs</td><td>11</td></tr>
-      <tr><td>python source</td><td>87,800 bytes across 15 files</td></tr>
+      <tr><td>python source</td><td>101,502 bytes across 16 files</td></tr>
       <tr><td>console</td><td>54,573 bytes, one HTML file</td></tr>
-      <tr><td>rule-path latency</td><td>0.98 ms/call (read), 4.06 ms/call (write)</td></tr>
+      <tr><td>rule-path latency</td><td>1.09 ms/call (read), 5.12 ms/call (write)</td></tr>
       <tr><td>engine heap</td><td>0.1 MB</td></tr>
-      <tr><td>acceptance tests</td><td>52 passing</td></tr>
+      <tr><td>acceptance tests</td><td>68 passing</td></tr>
     </table></div>
     <div>
       <h3>Where the milliseconds go</h3>
@@ -345,7 +347,7 @@ python3 ~/pico.py --ui   <span class="c"># local console on 127.0.0.1:8765</span
 </div></section>
 
 <footer><div class="wrap">
-  <span>pico 1.1.0</span>
+  <span>pico 1.2.0</span>
   <span>·</span>
   <a href="app.html">Console</a>
   <a href="https://github.com/drsamonline/pico">Source</a>

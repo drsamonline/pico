@@ -5,6 +5,7 @@ Security: the first chat to message the bot binds permanently. Set
 which stops a stranger who finds the bot from claiming it.
 """
 import json
+import os
 import threading
 import time
 import urllib.parse
@@ -28,7 +29,8 @@ def setup(api):
     BIND = bf.read_text("utf-8").strip() if bf.exists() else None
     REPLY = api["reply"]
     api["notifiers"].append(send)
-    threading.Thread(target=poll, daemon=True).start()
+    if not os.environ.get("PICO_NO_THREADS"):
+        threading.Thread(target=poll, daemon=True).start()
 
 
 def call(method, **params):

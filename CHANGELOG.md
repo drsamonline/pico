@@ -2,6 +2,47 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.2.0 — 2026-11-14
+
+The rest of the 1.1 "next" list.
+
+### Added
+
+- **Replay** — a rolling 12 snapshots, written every 25 mutating commands, and `replay <ISO ts>`
+  which rebuilds state into `~/.pico/replay-<ts>/` without touching live state.
+- **Quarantine lifecycle** — `quarantine` lists it, `restore N` puts a file back at the path recorded
+  when it was deleted, `quarantine sweep 30d` empties the old end. Restore is danger-tier with a
+  preview.
+- **Position** — `asset NAME AMT`, `debt NAME AMT RATE`, `net worth`, and `debt snowball [EXTRA]`
+  which simulates an avalanche payoff month by month.
+- **`subs audit`** — flags charges that repeat across months as candidate subscriptions. It reports;
+  it cancels nothing.
+- **CSV verbs** — `csv filter COND PATH`, `csv sort COL [desc] PATH`, `csv join KEY A.csv B.csv`.
+  No pandas, no sqlite round-trip.
+- **`chart 1,4,9`** — horizontal bars scaled to the maximum, in the terminal.
+- **Phone approval** — the two-key code now goes through the notifier bus, so a bound Telegram chat
+  receives it as well as the terminal.
+- `PICO_NO_THREADS` suppresses the scheduler and Telegram threads, so a replay engine cannot start
+  background work.
+
+### Changed
+
+- Snapshots are written every 25 mutations, not every 10: writes went 6.09 ms → 5.12 ms.
+- The console gained 14 commands and demo handlers for net worth, chart, subs audit and the
+  quarantine verbs.
+
+### Fixed
+
+- `replay` parsed snapshot filenames by deleting the `T` and then indexing as if it were still there,
+  so the base timestamp came out as `2026-11-14T00:71:8` and every ledger row matched.
+- `snowball` and `files` used `m.get()` on a `re.Match`, which has no such method.
+- `_q_index` used an `and`/`or` chain that returned `{}` for a valid empty index.
+
+### Tests
+
+68 checks, up from 52. T21–T25 cover the quarantine lifecycle, net worth and avalanche, the
+subscription audit, the three CSV verbs with `chart`, and replay.
+
 ## 1.1.0 — 2026-11-14
 
 Everything on the 1.0 "next" list that did not need a new dependency.
@@ -99,6 +140,6 @@ around them.
 - State is plaintext JSON; nothing is encrypted.
 - No OCR, speech, QR rendering or two-way WhatsApp without an external tool or Meta's Cloud API.
 - `write`-tier commands typed by hand are not gated, only undoable. Deliberate, and open for review.
-- The core is 27,062 B against a 20 KB spec budget. The overage is the inverse registry, the
-  translator firewall, the privacy gate and slot dialogue. Stated rather than hidden; the CI
-  ceiling is 28 KB.
+- The core is 30,036 B against a 20 KB spec budget. The overage is the inverse registry, the
+  translator firewall, the privacy gate, slot dialogue, snapshots and replay. Stated rather than
+  hidden; the CI ceiling is 32 KB.

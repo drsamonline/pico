@@ -1,6 +1,6 @@
 # Command reference
 
-83 rules, plus 6 slot rules that ask one question instead of failing. `[optional]` means the argument may be omitted. Every command is case-insensitive and
+95 rules, plus 6 slot rules that ask one question instead of failing. `[optional]` means the argument may be omitted. Every command is case-insensitive and
 `<angle brackets>` are the risk tier.
 
 ## Capture
@@ -36,6 +36,11 @@
 | `gst A R` | safe | amount, rate — returns +GST, −GST and the tax part |
 | `split A N` | safe | states the rounding residue instead of hiding it |
 | `disc A R` | safe | rejects a rate outside 0–100 |
+| `asset NAME AMT` | safe | records an asset |
+| `debt NAME AMT RATE` | safe | records a debt with its annual rate |
+| `net worth` | safe | assets, debts, and the difference |
+| `debt snowball [EXTRA]` | safe | avalanche order (dearest first) and the month each clears |
+| `subs audit` | safe | charges repeating across months, flagged as candidate subscriptions |
 
 All finance commands reject zero or negative terms with a message rather than a traceback. None of
 them is advice; they are arithmetic.
@@ -68,6 +73,9 @@ the seven arithmetic operators, with size caps on powers and results.
 | `dedupe PATH` | write | writes `NAME.deduped.txt`; reversible |
 | `redact PATH` | write | masks email, phone, URL; writes `NAME.redacted.txt`; reversible |
 | `safe delete PATH` | **danger** | moves to `~/.pico/quarantine/`; `undo` restores it |
+| `quarantine` | safe | what is in quarantine, with sizes |
+| `restore N` | **danger** | puts item N back at its recorded original path |
+| `quarantine sweep Nd` | **danger** | deletes quarantined files older than N days. Not undoable |
 | `big files [N]` | safe | largest N files under Downloads, Documents, Desktop, Pictures |
 | `old files Nd` | safe | untouched for N days |
 | `dedupe files PATH` | safe | sha256 groups; reports only |
@@ -113,6 +121,10 @@ the seven arithmetic operators, with size caps on powers and results.
 | `importcsv PATH TABLE` | safe | loads a CSV into `~/.pico/pico.db` (sqlite3), reversible |
 | `sql SELECT …` | safe | read-only: SELECT, WITH and PRAGMA only. 50-row cap |
 | `tables` | safe | what is loaded, and how many rows |
+| `csv filter COND PATH` | safe | `age>30`, `name=Asha`, `>= <= !=` |
+| `csv sort COL [asc\|desc] PATH` | safe | numeric when the column parses as a number |
+| `csv join KEY A.csv B.csv` | safe | inner join, 50-row cap |
+| `chart 1,4,9` | safe | horizontal bars scaled to the maximum |
 
 ## Safety
 
@@ -126,6 +138,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | `aliases` · `unalias P` | inspect or remove learned phrasings |
 | `2key on` · `2key off` | danger actions then print a 6-hex code; `approve <code>` completes them |
 | `timeline [TS]` | the ledger as a readable list, optionally since an ISO timestamp |
+| `replay TS` | rebuilds state as of an ISO timestamp into `~/.pico/replay-<ts>/`. Snapshots are written every 25 mutations, 12 kept. Live state is never touched |
 | `again` · `it` · `that` | repeat the previous command |
 
 ## Slot dialogue

@@ -5,7 +5,8 @@ import json
 import random
 
 CATALOG = ["report weekly - the last seven days", "report month - this month",
-           "decide A|B|C - pick one, reproducibly"]
+           "decide A|B|C - pick one, reproducibly",
+           "chart 1,4,9 - bar chart of numbers"]
 E = None
 
 
@@ -87,6 +88,27 @@ def month(m):
     return "\n".join(lines)
 
 
+def chart(m):
+    raw = [x.strip() for x in m["values"].split(",") if x.strip()]
+    vals = []
+    for x in raw:
+        try:
+            vals.append(float(x))
+        except Exception:
+            return "chart takes numbers: chart 3,7,12,9"
+    if not vals:
+        return "Nothing to chart."
+    top = max(abs(v) for v in vals) or 1
+    width = 40
+    out = []
+    for v in vals:
+        n = int(round(abs(v) / top * width))
+        bar = ("#" * n) if v >= 0 else ("-" * n)
+        out.append("%9s %s" % ("{:,.0f}".format(v), bar))
+    out.append("max %s over %d value(s)" % ("{:,.0f}".format(max(vals)), len(vals)))
+    return "\n".join(out)
+
+
 def decide(m):
     opts = [o.strip() for o in m["options"].split("|") if o.strip()]
     if len(opts) < 2:
@@ -102,4 +124,5 @@ RULES = [
     (r"^report weekly$", weekly),
     (r"^report month$", month),
     (r"^decide (?P<options>.+\|.+)$", decide),
+    (r"^chart (?P<values>[\d.,\- ]+)$", chart),
 ]

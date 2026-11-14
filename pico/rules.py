@@ -1,5 +1,5 @@
 """pico core rules — the P0 daily spine. Registered by Engine.register_core()."""
-import datetime, pathlib, platform, re, shutil, subprocess, threading, zipfile, webbrowser
+import datetime, json, pathlib, platform, re, shutil, subprocess, threading, zipfile, webbrowser
 
 E = None  # engine, set in register()
 
@@ -111,6 +111,9 @@ def safe_delete(m):
     q.mkdir(exist_ok=True)
     dest = q / (datetime.datetime.now().strftime("%Y%m%d%H%M%S") + "_" + p.name)
     shutil.move(str(p), str(dest))
+    idx = _q_index()
+    idx[dest.name] = str(p.resolve())
+    _q_save(idx)
     E.set_inverse("move_back", {"map": [[str(p), str(dest)]]})
     return "Quarantined: %s\nundo restores it; nothing was destroyed." % dest
 
@@ -125,6 +128,95 @@ def safe_delete_preview(m):
 
 
 safe_delete.preview = safe_delete_preview
+
+
+def _q_index():
+    f = E.home / "quarantine" / "index.json"
+    if not f.exists():
+        return {}
+    try:
+        d = json.loads(f.read_text("utf-8"))
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _q_save(idx):
+    q = E.home / "quarantine"
+    q.mkdir(exist_ok=True)
+    (q / "index.json").write_text(json.dumps(idx, indent=1), "utf-8")
+
+
+def _q_list():
+    q = E.home / "quarantine"
+    if not q.exists():
+        return []
+    return sorted(p for p in q.iterdir() if p.is_file() and p.name != "index.json")
+
+
+def quarantine(m):
+    files = _q_list()
+    if not files:
+        return "Quarantine empty."
+    idx = _q_index()
+    total = sum(f.stat().st_size for f in files)
+    lines = ["%d. %s  (%s)" % (i + 1, f.name, _h(f.stat().st_size))
+             for i, f in enumerate(files)]
+    lines.append("%d file(s), %s. Restore with: restore N" % (len(files), _h(total)))
+    return "\n".join(lines)
+
+
+def restore(m):
+    files = _q_list()
+    i = int(m["n"]) - 1
+    if not (0 <= i < len(files)):
+        return "No such item. Run: quarantine"
+    src = files[i]
+    idx = _q_index()
+    dest = idx.get(src.name) or str(pathlib.Path.home() / src.name.split("_", 1)[-1])
+    target = pathlib.Path(dest)
+    if target.exists():
+        return "Already exists: %s. Move it first." % target
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(src), str(target))
+    idx.pop(src.name, None)
+    _q_save(idx)
+    E.set_inverse("move_back", {"map": [[str(src), str(target)]]})
+    return "Restored to %s" % target
+
+
+def restore_preview(m):
+    files = _q_list()
+    i = int(m["n"]) - 1
+    return [str(files[i])] if 0 <= i < len(files) else []
+
+
+restore.preview = restore_preview
+
+
+def sweep(m):
+    days = int(m["n"])
+    cut = datetime.datetime.now().timestamp() - days * 86400
+    files = [f for f in _q_list() if f.stat().st_mtime < cut]
+    if not files:
+        return "Nothing older than %d days in quarantine." % days
+    freed = sum(f.stat().st_size for f in files)
+    idx = _q_index()
+    for f in files:
+        try:
+            f.unlink()
+            idx.pop(f.name, None)
+        except Exception:
+            pass
+    _q_save(idx)
+    return "Removed %d file(s), %s freed. This is not undoable." % (len(files), _h(freed))
+
+
+def _h(n):
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return ("%dB" % n) if unit == "B" else ("%.1f%s" % (n, unit))
+        n /= 1024.0
 
 
 def note_set(m):
@@ -446,7 +538,8 @@ def normalize_key(t):
 
 HELP = """CORE
   tasks | add X | done N | undone N | del N | brief
-  recur daily X | due N YYYY-MM-DD | overdue | safe delete PATH
+  recur daily X | due N YYYY-MM-DD | overdue
+  safe delete PATH | quarantine | restore N | quarantine sweep 30d
   remember k=v | recall k | forget k
   buy X | shop | bought N | on MM-DD text
   spend AMT [CAT] | expenses | calc EXPR | convert V U to U
@@ -479,6 +572,9 @@ def register(engine):
         (r"^due\s+(?P<n>\d+)\s+(?P<date>\d{4}-\d{2}-\d{2})$", task_due),
         (r"^overdue$", overdue),
         (r"^safe delete\s+(?P<path>.+)$", safe_delete),
+        (r"^quarantine$", quarantine),
+        (r"^restore\s+(?P<n>\d+)$", restore),
+        (r"^quarantine sweep\s+(?P<n>\d+)d$", sweep),
         (r"^remember\s+(?P<key>\w+)\s*[:=]\s*(?P<val>.+)$", note_set),
         (r"^(recall|what is)\s+(?P<key>\w+)$", note_get),
         (r"^forget\s+(?P<key>\w+)$", note_del),
@@ -526,4 +622,6 @@ def register(engine):
         "aliases - learned phrasings", "unalias P - forget a phrasing",
         "recur daily X - repeating task", "due N YYYY-MM-DD - set a due date",
         "overdue - tasks past their date", "safe delete PATH - quarantine a file",
+        "quarantine - list quarantined files", "restore N - put one back",
+        "quarantine sweep ND - delete old quarantined files",
     ])

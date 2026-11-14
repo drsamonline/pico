@@ -216,7 +216,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.1.0</small>
+      pico <small id="ver">v1.2.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -321,7 +321,8 @@ const GROUPS = [
   {name:"Money", icon:"coin", items:[
     ["spend AMT CAT","log"],["expenses","month"],["budget","caps"],
     ["emi P R N","loan"],["sip A R Y","invest"],["fd P R Y","deposit"],
-    ["si P R Y","interest"],["gst A R","tax"],["split A N","divide"],["disc A R","discount"]]},
+    ["si P R Y","interest"],["gst A R","tax"],["split A N","divide"],["disc A R","discount"],
+    ["net worth","position"],["debt snowball","payoff"],["subs audit","repeats"]]},
   {name:"Time", icon:"clock", items:[
     ["time","clock"],["timer 10m MSG","countdown"],["remind 18:30 MSG","alarm"],
     ["calc EXPR","math"],["convert 10 km to mi","units"]]},
@@ -329,7 +330,8 @@ const GROUPS = [
     ["tidy","sort downloads"],["backup PATH","zip"],["find NAME","locate"],
     ["templates","list"],["fill letter k=v","fill"],["count PATH","size"],
     ["extract emails PATH","pull"],["big files","fat"],
-    ["old files 30d","stale"],["safe delete PATH","quarantine"]]},
+    ["old files 30d","stale"],["safe delete PATH","quarantine"],
+    ["quarantine","list"],["restore 1","put back"]]},
   {name:"Life", icon:"heart", items:[
     ["habit add walk","new"],["did walk","log"],["habits","streaks"],
     ["journal text","write"],["journal show 5","read"],["contact bob=91...","save"],
@@ -338,7 +340,8 @@ const GROUPS = [
   {name:"Safety", icon:"shield", items:[
     ["dry CMD","preview"],["why","last"],["log","ledger"],["undo","reverse"],
     ["confirm","approve"],["cancel","abort"],["aliases","learned"],["llm status","model"],
-    ["timeline","history"],["report weekly","week"],["decide a|b","pick"]]},
+    ["timeline","history"],["report weekly","week"],["decide a|b","pick"],
+    ["chart 1,4,9","bars"],["replay TS","rebuild"]]},
 ];
 
 const CATALOG = GROUPS.flatMap(g => g.items.map(i => i[0]));
@@ -486,6 +489,31 @@ const H = {
     const tot=Object.keys(sp).reduce((a,c)=>a+sp[c],0);
     return `pico — last 7 days\ntasks      ${done} done, ${open} open\n`+
       (tot?`spend      ${money(tot)} this month`:"no spend logged");},
+  quarantine:()=>"Quarantine lives in the local engine — run: python pico.py quarantine",
+  restore:()=>"Restore needs the local engine.",
+  netWorth:()=>{const a=S.assets||{},d=S.debts||{};
+    const A=Object.values(a).reduce((x,y)=>x+y,0),D=Object.values(d).reduce((x,y)=>x+y.amt,0);
+    if(!A&&!D)return "Nothing recorded. Try: asset cash 50000 / debt card 40000 36";
+    return `assets ${money(A)}  debts ${money(D)}  net ${money(A-D)}`;},
+  assetAdd:m=>{S.assets=S.assets||{};S.assets[m.name.toLowerCase()]=+m.amt;
+    return `Asset ${m.name.toLowerCase()}: ${money(+m.amt)}`;},
+  debtAdd:m=>{S.debts=S.debts||{};S.debts[m.name.toLowerCase()]={amt:+m.amt,rate:+m.rate};
+    return `Debt ${m.name.toLowerCase()}: ${money(+m.amt)} at ${m.rate}%`;},
+  subsAudit:()=>{const mon={};S.spend.forEach(r=>{const k=r.cat+"|"+r.amt;
+    mon[k]=mon[k]||new Set();mon[k].add(r.d.slice(0,7));});
+    const hit=Object.keys(mon).filter(k=>mon[k].size>=2);
+    return hit.length?hit.map(k=>`${k.split("|")[0]}  ${money(+k.split("|")[1])}  ${mon[k].size} months`).join("\n")
+      :"No repeating charges found in the spend log.";},
+  chart:m=>{const v=m.values.split(",").map(x=>parseFloat(x.trim())).filter(x=>!isNaN(x));
+    if(!v.length)return "chart takes numbers: chart 3,7,12,9";
+    const top=Math.max(...v.map(Math.abs))||1;
+    return v.map(x=>`${String(money(x)).padStart(9)} ${"#".repeat(Math.round(Math.abs(x)/top*40))}`).join("\n")
+      +`\nmax ${money(Math.max(...v))} over ${v.length} value(s)`;},
+  replay:()=>"Replay needs the local engine — snapshots and the ledger live there.",
+  csvFilter:()=>"CSV verbs need the local engine — run: python pico.py csv filter age>30 PATH",
+  csvSort:()=>"CSV verbs need the local engine.",
+  csvJoin:()=>"CSV verbs need the local engine.",
+  debtSnowball:()=>"The payoff simulation needs the local engine.",
   timeline:()=>(S.undo.length?S.undo.slice(-12).map(u=>`${u.op.padEnd(12)} ${u.cmd}`).join("\n"):"Ledger empty."),
   twoKey:()=>"Two-key needs the local engine — it prints an approval code from the running process.",
   safeDelete:()=>"Quarantine needs the local engine — run: python pico.py safe delete PATH",
@@ -617,6 +645,19 @@ const RULES = [
   [/^importcsv\s+(?<path>\S+)\s+(?<table>\w+)$/i,"importcsv"],
   [/^sql\s+(?<q>.+)$/i,"sql"],
   [/^tables$/i,"tables"],
+  [/^quarantine$/i,"quarantine"],
+  [/^restore\s+(?<n>\d+)$/i,"restore"],
+  [/^quarantine sweep\s+(?<n>\d+)d$/i,"quarantine"],
+  [/^asset (?<name>\w+) (?<amt>[\d.]+)$/i,"assetAdd"],
+  [/^debt (?<name>\w+) (?<amt>[\d.]+) (?<rate>[\d.]+)$/i,"debtAdd"],
+  [/^net worth$/i,"netWorth"],
+  [/^debt snowball(?: (?<extra>[\d.]+))?$/i,"debtSnowball"],
+  [/^subs audit$/i,"subsAudit"],
+  [/^chart (?<values>[\d.,\- ]+)$/i,"chart"],
+  [/^csv filter (?<cond>.+?) (?<path>\S+\.csv)$/i,"csvFilter"],
+  [/^csv sort (?<col>\w+)(?: (?<dir>asc|desc))? (?<path>\S+\.csv)$/i,"csvSort"],
+  [/^csv join (?<key>\w+) (?<p1>\S+\.csv) (?<p2>\S+\.csv)$/i,"csvJoin"],
+  [/^replay\s+(?<target>.+)$/i,"replay"],
   [/^timeline(?:\s+(?<since>.+))?$/i,"timeline"],
   [/^2key\s+(?<v>on|off)$/i,"twoKey"],
   [/^why$/i,"why"],
@@ -973,9 +1014,9 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 
 /* ---------- boot ---------- */
 if(window.innerWidth<760){
-  $("#cmd").placeholder="tasks · spend 250 food · emi 5 8.5 240";
+  $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.1.0";
+$("#ver").textContent="v1.2.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){

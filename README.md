@@ -3,15 +3,15 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 52 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 68 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.1.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.2.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
-83 rules, four risk tiers, universal undo, slot dialogue, and an optional language model
-that is only ever allowed to *propose* a command. No account, no telemetry, no network.
+95 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, and an
+optional language model that is only ever allowed to *propose* a command. No account, no telemetry, no network.
 
 ```bash
 python3 pico.py tasks                      # one-shot
@@ -72,19 +72,19 @@ rule → alias → typo → fuzzy → teach → [optional LLM] → teach
 A `write`-tier command **proposed by the model** is gated like a send. Typed by hand, it runs and
 stays undoable. That asymmetry is deliberate: you meant it, the model might not have.
 
-## Commands — 83 rules
+## Commands — 95 rules
 
 | Group | Commands |
 | --- | --- |
 | Capture | `tasks` · `add X` · `done N` · `undone N` · `del N` · `brief` · `recur daily X` · `due N DATE` · `overdue` · `remember k=v` · `recall k` · `forget k` · `buy X` · `shop` · `bought N` · `on MM-DD text` |
-| Money | `spend AMT CAT` · `expenses` · `budget CAT AMT` · `budget` · `emi P R N` · `sip A R Y` · `fd P R Y` · `si P R Y` · `gst A R` · `split A N` · `disc A R` |
+| Money | `spend AMT CAT` · `expenses` · `budget CAT AMT` · `asset NAME AMT` · `debt NAME AMT RATE` · `net worth` · `debt snowball [EXTRA]` · `subs audit` · `emi P R N` · `sip A R Y` · `fd P R Y` · `si P R Y` · `gst A R` · `split A N` · `disc A R` |
 | Time | `time` · `timer Nm MSG` · `remind HH:MM MSG` · `calc EXPR` · `convert V U to U` |
-| Files | `tidy [PATH]` · `backup PATH` · `find NAME` · `safe delete PATH` · `big files` · `old files Nd` · `dedupe files PATH` · `templates` · `fill TPL k=v` · `count PATH` · `extract TYPE PATH` · `sortlines PATH` · `dedupe PATH` · `redact PATH` |
+| Files | `tidy [PATH]` · `backup PATH` · `find NAME` · `safe delete PATH` · `quarantine` · `restore N` · `quarantine sweep Nd` · `big files` · `old files Nd` · `dedupe files PATH` · `templates` · `fill TPL k=v` · `count PATH` · `extract TYPE PATH` · `sortlines PATH` · `dedupe PATH` · `redact PATH` |
 | Life | `habit add X` · `did X` · `habits` · `journal [show N]` · `contact k=v` · `contacts` · `wa NAME MSG` · `mail NAME SUBJ` · `card add Q\|A` · `review` · `grade N` |
 | Automation | `daily HH:MM CMD` · `jobs` · `unjob N` · `report weekly` · `decide A\|B` |
-| Data | `importcsv PATH TABLE` · `sql SELECT …` · `tables` |
+| Data | `importcsv PATH TABLE` · `sql SELECT …` · `tables` · `csv filter COND PATH` · `csv sort COL PATH` · `csv join KEY A B` · `chart 1,4,9` |
 | Web | `site k=url` · `open X` · `search X` · `weather [city]` |
-| Safety | `dry CMD` · `why` · `log` · `undo [N]` · `confirm` · `cancel` · `2key on` · `approve CODE` · `timeline` · `aliases` · `unalias P` |
+| Safety | `dry CMD` · `why` · `log` · `undo [N]` · `confirm` · `cancel` · `2key on` · `approve CODE` · `timeline` · `replay TS` · `aliases` · `unalias P` |
 | Model | `llm off\|local\|cloud\|auto` · `llm status` · `llm set K V` · `llm test S` · `llm forget` · `privacy never TAG` |
 
 Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
@@ -94,27 +94,29 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | Property | Value |
 | --- | --- |
 | dependencies | 0 — Python standard library only |
-| rules / catalogue / slot rules | 83 / 85 / 6 |
+| rules / catalogue / slot rules | 95 / 97 / 6 |
 | packs | 11 |
-| python source | 87,800 bytes across 15 files |
-| core (engine + launcher) | 27,062 B — 7 KB over the spec's 20 KB, see below |
-| rule set / front-end / packs | 15,988 / 3,969 / 39,375 B |
+| python source | 101,502 bytes across 16 files |
+| core (engine + launcher) | 30,036 B — 10 KB over the spec's 20 KB, see below |
+| rule set / front-end / packs | 20,600 / 3,969 / 47,209 B |
 | console | 54,573 bytes, one HTML file, no external assets |
-| rule-path latency (read) | 0.98 ms/call, 4,000 calls |
-| rule-path latency (write) | 4.06 ms/call, 200 calls |
-| finance path | 0.95 ms/call, 2,000 calls |
+| rule-path latency (read) | 1.09 ms/call, 4,000 calls |
+| rule-path latency (write) | 5.12 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 52 passing, stdlib `unittest`-free runner |
+| acceptance tests | 68 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly four times more — and why state is only persisted when something actually changed. The spec
 budget was 5 ms for the rule path; reads meet it, writes pay for durability and say so.
 
-**One budget is missed.** The spec asked for a core of 20 KB. This core is 27,062 B. The difference is
-the inverse registry, the core-side translator firewall, the privacy gate and slot dialogue — four
-things the v4 bundle did not have, and the reason the audit findings above are fixed rather than
-documented. The CI ceiling is 28 KB, set to the measured size plus headroom, not to whatever the tree
-happens to be. Compact state serialisation cut the read path from 1.77 ms to 0.98 ms.
+**One budget is missed.** The spec asked for a core of 20 KB. This core is 30,036 B. The difference is
+the inverse registry, the core-side translator firewall, the privacy gate, slot dialogue, snapshots
+and replay — six things the v4 bundle did not have, and the reason the audit findings above are fixed rather than
+documented. The CI ceiling is 32 KB, set to the measured size plus headroom, not to whatever the tree
+happens to be.
+
+Writes pay for durability twice: `state.json` on every change, and a snapshot every 25 changes so
+`replay` has a starting point. That is the 1.09 ms to 5.12 ms gap, and it is a deliberate trade.
 
 ## Install
 

@@ -1,5 +1,7 @@
 """finance — loan, investment, tax and split arithmetic. Deterministic, no advice."""
-CATALOG = ["emi P R N - loan EMI", "sip A R Y - SIP maturity", "fd P R Y - FD maturity",
+CATALOG = ["asset NAME AMT - record an asset", "debt NAME AMT RATE - record a debt",
+           "net worth - assets minus debts", "debt snowball [EXTRA] - payoff order",
+           "subs audit - repeating charges", "emi P R N - loan EMI", "sip A R Y - SIP maturity", "fd P R Y - FD maturity",
            "si P R Y - simple interest", "gst A R - add/remove GST",
            "split A N - divide a bill", "disc A R - discount",
            "budget CAT AMT - set monthly cap", "budget - caps vs spend"]
@@ -117,7 +119,86 @@ def budget_show(m):
     return "\n".join(lines)
 
 
+def asset(m):
+    a = E.S.setdefault("assets", {})
+    a[m["name"].lower()] = float(m["amt"])
+    return "Asset %s: %s" % (m["name"].lower(), "{:,.0f}".format(float(m["amt"])))
+
+
+def debt_add(m):
+    d = E.S.setdefault("debts", {})
+    d[m["name"].lower()] = {"amt": float(m["amt"]), "rate": float(m["rate"])}
+    return "Debt %s: %s at %s%%" % (m["name"].lower(),
+                                    "{:,.0f}".format(float(m["amt"])), m["rate"])
+
+
+def net_worth(m):
+    assets = sum(E.S.get("assets", {}).values())
+    debts = sum(v["amt"] for v in E.S.get("debts", {}).values())
+    if not assets and not debts:
+        return "Nothing recorded. Try: asset cash 50000 / debt card 40000 36"
+    lines = ["assets  %14s" % "{:,.0f}".format(assets)]
+    for k, v in sorted(E.S.get("assets", {}).items()):
+        lines.append("  %-12s %10s" % (k, "{:,.0f}".format(v)))
+    lines.append("debts   %14s" % "{:,.0f}".format(debts))
+    for k, v in sorted(E.S.get("debts", {}).items()):
+        lines.append("  %-12s %10s  @%s%%" % (k, "{:,.0f}".format(v["amt"]), v["rate"]))
+    lines.append("net     %14s" % "{:,.0f}".format(assets - debts))
+    return "\n".join(lines)
+
+
+def snowball(m):
+    debts = E.S.get("debts", {})
+    if not debts:
+        return "No debts recorded. Try: debt card 40000 36"
+    extra = float(m["extra"]) if m["extra"] else 0.0
+    bal = {k: v["amt"] for k, v in debts.items()}
+    rate = {k: v["rate"] / 1200.0 for k, v in debts.items()}
+    order = sorted(bal, key=lambda k: -rate[k])   # avalanche
+    month, paid, log = 0, 0.0, []
+    while any(b > 1 for b in bal.values()) and month < 600:
+        month += 1
+        budget = extra + sum(max(500.0, b * 0.05) for b in bal.values() if b > 1)
+        for k in order:
+            if bal[k] <= 1:
+                continue
+            interest = bal[k] * rate[k]
+            pay = min(bal[k] + interest, budget)
+            bal[k] += interest - pay
+            budget -= pay
+            paid += pay
+            if bal[k] <= 1:
+                log.append("%2d  %-12s cleared" % (month, k))
+            if budget <= 0:
+                break
+    head = "avalanche order: " + " -> ".join(order)
+    tail = "%d month(s), %s paid in total" % (month, "{:,.0f}".format(paid))
+    return "\n".join([head] + log[:12] + [tail])
+
+
+def subs(m):
+    import datetime as _dt
+    months = {}
+    for r in E.S.get("spend", []):
+        key = (r["cat"], round(float(r["amt"]), 2))
+        months.setdefault(key, set()).add(str(r["d"])[:7])
+    hits = [(k, v) for k, v in months.items() if len(v) >= 2]
+    if not hits:
+        return "No repeating charges found in the spend log."
+    out = []
+    for (cat, amt), ms in sorted(hits, key=lambda x: -x[0][1]):
+        out.append("%-12s %10s  %d months (%s)" % (
+            cat, "{:,.0f}".format(amt), len(ms), ", ".join(sorted(ms)[-4:])))
+    out.append("%d candidate subscription(s). Nothing is cancelled automatically." % len(hits))
+    return "\n".join(out)
+
+
 RULES = [
+    (r"^asset (?P<name>\w+) (?P<amt>[\d.]+)$", asset),
+    (r"^debt (?P<name>\w+) (?P<amt>[\d.]+) (?P<rate>[\d.]+)$", debt_add),
+    (r"^net worth$", net_worth),
+    (r"^debt snowball(?: (?P<extra>[\d.]+))?$", snowball),
+    (r"^subs audit$", subs),
     (r"^emi (?P<p>[\d.]+) (?P<r>[\d.]+) (?P<n>\d+)$", emi),
     (r"^sip (?P<a>[\d.]+) (?P<r>[\d.]+) (?P<y>\d+)$", sip),
     (r"^fd (?P<p>[\d.]+) (?P<r>[\d.]+) (?P<y>[\d.]+)$", fd),

@@ -4,9 +4,9 @@
 
 ## In one sentence
 
-A personal automation engine that runs on the Python standard library alone: 83 rules, four risk
-tiers, universal undo, slot dialogue, and an optional language model that may only ever propose a
-command.
+A personal automation engine that runs on the Python standard library alone: 95 rules, four risk
+tiers, universal undo, slot dialogue, replay, and an optional language model that may only ever
+propose a command.
 
 ## The problem it solves
 
@@ -24,7 +24,7 @@ Delete the model and nothing stops working.
 | Files | sort by type, zip a tree, find by name, fill a template, count, extract, dedupe, redact |
 | Life | habit streaks, journal, contacts, WhatsApp and mail deep links |
 | Automation | daily jobs, a ledger, universal undo, alias learning, slot dialogue, two-key approval, `dry` / `why` / `log` / `timeline` |
-| Data | CSV into sqlite3, read-only SQL out |
+| Data | CSV into sqlite3, read-only SQL out, `csv filter/sort/join`, `chart` |
 | Faces | CLI, REPL, local web console, Telegram bridge — all through one `handle()` |
 
 ## What makes it different
@@ -49,14 +49,14 @@ network call at runtime except the one you ask for.
 | | |
 | --- | --- |
 | dependencies | 0 |
-| rules | 83 |
+| rules | 95 |
 | packs | 11 |
-| python source | 87,800 bytes, 15 files |
+| python source | 101,502 bytes, 16 files |
 | console | 54,573 bytes, one HTML file |
-| read latency | 0.98 ms/call |
-| write latency | 4.06 ms/call |
+| read latency | 1.09 ms/call |
+| write latency | 5.12 ms/call |
 | engine heap | 0.1 MB |
-| tests | 52 passing |
+| tests | 68 passing |
 
 ## Shape of the repository
 

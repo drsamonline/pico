@@ -1,6 +1,7 @@
 """schedule — persistent daily jobs. They fire while pico runs (--serve or REPL)."""
 import datetime
 import json
+import os
 import threading
 import time
 
@@ -16,7 +17,8 @@ def setup(api):
     REPLY, NOTIFY = api["reply"], api["notify"]
     api["inverse_handler"]("job_rm", lambda a: (J.pop(a["i"]), save()))
     api["inverse_handler"]("job_add", lambda a: (J.insert(min(a["i"], len(J)), a["item"]), save()))
-    threading.Thread(target=loop, daemon=True).start()
+    if not os.environ.get("PICO_NO_THREADS"):
+        threading.Thread(target=loop, daemon=True).start()
 
 
 def save():
