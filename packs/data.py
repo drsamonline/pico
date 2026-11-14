@@ -7,7 +7,7 @@ import sqlite3
 CATALOG = ["importcsv PATH TABLE - load a CSV into the local db",
            "sql SELECT … - query it", "tables - what is loaded",
            "csv filter COL[:number|:text]OP VAL PATH - rows matching", "csv sort COL[:number|:text] [desc] PATH - ordered rows",
-           "csv join KEY A.csv B.csv - inner join",
+           "csv join KEY[:number|:text] A.csv B.csv - inner join",
            "csv pivot COL[:number] sum AMT PATH [having sum>100] - group and aggregate"]
 E = DB = None
 WRITE = re.compile(r"^\s*(insert|update|delete|drop|alter|create|replace|attach|pragma)\b", re.I)
@@ -176,8 +176,23 @@ def csv_sort(m):
     return "\n".join(out)
 
 
+def _join_key(v, kind):
+    if kind == "number":
+        n = _num(v)
+        return ("n", n) if n is not None else ("s", str(v).strip().lower())
+    if kind == "text":
+        return ("s", str(v).strip().lower())
+    n = _num(v)
+    return ("n", n) if n is not None else ("s", str(v).strip().lower())
+
+
 def csv_join(m):
     key = m["key"].strip()
+    kind = ""
+    if ":" in key:
+        key, kind = [x.strip() for x in key.split(":", 1)]
+        if kind not in ("number", "text"):
+            return "Key type is :number or :text — csv join id:number a.csv b.csv"
     ha, ra, err = _load(m["p1"])
     if err:
         return err
@@ -189,12 +204,12 @@ def csv_join(m):
             key, ", ".join(ha), ", ".join(hb))
     right = {}
     for r in rb:
-        right.setdefault(r.get(key, ""), []).append(r)
+        right.setdefault(_join_key(r.get(key, ""), kind), []).append(r)
     extra = [h for h in hb if h not in ha]
     out = [" | ".join(ha + extra)]
     n = 0
     for r in ra:
-        for match in right.get(r.get(key, ""), []):
+        for match in right.get(_join_key(r.get(key, ""), kind), []):
             out.append(" | ".join([r.get(h, "") for h in ha] + [match.get(h, "") for h in extra]))
             n += 1
             if n >= 50:
@@ -323,7 +338,7 @@ RULES = [
     (r"^tables$", tables),
     (r"^csv filter (?P<cond>.+?) (?P<path>\S+\.csv)$", csv_filter),
     (r"^csv sort (?P<col>[\w:]+)(?: (?P<dir>asc|desc))? (?P<path>\S+\.csv)$", csv_sort),
-    (r"^csv join (?P<key>\w+) (?P<p1>\S+\.csv) (?P<p2>\S+\.csv)$", csv_join),
+    (r"^csv join (?P<key>[\w:]+) (?P<p1>\S+\.csv) (?P<p2>\S+\.csv)$", csv_join),
     (r"^csv pivot (?P<key>[\w,:]+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) "
      r"(?P<path>\S+\.csv)(?: having (?P<having>\S+))?"
      r"(?: order by (?P<order>key|value)(?: (?P<dir>asc|desc))?)?$",

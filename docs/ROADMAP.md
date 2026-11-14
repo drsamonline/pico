@@ -3,6 +3,12 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.11 — shipped
+
+`doctor fix` repairs the eight things `doctor` can only report; `csv join` takes the same
+`:number`/`:text` key hint as `sort`, `filter` and `pivot`; and `docs/ANDROID.md` states plainly why
+there is no APK and what works instead. 200 acceptance tests.
+
 ## 1.10 — shipped
 
 `doctor`, a self-check that names what is wrong across fourteen subsystems; `csv pivot` key typing;
@@ -66,8 +72,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Doctor `--fix`** | `doctor` reports but never repairs | `doctor --fix` quarantines a broken state file and regenerates tokens |
-| **Budget headroom is finite** | the package sits at 62.4 KB of a 72 KB ceiling | `pico/dispatch.py` is the largest file at 7.1 KB |
+| **Doctor does not check the scheduler** | a job thread that died is invisible | `doctor` reports whether the scheduler and Telegram threads are alive |
+| **Budget headroom is finite** | the package sits at 65.8 KB of a 72 KB ceiling | `pico/cmd_doctor.py` grew to 8.5 KB; split it before adding more checks |
 
 ## Next — cheap and useful
 
@@ -75,7 +81,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv join` has no type hint | `sort`, `filter` and `pivot` take `:number`/`:text`; `join` compares as text | the same suffix on the join key |
+| Every `csv` verb now takes a type hint | nothing left to add here | — |
 
 ## Deliberately not built
 

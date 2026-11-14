@@ -2,6 +2,32 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.11.0 — 2026-11-14
+
+### Added
+
+- **`doctor fix`** — repairs the eight things `doctor` can only report: creates missing directories,
+  removes stray `state.json.tmp*` files, quarantines unreadable JSON (moved aside, never deleted),
+  prunes snapshots beyond the rolling 12, prunes a quarantine index pointing at files that are gone,
+  and regenerates an empty `web.token`. Each action is listed; a second run says there is nothing left.
+- **`csv join KEY:number`** — treats `01` and `1` as the same key, matching the hint that `sort`,
+  `filter` and `pivot` already take. Every `csv` verb now accepts a type.
+- **`docs/ANDROID.md`** — states plainly why there is no APK, what an APK would cost, and the three
+  routes that work: install the console to the home screen, run pico under Termux, or use the
+  Telegram bridge.
+
+### Fixed
+
+- T55 expected `doctor fix` to be a no-op on a fresh home, but a fresh home genuinely lacks
+  `snapshots/`, `quarantine/` and `backups/`, so the first run creates them. The test now asserts
+  that, and that the second run has nothing to do.
+- The same test built colliding snapshot filenames (`% (i % 10)`), so it never exercised pruning.
+
+### Tests
+
+200 checks, up from 184. T55 covers every repair `doctor fix` performs, T56 the join key types,
+T57 the Android document's claims.
+
 ## 1.10.0 — 2026-11-14
 
 ### Added

@@ -1059,6 +1059,71 @@ def t54_offline_chip():
     shutil.rmtree(fresh("t54")[1], True)
 
 
+def t55_doctor_fix():
+    e, d = fresh("t55")
+    first = e.handle("doctor fix")
+    check("T55 fix: the first run only creates the missing directories",
+          "created" in first and "quarantined" not in first, first.replace("\n", " | ")[:90])
+    check("T55 fix: a second run has nothing left to do",
+          "Nothing to fix" in e.handle("doctor fix"))
+
+    (d / "state.json.tmp.1.2").write_text("x", "utf-8")
+    (d / "habits.json").write_text("{broken", "utf-8")
+    for i in range(16):
+        (d / "snapshots" / ("202601%02dT000000.json" % i)).write_text("{}", "utf-8")
+    (d / "web.token").write_text("", "utf-8")
+    q = d / "quarantine"
+    q.mkdir(exist_ok=True)
+    (q / "index.json").write_text(json.dumps({"gone.txt": "/tmp/x", "here.txt": "/tmp/y"}), "utf-8")
+    (q / "here.txt").write_text("y", "utf-8")
+
+    out = e.handle("doctor fix")
+    check("T55 fix: a stray temp file is removed",
+          not list(d.glob("state.json.tmp*")) and "stray" in out)
+    check("T55 fix: an unreadable pack file is quarantined, not deleted",
+          list(d.glob("habits.json.corrupt-*")) and "habits.json" in out)
+    check("T55 fix: snapshots are pruned to the rolling limit",
+          len(list((d / "snapshots").glob("*.json"))) == 12)
+    check("T55 fix: an empty token is regenerated",
+          bool((d / "web.token").read_text("utf-8").strip()))
+    idx = json.loads((q / "index.json").read_text("utf-8"))
+    check("T55 fix: a stale quarantine index entry is pruned",
+          "gone.txt" not in idx and "here.txt" in idx, str(idx))
+    check("T55 fix: doctor is clean afterwards",
+          "0 fail" in e.handle("doctor"), e.handle("doctor").splitlines()[-1])
+    shutil.rmtree(d, True)
+
+
+def t56_join_types():
+    e, d = fresh("t56")
+    a, b = d / "a.csv", d / "b.csv"
+    a.write_text("id,name\n1,Asha\n01,Ravi\n2,Meera\n", "utf-8")
+    b.write_text("id,city\n1,Pune\n2,Surat\n", "utf-8")
+    base = "csv join id%s %s %s"
+
+    def rows(kind):
+        out = e.handle(base % (kind, a, b))
+        return out.splitlines()[-1]
+
+    check("T56 join: :number treats 01 as 1", "3 joined" in rows(":number"), rows(":number"))
+    check("T56 join: :text keeps 01 distinct", "2 joined" in rows(":text"), rows(":text"))
+    check("T56 join: an unknown key type is explained",
+          "number or :text" in e.handle(base % (":date", a, b)))
+    shutil.rmtree(d, True)
+
+
+def t57_android_doc():
+    doc = (ROOT / "docs" / "ANDROID.md").read_text(encoding="utf-8")
+    check("T57 android: the doc exists and names the two routes",
+          "Route 1" in doc and "Route 2" in doc)
+    check("T57 android: it explains why there is no APK", "Why no APK" in doc)
+    check("T57 android: it states the LAN risk", "--lan" in doc and "trust" in doc)
+    check("T57 android: the install command it quotes exists",
+          (ROOT / "install.sh").exists() and "sh install.sh" in doc)
+    check("T57 android: the README links to it",
+          "docs/ANDROID.md" in (ROOT / "README.md").read_text(encoding="utf-8"))
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1074,7 +1139,8 @@ def main():
                t43_action_backoff, t44_pivot_order, t45_installable,
                t46_quarantine_module, t47_sort_types, t48_install_prompt,
                t49_dispatch_module, t50_filter_types, t51_update_prompt,
-               t52_doctor, t53_pivot_types, t54_offline_chip):
+               t52_doctor, t53_pivot_types, t54_offline_chip, t55_doctor_fix,
+               t56_join_types, t57_android_doc):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()
