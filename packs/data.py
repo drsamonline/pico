@@ -217,9 +217,17 @@ def csv_pivot(m):
             groups.pop(k)
         if not groups:
             return "No group satisfies having %s." % having
+    by = (m["order"] or "").strip().lower()
+    direction = (m["dir"] or "").strip().lower()
+    if by == "key":
+        order = sorted(groups, reverse=direction == "desc")
+    elif by == "value":
+        order = sorted(groups, key=lambda x: sum(groups[x]), reverse=direction != "asc")
+    else:
+        order = sorted(groups, key=lambda x: -sum(groups[x]))
     out = ["%-24s %10s" % (",".join(keys), op + "(" + col + ")")]
     total = 0.0
-    for k in sorted(groups, key=lambda x: -sum(groups[x])):
+    for k in order:
         vals = groups[k]
         v = {"sum": sum(vals), "count": float(len(vals)), "avg": sum(vals) / len(vals),
              "min": min(vals), "max": max(vals)}[op]
@@ -262,6 +270,7 @@ RULES = [
     (r"^csv sort (?P<col>\w+)(?: (?P<dir>asc|desc))? (?P<path>\S+\.csv)$", csv_sort),
     (r"^csv join (?P<key>\w+) (?P<p1>\S+\.csv) (?P<p2>\S+\.csv)$", csv_join),
     (r"^csv pivot (?P<key>[\w,]+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) "
-     r"(?P<path>\S+\.csv)(?: having (?P<having>\S+))?$",
+     r"(?P<path>\S+\.csv)(?: having (?P<having>\S+))?"
+     r"(?: order by (?P<order>key|value)(?: (?P<dir>asc|desc))?)?$",
      csv_pivot),
 ]

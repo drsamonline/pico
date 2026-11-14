@@ -1,538 +1,44 @@
-"""pico core rules — the P0 daily spine. Registered by Engine.register_core()."""
-import datetime, json, pathlib, platform, re, shutil, subprocess, threading, zipfile, webbrowser
+"""pico rules — the core command table.
 
-E = None  # engine, set in register()
+Handlers live in `cmd_*` modules by domain. This file is the registry: the pattern
+table, the help text and the catalogue. `register()` wires them to an engine and
+records the modules so `Engine._bind_modules()` can rebind their `E` globals.
+"""
+from . import cmd_files, cmd_money, cmd_tasks, cmd_time, cmd_web
+from .cmd_files import (backup, fill, find, quarantine, restore, safe_delete,
+                        sweep, tidy, tpl_list)
+from .cmd_money import spend_add, spend_sum
+from .cmd_tasks import (bought, brief, buy, event_add, note_del, note_get,
+                        note_set, overdue, shop_list, task_add, task_del,
+                        task_done, task_due, task_recur, task_undone, tasks_list)
+from .cmd_time import calc, clock, convert_, remind, timer
+from .cmd_web import open_any, search, site_set, weather
 
 CATALOG = []
-
-CATS = {
-    "Images": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".heic", ".bmp"},
-    "Docs": {".pdf", ".doc", ".docx", ".txt", ".md", ".xls", ".xlsx", ".ppt",
-             ".pptx", ".csv", ".odt", ".rtf"},
-    "Audio": {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac"},
-    "Video": {".mp4", ".mkv", ".mov", ".avi", ".webm"},
-    "Archives": {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz"},
-    "Apps": {".exe", ".msi", ".apk", ".dmg", ".deb", ".AppImage"},
-    "Code": {".py", ".js", ".ts", ".html", ".css", ".json", ".sh", ".c", ".cpp", ".rs", ".go"},
-}
+CORE_MODULES = (cmd_tasks, cmd_money, cmd_time, cmd_files, cmd_web)
+E = None
 
 
 def _S():
     return E.S
 
 
-# ------------------------------------------------------------------ tasks
-def _mark(t):
-    bits = []
-    if t.get("recur"):
-        bits.append("recur " + t["recur"])
-    due = t.get("due")
-    if due:
-        bits.append(("overdue " if due < datetime.date.today().isoformat() else "due ") + due)
-    return ("  <" + ", ".join(bits) + ">") if bits else ""
+def help_(m):
+    return HELP
 
 
-def tasks_list(m):
-    if not _S()["tasks"]:
-        return "Nothing pending."
-    return "\n".join("[%s] %d. %s%s" % ("x" if t["done"] else " ", i + 1, t["text"], _mark(t))
-                     for i, t in enumerate(_S()["tasks"]))
-
-
-def task_add(m):
-    i = len(_S()["tasks"])
-    _S()["tasks"].append({"text": m["text"].strip(), "done": False})
-    E.set_inverse("list_rm", {"key": "tasks", "i": i})
-    return "Added."
-
-
-def task_done(m):
-    i = int(m["n"]) - 1
-    if 0 <= i < len(_S()["tasks"]):
-        _S()["tasks"][i]["done"] = True
-        E.set_inverse("task_undone", {"i": i})
-        return "Done."
-    return "No such task."
-
-
-def task_undone(m):
-    i = int(m["n"]) - 1
-    if 0 <= i < len(_S()["tasks"]):
-        _S()["tasks"][i]["done"] = False
-        E.set_inverse("task_done", {"i": i})
-        return "Reopened."
-    return "No such task."
-
-
-def task_del(m):
-    i = int(m["n"]) - 1
-    ts = _S()["tasks"]
-    if 0 <= i < len(ts):
-        item = ts.pop(i)
-        E.set_inverse("list_ins", {"key": "tasks", "i": i, "item": item})
-        return "Deleted: " + item["text"]
-    return "No such task."
-
-
-def task_recur(m):
-    every = m["every"].lower()
-    i = len(_S()["tasks"])
-    _S()["tasks"].append({"text": m["text"].strip(), "done": False, "recur": every})
-    _S().setdefault("recur", {})[str(i)] = datetime.date.today().isoformat()
-    E.set_inverse("list_rm", {"key": "tasks", "i": i})
-    return "Recurring %s: %s" % (every, m["text"].strip())
-
-
-def task_due(m):
-    i = int(m["n"]) - 1
-    ts = _S()["tasks"]
-    if not (0 <= i < len(ts)):
-        return "No such task."
-    old_due = ts[i].get("due")
-    ts[i]["due"] = m["date"]
-    E.set_inverse("task_due", {"i": i, "date": old_due})
-    return "Due %s: %s" % (m["date"], ts[i]["text"])
-
-
-def overdue(m):
-    today = datetime.date.today().isoformat()
-    rows = [(i, t) for i, t in enumerate(_S()["tasks"])
-            if not t["done"] and t.get("due") and t["due"] < today]
-    if not rows:
-        return "Nothing overdue."
-    return "\n".join("%d. %s  (due %s)" % (i + 1, t["text"], t["due"]) for i, t in rows)
-
-
-def safe_delete(m):
-    p = pathlib.Path(m["path"]).expanduser()
-    if not p.exists():
-        return "Path not found."
-    q = E.home / "quarantine"
-    q.mkdir(exist_ok=True)
-    dest = q / (datetime.datetime.now().strftime("%Y%m%d%H%M%S") + "_" + p.name)
-    shutil.move(str(p), str(dest))
-    idx = _q_index()
-    idx[dest.name] = str(p.resolve())
-    _q_save(idx)
-    E.set_inverse("move_back", {"map": [[str(p), str(dest)]]})
-    return "Quarantined: %s\nundo restores it; nothing was destroyed." % dest
-
-
-def safe_delete_preview(m):
-    p = pathlib.Path(m["path"]).expanduser()
-    if p.is_file():
-        return [str(p)]
-    if p.is_dir():
-        return [str(x) for x in list(p.rglob("*"))[:200]]
-    return []
-
-
-safe_delete.preview = safe_delete_preview
-
-
-def _q_index():
-    f = E.home / "quarantine" / "index.json"
-    if not f.exists():
-        return {}
-    try:
-        d = json.loads(f.read_text("utf-8"))
-        return d if isinstance(d, dict) else {}
-    except Exception:
-        return {}
-
-
-def _q_save(idx):
-    q = E.home / "quarantine"
-    q.mkdir(exist_ok=True)
-    (q / "index.json").write_text(json.dumps(idx, indent=1), "utf-8")
-
-
-def _q_list():
-    q = E.home / "quarantine"
-    if not q.exists():
-        return []
-    return sorted(p for p in q.iterdir() if p.is_file() and p.name != "index.json")
-
-
-def quarantine(m):
-    files = _q_list()
-    if not files:
-        return "Quarantine empty."
-    total = sum(f.stat().st_size for f in files)
-    lines = ["%d. %s  (%s)" % (i + 1, f.name, _h(f.stat().st_size))
-             for i, f in enumerate(files)]
-    lines.append("%d file(s), %s. Restore with: restore N" % (len(files), _h(total)))
-    return "\n".join(lines)
-
-
-def restore(m):
-    files = _q_list()
-    i = int(m["n"]) - 1
-    if not (0 <= i < len(files)):
-        return "No such item. Run: quarantine"
-    src = files[i]
-    idx = _q_index()
-    dest = idx.get(src.name) or str(pathlib.Path.home() / src.name.split("_", 1)[-1])
-    target = pathlib.Path(dest)
-    if target.exists():
-        return "Already exists: %s. Move it first." % target
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(src), str(target))
-    idx.pop(src.name, None)
-    _q_save(idx)
-    E.set_inverse("move_back", {"map": [[str(src), str(target)]]})
-    return "Restored to %s" % target
-
-
-def restore_preview(m):
-    files = _q_list()
-    i = int(m["n"]) - 1
-    return [str(files[i])] if 0 <= i < len(files) else []
-
-
-restore.preview = restore_preview
-
-
-def sweep(m):
-    days = int(m["n"])
-    cut = datetime.datetime.now().timestamp() - days * 86400
-    files = [f for f in _q_list() if f.stat().st_mtime < cut]
-    if not files:
-        return "Nothing older than %d days in quarantine." % days
-    freed = sum(f.stat().st_size for f in files)
-    idx = _q_index()
-    for f in files:
-        try:
-            f.unlink()
-            idx.pop(f.name, None)
-        except Exception:
-            pass
-    _q_save(idx)
-    return "Removed %d file(s), %s freed. This is not undoable." % (len(files), _h(freed))
-
-
-def _h(n):
-    for unit in ("B", "KB", "MB", "GB"):
-        if n < 1024 or unit == "GB":
-            return ("%dB" % n) if unit == "B" else ("%.1f%s" % (n, unit))
-        n /= 1024.0
-
-
-def note_set(m):
-    k, v = m["key"], m["val"].strip()
-    had = k in _S()["notes"]
-    old = _S()["notes"].get(k)
-    _S()["notes"][k] = v
-    E.set_inverse("note_set" if had else "note_del", {"k": k, "v": old})
-    return "Remembered %s." % k
-
-
-def note_get(m):
-    return _S()["notes"].get(m["key"], "I don't have that.")
-
-
-def note_del(m):
-    k = m["key"]
-    if k in _S()["notes"]:
-        old = _S()["notes"].pop(k)
-        E.set_inverse("note_set", {"k": k, "v": old})
-        return "Forgot " + k + "."
-    return "I don't have that."
-
-
-# ------------------------------------------------------------------ shopping
-def buy(m):
-    i = len(_S()["shop"])
-    _S()["shop"].append(m["item"].strip())
-    E.set_inverse("list_rm", {"key": "shop", "i": i})
-    return "On the list."
-
-
-def shop_list(m):
-    return ("\n".join("%d. %s" % (i + 1, x) for i, x in enumerate(_S()["shop"]))
-            or "List empty.")
-
-
-def bought(m):
-    i = int(m["n"]) - 1
-    sh = _S()["shop"]
-    if 0 <= i < len(sh):
-        item = sh.pop(i)
-        E.set_inverse("list_ins", {"key": "shop", "i": i, "item": item})
-        return "Removed: " + item
-    return "No such item."
-
-
-# ------------------------------------------------------------------ events
-def event_add(m):
-    i = len(_S()["events"])
-    _S()["events"].append({"date": m["date"], "text": m["text"].strip()})
-    E.set_inverse("list_rm", {"key": "events", "i": i})
-    return "Saved."
-
-
-def brief(m):
-    today = datetime.date.today()
-    md = today.strftime("%m-%d")
-    pend = [t["text"] for t in _S()["tasks"] if not t["done"]]
-    ev = [e["text"] for e in _S()["events"]
-          if e["date"] in (today.isoformat(), md)]
-    spent = sum(r["amt"] for r in _S()["spend"]
-                if str(r["d"]).startswith(today.strftime("%Y-%m")))
-    return (today.strftime("%A, %d %B %Y")
-            + "\nTasks: " + ("; ".join(pend) or "none")
-            + "\nToday: " + ("; ".join(ev) or "nothing scheduled")
-            + ("\nSpent this month: %.0f" % spent if spent else ""))
-
-
-# ------------------------------------------------------------------ money
-def spend_add(m):
-    i = len(_S()["spend"])
-    _S()["spend"].append({"d": datetime.date.today().isoformat(),
-                          "amt": float(m["amt"]), "cat": (m["cat"] or "misc").lower()})
-    E.set_inverse("list_rm", {"key": "spend", "i": i})
-    return "Logged."
-
-
-def spend_sum(m):
-    mon = datetime.date.today().strftime("%Y-%m")
-    tot = {}
-    for r in _S()["spend"]:
-        if str(r["d"]).startswith(mon):
-            tot[r["cat"]] = tot.get(r["cat"], 0) + r["amt"]
-    if not tot:
-        return "No expenses this month."
-    return ("\n".join("%s: %s" % (k, fmt(v)) for k, v in sorted(tot.items()))
-            + "\nTotal: " + fmt(sum(tot.values())))
-
-
-def fmt(v):
-    return "{:,.0f}".format(v)
-
-
-# ------------------------------------------------------------------ time
-def _later(secs, msg):
-    t = threading.Timer(secs, lambda: E.notify(msg))
-    t.daemon = True
-    t.start()
-
-
-def timer(m):
-    unit = m["u"][0].lower()
-    secs = int(m["n"]) * {"s": 1, "m": 60, "h": 3600}[unit]
-    msg = (m["msg"] or "Timer done").strip()
-    _later(secs, msg)
-    return "Timer: %s%s - %s" % (m["n"], m["u"], msg)
-
-
-def remind(m):
-    now = datetime.datetime.now()
-    t = now.replace(hour=int(m["h"]), minute=int(m["mi"]), second=0, microsecond=0)
-    if t <= now:
-        t += datetime.timedelta(days=1)
-    msg = (m["msg"] or "Reminder").strip()
-    _later((t - now).total_seconds(), msg)
-    return "Reminder at %s - %s" % (t.strftime("%H:%M"), msg)
-
-
-def clock(m):
-    return datetime.datetime.now().strftime("%a %d %b %Y, %I:%M %p")
-
-
-def calc(m):
-    from .engine import safe_eval
-    try:
-        v = safe_eval(m["e"])
-    except Exception:
-        return "Arithmetic only: numbers and + - * / // % ** ."
-    if isinstance(v, float) and v.is_integer():
-        v = int(v)
-    return str(v)
-
-
-def convert_(m):
-    from .engine import convert
-    try:
-        out = convert(float(m["v"]), m["a"], m["b"])
-    except Exception:
-        return "Unknown or incompatible units."
-    return "%s %s = %s %s" % (m["v"], m["a"], "{:,.6g}".format(out), m["b"])
-
-
-# ------------------------------------------------------------------ files
-def _dl():
-    return pathlib.Path.home() / "Downloads"
-
-
-def tidy(m):
-    d = pathlib.Path(m["path"] or _dl()).expanduser()
-    if not d.exists():
-        return "Path not found: " + str(d)
-    moved = []
-    for f in list(d.iterdir()):
-        if not f.is_file():
-            continue
-        cat = next((k for k, v in CATS.items() if f.suffix.lower() in v), "Other")
-        dest = d / cat
-        dest.mkdir(exist_ok=True)
-        target = dest / f.name
-        if target.exists():
-            target = dest / (f.stem + "_" + datetime.datetime.now().strftime("%H%M%S") + f.suffix)
-        shutil.move(str(f), str(target))
-        moved.append((str(f), str(target)))
-    E.set_inverse("move_back", {"map": moved})
-    return "Sorted %d file(s) under %s" % (len(moved), d)
-
-
-def tidy_preview(m):
-    d = pathlib.Path(m["path"] or _dl()).expanduser()
-    if not d.exists():
-        return []
-    return [f.name for f in d.iterdir() if f.is_file()]
-
-
-tidy.preview = tidy_preview
-
-
-def backup(m):
-    src = pathlib.Path(m["path"]).expanduser()
-    if not src.exists():
-        return "Path not found."
-    out = E.home / "backups"
-    out.mkdir(exist_ok=True)
-    z = out / (src.name + "_" + datetime.date.today().isoformat() + ".zip")
-    with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as f:
-        if src.is_file():
-            f.write(src, src.name)
-        else:
-            for p in src.rglob("*"):
-                if p.is_file() and out not in p.parents:
-                    f.write(p, p.relative_to(src))
-    E.set_inverse("file_rm", {"path": str(z)})
-    return "Backup: %s (%d KB)" % (z, z.stat().st_size // 1024)
-
-
-def find(m):
-    q = m["q"].lower()
-    hits = []
-    for base in ("Downloads", "Documents", "Desktop"):
-        d = pathlib.Path.home() / base
-        if not d.exists():
-            continue
-        try:
-            for p in d.rglob("*"):
-                if q in p.name.lower():
-                    hits.append(str(p))
-                    if len(hits) >= 10:
-                        return "\n".join(hits)
-        except Exception:
-            pass
-    return "\n".join(hits) or "No matches."
-
-
-def tpl_dirs():
-    dirs = [E.templates]
-    try:
-        here = pathlib.Path(__file__).resolve().parent.parent / "templates"
-        if here.is_dir() and here.resolve() != E.templates.resolve():
-            dirs.append(here)
-    except Exception:
-        pass
-    return dirs
-
-
-def tpl_list(m):
-    names = []
-    for d in tpl_dirs():
-        for p in sorted(d.glob("*.txt")):
-            if p.stem not in names:
-                names.append(p.stem)
-    return "\n".join(names) or "No templates."
-
-
-def fill(m):
-    src = None
-    for d in tpl_dirs():
-        p = d / (m["tpl"] + ".txt")
-        if p.exists():
-            src = p
-            break
-    if src is None:
-        return "No template named %s." % m["tpl"]
-    text = src.read_text("utf-8")
-    for k, v in re.findall(r"(\w+)=(.*?)(?=\s+\w+=|$)", m["args"]):
-        text = text.replace("{{" + k + "}}", v.strip())
-    out = E.home / ("%s_%s.txt" % (m["tpl"], datetime.date.today()))
-    out.write_text(text, "utf-8")
-    E.set_inverse("file_rm", {"path": str(out)})
-    return "Written: %s" % out
-
-
-# ------------------------------------------------------------------ web
-def site_set(m):
-    k = m["name"]
-    had = k in _S()["sites"]
-    old = _S()["sites"].get(k)
-    _S()["sites"][k] = m["url"]
-    E.set_inverse("dict_set" if had else "dict_del", {"key": "sites", "k": k, "v": old})
-    return "Shortcut saved."
-
-
-def open_any(m):
-    t = m["t"].strip()
-    if t in _S()["sites"]:
-        webbrowser.open(_S()["sites"][t])
-        return "Opened " + t
-    p = pathlib.Path(t).expanduser()
-    if p.exists():
-        if platform.system() == "Windows":
-            os_startfile(p)
-        else:
-            subprocess.Popen(["xdg-open" if platform.system() == "Linux" else "open", str(p)])
-        return "Opened path."
-    if re.match(r"^[\w.-]+\.[a-z]{2,}(/.*)?$", t, re.I):
-        webbrowser.open("https://" + t)
-        return "Opened site."
-    return "Unknown target. Save one: site name=https://..."
-
-
-def os_startfile(p):
-    import os
-    os.startfile(str(p))
-
-
-def search(m):
-    webbrowser.open("https://duckduckgo.com/?q=" + m["q"].replace(" ", "+"))
-    return "Opened search."
-
-
-def weather(m):
-    import urllib.request
-    try:
-        url = "https://wttr.in/" + (m["city"] or "").strip().replace(" ", "+") + "?format=3"
-        with urllib.request.urlopen(url, timeout=6) as r:
-            return r.read().decode().strip()
-    except Exception:
-        return "Weather unavailable (offline?)."
-
-
-# ------------------------------------------------------------------ meta
 def aliases(m):
     a = E.aliases
     return "\n".join("%s -> %s" % (k, v) for k, v in a.items()) or "None learned yet."
 
 
 def unalias(m):
-    k = normalize_key(m["p"])
+    from .base import normalize
+    k = normalize(m["p"])
     if E.aliases.pop(k, None) is not None:
         E.set_inverse("alias_del", {"k": k})
         return "Alias removed."
     return "No such alias."
-
-
-def normalize_key(t):
-    from .engine import normalize
-    return normalize(t)
 
 
 HELP = """CORE
@@ -552,13 +58,12 @@ PACKS
   contact/wa/mail | daily HH:MM CMD | jobs | unjob N | llm off/local/cloud/auto"""
 
 
-def help_(m):
-    return HELP
-
-
 def register(engine):
     global E
     E = engine
+    engine.core_modules = list(CORE_MODULES)
+    for _mod in CORE_MODULES:
+        _mod.E = engine
     R = [
         (r"^(hi|hello|hey|salam)$", lambda m: "Ready. Type 'help'."),
         (r"^(help|\?|start)$", help_),

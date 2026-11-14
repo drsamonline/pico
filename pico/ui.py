@@ -62,6 +62,15 @@ def make_handler(engine, token, page_html):
                 return self._send(200, json.dumps(snapshot(engine)))
             if self.path == "/favicon.ico":
                 return self._send(204, b"")
+            for name, ctype in (("/manifest.webmanifest", "application/manifest+json"),
+                                ("/sw.js", "application/javascript"),
+                                ("/icon-192.png", "image/png"),
+                                ("/icon-512.png", "image/png")):
+                if self.path == name:
+                    f = PAGE.parent / name.lstrip("/")
+                    if f.exists():
+                        return self._send(200, f.read_bytes(), ctype)
+                    return self._send(404, b"")
             self._send(404, json.dumps({"error": "not found"}))
 
         def do_POST(self):

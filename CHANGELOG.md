@@ -2,6 +2,43 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.7.0 — 2026-11-14
+
+### Changed
+
+- **`pico/rules.py` split into five `cmd_*` modules.** The 20 KB handler file became `cmd_tasks`,
+  `cmd_money`, `cmd_time`, `cmd_files` and `cmd_web`; `rules.py` keeps only the pattern table, the
+  help text and the catalogue, at 5.8 KB. `rules.register()` records the five modules on
+  `engine.core_modules` and binds their `E` globals immediately, and `_bind_modules()` rebinds them
+  alongside every pack's — which is what keeps two engines in one process isolated.
+- **Backoff moved from the rule to the action.** A rule with three actions no longer stops as a unit:
+  the failing action alone backs off for 2, 4, 8, 16, 32 then 60 minutes while the others keep
+  running. `triggers` shows how many actions are backing off.
+- **`csv pivot … order by key|value [asc|desc]`** — groups were always sorted by aggregate descending.
+
+### Added
+
+- **The console is installable.** `web/manifest.webmanifest`, two PNG icons and `sw.js`, served by
+  `pico/ui.py` and shipped in `docs/` so the GitHub Pages build installs too. Add to Home Screen gives
+  a standalone window that opens offline. The worker deliberately never caches `/cmd` or
+  `/api/state`: the engine must always be live, or the console would answer from a stale cache.
+
+### Fixed
+
+- `pico/rules.py` lost three `fn.preview` assignments in the split, because they are attribute
+  targets rather than plain assignments — `dry safe delete` stopped showing what it would touch. T17
+  caught it; they are back and T42 asserts them.
+- `help_` was dropped from the registry, so every command raised `NameError` on the first call.
+- `cmd_files` lost its `re` import, which `fill` needs.
+- `csv pivot … order by value asc` ignored the direction: the regex captured only the key, not the
+  direction.
+- T40 asserted rule-level backoff, which no longer exists; rewritten for per-action semantics.
+
+### Tests
+
+143 checks, up from 125. T42 covers the module split and the surviving previews, T43 per-action
+backoff, T44 the four ordering modes, T45 the manifest, icons and worker.
+
 ## 1.6.0 — 2026-11-14
 
 ### Changed

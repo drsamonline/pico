@@ -124,7 +124,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | `csv filter COND PATH` | safe | `age>30`, `name=Asha`, `>= <= !=` |
 | `csv sort COL [asc\|desc] PATH` | safe | numeric when the column parses as a number |
 | `csv join KEY A.csv B.csv` | safe | inner join, 50-row cap |
-| `csv pivot COL[,COL,…] sum\|count\|avg\|min\|max FIELD PATH [having EXPR]` | safe | group by any number of columns, aggregate another, with a total. `having sum>100` filters groups |
+| `csv pivot COL[,COL,…] sum\|count\|avg\|min\|max FIELD PATH [having EXPR] [order by key\|value [asc\|desc]]` | safe | group by any number of columns, aggregate another, with a total. `having sum>100` filters groups; `order by` sets the sort |
 | `chart 1,4,9` | safe | horizontal bars scaled to the maximum |
 
 ## Triggers
@@ -151,8 +151,8 @@ action** — a saved rule should not be able to fire a message on its own.
 | `notify MSG` | safe | pushes through the notifier bus (console bell, Telegram) |
 
 Triggers fire only while pico runs (`--serve` or the REPL), checked every 15 seconds. A failing action
-is retried once; if it still fails the rule backs off for 2, 4, 8, 16, 32 then 60 minutes, and
-`triggers` shows the failure count and the remaining wait.
+is retried once; if it still fails **that action alone** backs off for 2, 4, 8, 16, 32 then 60
+minutes, and the rest of the rule keeps running. `triggers` shows how many actions are backing off.
 
 ## Safety
 

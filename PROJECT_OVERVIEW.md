@@ -51,8 +51,8 @@ network call at runtime except the one you ask for.
 | dependencies | 0 |
 | rules | 106 |
 | packs | 12 |
-| python source | 118,545 bytes, 17 files |
-| console | 59,094 bytes, one HTML file |
+| python source | 126,197 bytes, 25 files |
+| console | 59,593 bytes, one HTML file |
 | read latency | 0.71 ms/call |
 | write latency | 4.03 ms/call |
 | engine heap | 0.1 MB |

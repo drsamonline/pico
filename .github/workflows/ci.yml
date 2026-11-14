@@ -119,7 +119,11 @@ jobs:
           # "src=\"rule\"" is a JS variable, not an asset reference
           markup = re.sub(r"<script>.*?</script>", "", html, flags=re.S)
           markup = re.sub(r"<style>.*?</style>", "", markup, flags=re.S)
-          bad = re.findall(r'(?:src|href)="(?!#|data:|https://drsamonline)[^"]+"', markup)
+          allowed = ("manifest.webmanifest", "icon-192.png", "icon-512.png")
+          refs = re.findall(r'(?:src|href)="([^"]+)"', markup)
+          bad = [r for r in refs
+                 if not r.startswith(("#", "data:", "https://drsamonline"))
+                 and r not in allowed]
           if bad:
               sys.exit("external asset references: %s" % bad[:3])
           print("console is self-contained, %d bytes" % len(html.encode()))
@@ -130,11 +134,13 @@ jobs:
         run: |
           python - <<'PY'
           import pathlib, sys
-          a = pathlib.Path("web/index.html").read_bytes()
-          b = pathlib.Path("docs/app.html").read_bytes()
-          if a != b:
-              sys.exit("docs/app.html is out of date — copy web/index.html over it")
-          print("demo in sync")
+          for name in ("index.html", "manifest.webmanifest", "sw.js",
+                       "icon-192.png", "icon-512.png"):
+              a = pathlib.Path("web", name).read_bytes()
+              b = pathlib.Path("docs", name if name != "index.html" else "app.html").read_bytes()
+              if a != b:
+                  sys.exit("docs copy of %s is out of date" % name)
+          print("demo, manifest, worker and icons are in sync")
           PY
 
   smoke-cli:

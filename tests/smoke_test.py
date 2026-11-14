@@ -788,16 +788,19 @@ def t40_backoff():
     now = datetime.datetime.now()
     try:
         mod.tick(now)
-        fired_soon = mod.tick(now + datetime.timedelta(seconds=90))
-        fired_later = mod.tick(now + datetime.timedelta(minutes=20))
+        soon = mod.tick(now + datetime.timedelta(seconds=90))
+        later = mod.tick(now + datetime.timedelta(minutes=20))
     finally:
         mod.E.handle = real
     listing = e.handle("triggers")
-    check("T40 backoff: a failure is counted and shown",
-          "fail(s)" in listing, listing.replace("\n", " | ")[:90])
-    check("T40 backoff: it does not retry immediately", not fired_soon, str(len(fired_soon)))
-    check("T40 backoff: it recovers once the window passes", bool(fired_later),
-          str(len(fired_later)))
+    check("T40 backoff: the rule shows that an action is backing off",
+          "backing off" in listing, listing.replace("\n", " | ")[:90])
+    soon_out = " ".join(str(x) for _, _, r in soon for x in r)
+    check("T40 backoff: the next firing skips the failing action",
+          "skipped" in soon_out, soon_out[:80])
+    later_out = " ".join(str(x) for _, _, r in later for x in r)
+    check("T40 backoff: it retries once the window passes",
+          "skipped" not in later_out, later_out[:80])
     shutil.rmtree(d, True)
 
 
@@ -817,6 +820,87 @@ def t41_pivot_having():
     shutil.rmtree(d, True)
 
 
+def t42_core_modules():
+    import pico.rules as R
+    from pico.engine import Engine
+    e, d = fresh("t42")
+    check("T42 core: register records the command modules",
+          len(e.core_modules) == 5, str(len(e.core_modules)))
+    check("T42 core: every module can see the engine",
+          all(getattr(m, "E", None) is e for m in e.core_modules))
+    e2, d2 = fresh("t42b")
+    check("T42 core: a second engine rebinds them",
+          all(getattr(m, "E", None) is e2 for m in e2.core_modules)
+          and e.handle("tasks") == "Nothing pending.")
+    check("T42 core: the blast-radius previews survived the split",
+          all(hasattr(fn, "preview") for fn in
+              (R.tidy, R.safe_delete, R.restore)))
+    shutil.rmtree(d, True)
+    shutil.rmtree(d2, True)
+
+
+def t43_action_backoff():
+    e, d = fresh("t43")
+    e.handle("when every 1m then add good ; tasks")
+    mod = _trig_mod()
+    if mod is None:
+        check("T43 action backoff: pack reachable", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    real = mod.E.handle
+    mod.E.handle = lambda cmd: ("Command failed: staged"
+                                if cmd.startswith("add") else real(cmd))
+    now = datetime.datetime.now()
+    try:
+        mod.tick(now)
+        soon = mod.tick(now + datetime.timedelta(seconds=90))
+    finally:
+        mod.E.handle = real
+    out = " ".join(str(x) for _, _, r in soon for x in r)
+    check("T43 action backoff: the failing action is skipped",
+          "backing off" in out, out[:90])
+    check("T43 action backoff: the healthy action still runs",
+          "Nothing pending" in out or "task" in out.lower(), out[:90])
+    shutil.rmtree(d, True)
+
+
+def t44_pivot_order():
+    e, d = fresh("t44")
+    p = d / "p.csv"
+    p.write_text("city,amt\nPune,350\nSurat,90\nNagpur,10\n", "utf-8")
+    def first(cmd):
+        rows = e.handle(cmd).splitlines()
+        return rows[1].split()[0] if len(rows) > 1 else ""
+    base = "csv pivot city sum amt %s" % p
+    check("T44 order: default is value descending", first(base) == "Pune")
+    check("T44 order: key ascending", first(base + " order by key") == "Nagpur")
+    check("T44 order: key descending", first(base + " order by key desc") == "Surat")
+    check("T44 order: value ascending", first(base + " order by value asc") == "Nagpur")
+    shutil.rmtree(d, True)
+
+
+def t45_installable():
+    web = ROOT / "web"
+    man = web / "manifest.webmanifest"
+    check("T45 install: the manifest exists", man.exists())
+    import json as _json
+    m = _json.loads(man.read_text(encoding="utf-8"))
+    check("T45 install: the manifest is valid and points at the console",
+          m.get("start_url") == "./app.html" and m.get("display") == "standalone", str(m)[:80])
+    check("T45 install: both icon sizes are declared",
+          {i["sizes"] for i in m["icons"]} == {"192x192", "512x512"})
+    for name in ("icon-192.png", "icon-512.png"):
+        check("T45 install: %s exists" % name, (web / name).exists())
+    sw = (web / "sw.js").read_text(encoding="utf-8")
+    check("T45 install: the worker never caches the engine",
+          '"/cmd"' in sw or "endsWith(\"/cmd\")" in sw, sw[:60])
+    html = (web / "index.html").read_text(encoding="utf-8")
+    check("T45 install: the console links the manifest",
+          'rel="manifest"' in html and "serviceWorker" in html)
+    check("T45 install: the demo copy is in sync",
+          (ROOT / "docs" / "app.html").read_bytes() == (web / "index.html").read_bytes())
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -828,7 +912,8 @@ def main():
                t29_concurrency, t30_phone_approval, t31_unless, t32_watch_clip,
                t33_retry, t34_multikey_pivot, t35_or_conditions, t36_history,
                t37_three_key_pivot, t38_version_consistency, t39_module_split,
-               t40_backoff, t41_pivot_having):
+               t40_backoff, t41_pivot_having, t42_core_modules,
+               t43_action_backoff, t44_pivot_order, t45_installable):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

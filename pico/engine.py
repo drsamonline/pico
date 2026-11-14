@@ -45,6 +45,7 @@ class Engine(StoreMixin, LadderMixin, LedgerMixin):
         self._dirty = False
         self.inverse_handlers = {}
         self.pack_modules = []
+        self.core_modules = ()
         self.privacy = {"never_send": []}
         self.slot_rules = []
         self.history = []
@@ -96,6 +97,9 @@ class Engine(StoreMixin, LadderMixin, LedgerMixin):
         try:
             import pico.rules as R
             R.E = self
+            for mod in getattr(self, "core_modules", ()):
+                if hasattr(mod, "E"):
+                    mod.E = self
         except Exception:
             pass
         for mod in self.pack_modules:

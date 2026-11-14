@@ -129,10 +129,10 @@ footer a{color:var(--tx2)}
   <div class="badges">
     <img src="assets/badge-licence.svg" alt="licence: PolyForm Noncommercial 1.0.0">
     <img src="assets/badge-python.svg" alt="python 3.8+">
-    <img src="assets/badge-tests.svg" alt="tests: 125 passed">
+    <img src="assets/badge-tests.svg" alt="tests: 143 passed">
     <img src="assets/badge-deps.svg" alt="dependencies: zero">
     <img src="assets/badge-offline.svg" alt="no network at runtime">
-    <img src="assets/badge-version.svg" alt="version 1.6.0">
+    <img src="assets/badge-version.svg" alt="version 1.7.0">
   </div>
 
   <div class="cta">
@@ -242,7 +242,7 @@ footer a{color:var(--tx2)}
       <tr><td>chain NAME: a ; b · for each row in X.csv</td><td>sequences and loops</td></tr>
       <tr><td>card add Q|A · review · grade 5 · decide A|B</td><td>spaced repetition, a seeded pick</td></tr>
       <tr><td>importcsv PATH TABLE · sql SELECT …</td><td>CSV into sqlite, read-only out</td></tr>
-      <tr><td>csv filter/sort/join/pivot(a,b,c) having · chart 1,4,9 · net worth</td><td>shell data verbs, payoff, position</td></tr>
+      <tr><td>csv filter/sort/join/pivot(a,b,c) having order by · chart · net worth</td><td>shell data verbs, payoff, position</td></tr>
     </table></div>
   </div>
 </div></section>
@@ -255,11 +255,11 @@ footer a{color:var(--tx2)}
       <tr><td>dependencies</td><td>0 — Python standard library only</td></tr>
       <tr><td>rules / catalogue / slots</td><td>106 / 110 / 6</td></tr>
       <tr><td>packs</td><td>12</td></tr>
-      <tr><td>python source</td><td>122,170 bytes across 20 files</td></tr>
-      <tr><td>console</td><td>59,247 bytes, one HTML file</td></tr>
+      <tr><td>python source</td><td>126,197 bytes across 25 files</td></tr>
+      <tr><td>console</td><td>59,593 bytes, one HTML file</td></tr>
       <tr><td>rule-path latency</td><td>0.7 ms/call (read), 4.0 ms/call (write) — both under the 5 ms budget</td></tr>
       <tr><td>engine heap</td><td>0.1 MB</td></tr>
-      <tr><td>acceptance tests</td><td>125 passing</td></tr>
+      <tr><td>acceptance tests</td><td>143 passing</td></tr>
     </table></div>
     <div>
       <h3>Where the milliseconds go</h3>
@@ -297,8 +297,10 @@ python3 ~/pico.py --ui   <span class="c"># local console on 127.0.0.1:8765</span
 <span class="c"># phone: open the LAN address and use</span>
 <span class="c"># Add to Home Screen — it is one HTML file.</span></pre>
       <p style="margin-top:12px">Windows, Linux and macOS one-file binaries are built by the release
-      workflow on every tag. Android runs under Termux; the console works in any browser on the same
-      network.</p>
+      workflow on every tag. Android runs under Termux.</p>
+      <p style="margin-top:10px"><strong>The console installs.</strong> It ships a manifest, icons and a
+      service worker, so Add to Home Screen gives a standalone window that opens offline. The worker
+      never caches <code>/cmd</code> or <code>/api/state</code> — the engine is always live.</p>
     </div>
   </div>
 </div></section>
@@ -350,7 +352,7 @@ python3 ~/pico.py --ui   <span class="c"># local console on 127.0.0.1:8765</span
 </div></section>
 
 <footer><div class="wrap">
-  <span>pico 1.6.0</span>
+  <span>pico 1.7.0</span>
   <span>·</span>
   <a href="app.html">Console</a>
   <a href="https://github.com/drsamonline/pico">Source</a>
