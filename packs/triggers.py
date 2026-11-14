@@ -19,7 +19,9 @@ CATALOG = ["when HH:MM then CMD - time trigger",
            "when not CMD by HH:MM then CMD - negative trigger",
            "chain NAME: a ; b - name a sequence",
            "for each row in PATH then CMD - CSV loop",
-           "triggers - list", "untrigger N - remove"]
+           "triggers - list", "untrigger N - remove",
+           "when clip matches RE then CMD - clipboard trigger",
+           "watch FOLDER then CMD - new files in a folder", "away on|off - pause away-gated triggers"]
 
 P = T = E = REPLY = None
 REFUSE = ("send", "danger")
@@ -40,7 +42,7 @@ def save():
 
 
 # ------------------------------------------------------------------ running
-def run_actions(actions, ctx=None):
+def run_actions(actions, ctx=None, retry=True):
     """Run a saved sequence. Refuses anything that sends or deletes."""
     out = []
     for cmd in actions:
@@ -54,8 +56,21 @@ def run_actions(actions, ctx=None):
             out.append("[skipped: %s is %s-tier, a saved rule may not run it]"
                        % (cmd, E.risk_of(cmd)))
             continue
-        out.append(E.handle(cmd))
+        res = E.handle(cmd)
+        if retry and isinstance(res, str) and res.startswith("Command failed"):
+            time.sleep(0.2)
+            res2 = E.handle(cmd)
+            res = res2 if not res2.startswith("Command failed") else \
+                res + " (retried once, still failing)"
+        out.append(res)
     return out
+
+
+def away(m):
+    E.S["away"] = m["v"].lower() in ("on", "1", "true", "yes")
+    E._dirty = True
+    E.save()
+    return "Away: " + ("on — triggers with `unless away` are paused" if E.S["away"] else "off")
 
 
 def notify(m):
@@ -64,8 +79,43 @@ def notify(m):
 
 
 # ------------------------------------------------------------------ ticking
+def _cond_ok(cond):
+    """True means the condition passes and the trigger may fire."""
+    if not cond:
+        return True
+    kind, arg = cond["kind"], cond.get("arg")
+    if kind == "away":
+        return not E.S.get("away")
+    if kind == "weekend":
+        return datetime.date.today().weekday() >= 5
+    if kind == "weekday":
+        return datetime.date.today().weekday() < 5
+    if kind == "file":
+        return not any(pathlib.Path.home().glob(arg))
+    if kind == "exists":
+        return not pathlib.Path(arg).expanduser().exists()
+    return True
+
+
+def _clip():
+    """Best-effort clipboard read. Returns '' when no tool is available."""
+    import subprocess
+    for cmd in (["pbpaste"], ["xclip", "-selection", "clipboard", "-o"],
+                ["xsel", "--clipboard", "--output"],
+                ["powershell", "-NoProfile", "-Command", "Get-Clipboard"]):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+            if r.returncode == 0:
+                return r.stdout
+        except Exception:
+            continue
+    return ""
+
+
 def _due(job, now):
     kind = job["kind"]
+    if not _cond_ok(job.get("unless")):
+        return False
     day = now.strftime("%Y-%m-%d")
     if kind == "time":
         if job.get("at") == now.strftime("%H:%M") and job.get("last") != day:
@@ -79,6 +129,16 @@ def _due(job, now):
             ran = any(str(r.get("cmd", "")).startswith(job["cmd"])
                       for r in _ledger_today())
             return not ran
+    elif kind == "clip":
+        text = _clip()
+        if not text:
+            return False
+        m = re.search(job["pattern"], text)
+        if m and m.group(0) != job.get("last_clip"):
+            job["last_clip"] = m.group(0)
+            job["_clip"] = m.group(0)
+            return True
+        return False
     elif kind == "file":
         now_seen = set()
         for pat in job["glob"]:
@@ -125,6 +185,9 @@ def tick(now=None):
         elif job["kind"] == "every":
             job["last_ts"] = now.timestamp()
         ctx = {}
+        if job.get("_clip"):
+            ctx = {"clip": job["_clip"], "file": job["_clip"]}
+            job.pop("_clip", None)
         if job.get("_fresh"):
             ctx = {"file": job["_fresh"][0], "files": " ".join(job["_fresh"])}
             job.pop("_fresh", None)
@@ -148,8 +211,26 @@ def loop():
 
 
 # ------------------------------------------------------------------ parsing
+def _parse_unless(text):
+    if not text:
+        return None
+    t = text.strip().lower()
+    if t in ("away", "weekend", "weekday"):
+        return {"kind": t}
+    m = re.fullmatch(r"file\s+(.+)", t)
+    if m:
+        return {"kind": "file", "arg": m.group(1).strip()}
+    m = re.fullmatch(r"exists\s+(.+)", t)
+    if m:
+        return {"kind": "exists", "arg": m.group(1).strip()}
+    return "bad"
+
+
 def _parse_spec(spec):
     spec = spec.strip()
+    m = re.fullmatch(r"clip\s+matches\s+(.+)", spec, re.I)
+    if m:
+        return {"kind": "clip", "pattern": m.group(1).strip()}
     m = re.fullmatch(r"(\d{1,2}):(\d{2})", spec)
     if m:
         return {"kind": "time", "at": "%02d:%02d" % (int(m.group(1)), int(m.group(2)))}
@@ -169,7 +250,18 @@ def _parse_spec(spec):
 
 
 def when(m):
-    job = _parse_spec(m["spec"])
+    spec = m["spec"].strip()
+    unless = None
+    parts = re.split(r"\s+unless\s+", spec, maxsplit=1, flags=re.I)
+    if len(parts) == 2:
+        spec, unless_text = parts[0], parts[1]
+        unless = _parse_unless(unless_text)
+        if unless == "bad":
+            return ("Unrecognised unless. Try: away | weekend | weekday | "
+                    "file ~/x.lock | exists ~/busy")
+    job = _parse_spec(spec)
+    if job is not None and unless:
+        job["unless"] = unless
     if job is None:
         return ("Unrecognised condition. Try: 22:30 | every 30m | file ~/Downloads/*.csv | "
                 "not did meds by 21:00")
@@ -192,8 +284,14 @@ def show(m):
         label = {"time": "at " + job.get("at", ""),
                  "every": "every %ds" % job.get("every", 0),
                  "file": "file " + ",".join(job.get("glob", [])),
+                 "clip": "clip matches " + job.get("pattern", ""),
                  "negate": "not %s by %s" % (job.get("cmd", ""), job.get("by", ""))}[kind]
-        out.append("%d. %-32s -> %s" % (i + 1, label, " ; ".join(job["actions"])))
+        u = job.get("unless")
+        if u:
+            label += " unless " + (u.get("arg") or u["kind"])
+        err = job.get("last_error")
+        out.append("%d. %-32s -> %s%s" % (i + 1, label, " ; ".join(job["actions"]),
+                                          ("\n   last error: " + err) if err else ""))
     return "\n".join(out)
 
 
@@ -249,7 +347,23 @@ def loop_csv(m):
     return msg
 
 
+def watch(m):
+    folder = m["folder"].strip().rstrip("/")
+    job = {"kind": "file", "glob": [folder + "/*"], "seen": [], "actions": []}
+    for a in m["actions"].split(";"):
+        a = a.strip()
+        if not a:
+            continue
+        if E.match_rule(a)[0] is None and not a.lower().startswith("notify "):
+            return "Action does not match any rule: " + a
+        job["actions"].append(a)
+    T.append(job)
+    save()
+    return "Watching %s -> %s" % (folder, " ; ".join(job["actions"]))
+
+
 RULES = [
+    (r"^watch (?P<folder>\S+) then (?P<actions>.+)$", watch),
     (r"^when (?P<spec>.+?) then (?P<actions>.+)$", when),
     (r"^triggers$", show),
     (r"^untrigger (?P<n>\d+)$", drop),
@@ -257,4 +371,5 @@ RULES = [
     (r"^chain (?P<name>\w+)$", chain),
     (r"^for each row in (?P<path>\S+) then (?P<cmd>.+)$", loop_csv),
     (r"^notify (?P<msg>.+)$", notify),
+    (r"^away (?P<v>on|off)$", away),
 ]

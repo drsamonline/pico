@@ -180,29 +180,30 @@ def csv_pivot(m):
     header, rows, err = _load(m["path"])
     if err:
         return err
-    key, op, col = m["key"].strip(), m["op"].lower(), m["col"].strip()
-    for c in (key, col):
+    keys = [k.strip() for k in m["key"].split(",") if k.strip()]
+    op, col = m["op"].lower(), m["col"].strip()
+    for c in keys + [col]:
         if c not in header:
             return "No column '%s'. Columns: %s" % (c, ", ".join(header))
     groups = {}
     for r in rows:
-        k = r.get(key, "")
+        k = " / ".join(r.get(x, "") for x in keys)
         v = _num(r.get(col, ""))
         if v is None:
             v = 0.0
         groups.setdefault(k, []).append(v)
     if op not in ("sum", "count", "avg", "min", "max"):
         return "op is sum, count, avg, min or max."
-    out = ["%-16s %10s" % (key, op + "(" + col + ")")]
+    out = ["%-24s %10s" % (",".join(keys), op + "(" + col + ")")]
     total = 0.0
     for k in sorted(groups, key=lambda x: -sum(groups[x])):
         vals = groups[k]
         v = {"sum": sum(vals), "count": float(len(vals)), "avg": sum(vals) / len(vals),
              "min": min(vals), "max": max(vals)}[op]
         total += v if op in ("sum", "count") else 0.0
-        out.append("%-16s %10s" % (k, "{:,.2f}".format(v).rstrip("0").rstrip(".")))
+        out.append("%-24s %10s" % (k, "{:,.2f}".format(v).rstrip("0").rstrip(".")))
     if op in ("sum", "count"):
-        out.append("%-16s %10s" % ("total", "{:,.2f}".format(total).rstrip("0").rstrip(".")))
+        out.append("%-24s %10s" % ("total", "{:,.2f}".format(total).rstrip("0").rstrip(".")))
     out.append("%d group(s) over %d row(s)" % (len(groups), len(rows)))
     return "\n".join(out)
 
@@ -237,6 +238,6 @@ RULES = [
     (r"^csv filter (?P<cond>.+?) (?P<path>\S+\.csv)$", csv_filter),
     (r"^csv sort (?P<col>\w+)(?: (?P<dir>asc|desc))? (?P<path>\S+\.csv)$", csv_sort),
     (r"^csv join (?P<key>\w+) (?P<p1>\S+\.csv) (?P<p2>\S+\.csv)$", csv_join),
-    (r"^csv pivot (?P<key>\w+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) (?P<path>\S+\.csv)$",
+    (r"^csv pivot (?P<key>[\w,]+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) (?P<path>\S+\.csv)$",
      csv_pivot),
 ]

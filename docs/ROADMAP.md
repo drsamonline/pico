@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.4 — shipped
+
+105 rules. `unless` conditions, `watch`, the clipboard trigger, `away`, a retry on a failing action,
+and multi-key `csv pivot`. 101 acceptance tests.
+
 ## 1.3 — shipped
 
 103 rules. The trigger DSL (`when` on time, interval, file and absence), chains, CSV loops, `csv pivot`,
@@ -29,9 +34,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **`unless` conditions** | `when 22:30 unless away then …` — the `unless` half is not parsed yet | a condition can veto a trigger |
-| **Clipboard trigger** | `when clip matches REGEX then …` needs an external tool on each platform | a copied order number fires a command |
-| **Trigger retry** | a trigger whose action throws is logged and skipped for that minute | one retry with a stated reason |
+| **Trigger history** | `triggers` shows the last error only | the last 5 firings per rule, with timings |
+| **`unless` on more than one condition** | one condition per rule | `unless away or weekend` |
 
 ## Next — cheap and useful
 
@@ -39,8 +43,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `watch FOLDER then CMD` | `when file GLOB` covers it, but the ergonomic name is missing | a new file in a folder fires a command |
-| `csv group-by` on multiple keys | `pivot` takes one key | two-key grouping |
+| `csv group-by` on three or more keys | `pivot` takes two | arbitrary key lists |
 
 ## Deliberately not built
 

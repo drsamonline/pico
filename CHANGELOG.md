@@ -2,6 +2,35 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.4.0 — 2026-11-14
+
+The trigger DSL finished.
+
+### Added
+
+- **`unless` conditions** — `when 22:30 unless away then …`. `COND` is `away`, `weekend`, `weekday`,
+  `file GLOB` (skip if a matching file exists) or `exists PATH`. A bad condition is refused with the
+  list of what is accepted.
+- **`away on` / `away off`** — a state flag that pauses every trigger gated with `unless away`.
+- **Clipboard trigger** — `when clip matches REGEX then CMD`, with `{clip}` substitution. Reads via
+  `pbpaste`, `xclip`, `xsel` or `powershell Get-Clipboard`, in that order, and stays inert with no
+  error when none is present.
+- **`watch FOLDER then CMD`** — shorthand for a file trigger on `FOLDER/*`.
+- **Retry** — a failing action is retried once; `triggers` shows the last error against that rule.
+- **Multi-key `csv pivot`** — `csv pivot city,plan sum amt spend.csv`, grouped on up to two columns.
+
+### Fixed
+
+- `csv pivot` rejected a comma in the key list, so the two-key form fell through to "no rule matched".
+- The T31 and T34 assertions were wrong, not the code: the first expected zero firings while a second
+  trigger was legitimately due, the second expected a total that the data does not contain. Both
+  corrected rather than the behaviour bent to fit them.
+
+### Tests
+
+101 checks, up from 88. T31–T34 cover `unless`, `watch` and the clipboard trigger, the retry path,
+and multi-key pivot.
+
 ## 1.3.0 — 2026-11-14
 
 The last of the "next" list, plus a concurrency bug the trigger thread exposed.

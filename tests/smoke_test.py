@@ -583,6 +583,95 @@ def t30_phone_approval():
     shutil.rmtree(d, True)
 
 
+def _trig_mod():
+    import sys as _sys
+    return next((m for n, m in _sys.modules.items()
+                 if n.startswith("pico_pack_triggers") and hasattr(m, "tick")), None)
+
+
+def t31_unless():
+    e, d = fresh("t31")
+    e.handle("when 22:30 unless away then add fired")
+    e.handle("when 22:30 unless weekend then add weekendjob")
+    e.handle("when 22:30 unless bogus then tasks")
+    check("T31 unless: an unknown condition is refused",
+          "Unrecognised unless" in e.handle("when 22:30 unless bogus then tasks"))
+    mod = _trig_mod()
+    if mod is None:
+        check("T31 unless: pack reachable", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    now = datetime.datetime.now().replace(hour=22, minute=30, second=0, microsecond=0)
+    e.handle("away on")
+    mod.tick(now)
+    check("T31 unless: `unless away` blocks its trigger",
+          "fired" not in [x["text"] for x in e.S["tasks"]],
+          str([x["text"] for x in e.S["tasks"]]))
+    e.handle("away off")
+    fired = mod.tick(now)
+    texts = [t["text"] for t in e.S["tasks"]]
+    check("T31 unless: it fires once away is off", "fired" in texts, str(texts))
+    is_weekend = datetime.date.today().weekday() >= 5
+    check("T31 unless: `unless weekend` follows the calendar",
+          ("weekendjob" in texts) == is_weekend, str(texts))
+    shutil.rmtree(d, True)
+
+
+def t32_watch_clip():
+    e, d = fresh("t32")
+    out = e.handle("watch %s then count {file}" % d)
+    check("T32 watch: a folder watch is saved", out.startswith("Watching"), out[:60])
+    check("T32 watch: an invalid action is refused",
+          "does not match any rule" in e.handle("watch %s then zzz" % d))
+    out = e.handle("when clip matches ^ORD[0-9]+ then notify Order {clip}")
+    check("T32 watch: a clipboard trigger is saved", out.startswith("Trigger"), out[:60])
+    listing = e.handle("triggers")
+    check("T32 watch: both appear in the list",
+          "file" in listing and "clip matches" in listing, listing.replace("\n", " | ")[:90])
+    mod = _trig_mod()
+    if mod:
+        check("T32 watch: clipboard read degrades to empty, never raises",
+              isinstance(mod._clip(), str))
+    shutil.rmtree(d, True)
+
+
+def t33_retry():
+    e, d = fresh("t33")
+    mod = _trig_mod()
+    if mod is None:
+        check("T33 retry: pack reachable", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    calls = {"n": 0}
+
+    def flaky(cmd):
+        calls["n"] += 1
+        return "Command failed: staged" if calls["n"] == 1 else "ok"
+
+    real = mod.E.handle
+    mod.E.handle = flaky
+    try:
+        out = mod.run_actions(["tasks"])
+    finally:
+        mod.E.handle = real
+    check("T33 retry: a failing action is retried once", calls["n"] == 2, str(calls))
+    check("T33 retry: the retry result is what is reported", out == ["ok"], str(out))
+    check("T33 retry: send and danger actions are still refused",
+          "skipped" in mod.run_actions(["wa bob hi"])[0])
+    shutil.rmtree(d, True)
+
+
+def t34_multikey_pivot():
+    e, d = fresh("t34")
+    csv_path = d / "rows.csv"
+    csv_path.write_text("city,plan,amt\nPune,pro,100\nPune,basic,50\nSurat,pro,90\n", "utf-8")
+    out = e.handle("csv pivot city,plan sum amt %s" % csv_path)
+    check("T34 pivot: two keys group together",
+          "Pune / pro" in out and "Pune / basic" in out and "240" in out,
+          out.replace("\n", " | ")[:120])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -591,7 +680,8 @@ def main():
                t15_recur, t16_two_key, t17_safe_delete, t18_learn, t19_data,
                t20_files, t21_quarantine, t22_net_worth, t23_subs, t24_csv,
                t25_replay, t26_triggers, t27_chain, t28_loop_pivot,
-               t29_concurrency, t30_phone_approval):
+               t29_concurrency, t30_phone_approval, t31_unless, t32_watch_clip,
+               t33_retry, t34_multikey_pivot):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

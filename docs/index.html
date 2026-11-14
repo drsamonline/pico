@@ -122,17 +122,17 @@ footer a{color:var(--tx2)}
 
 <header class="hero"><div class="wrap">
   <h1>Your machine, told what to do in plain words.</h1>
-  <p class="lede">pico is a personal automation engine with <strong>103 rules and zero dependencies</strong>.
+  <p class="lede">pico is a personal automation engine with <strong>105 rules and zero dependencies</strong>.
   Every command resolves deterministically, every write is invertible, and the optional model can only
   propose a command — never run one. No account, no telemetry, no network at runtime.</p>
 
   <div class="badges">
     <img src="assets/badge-licence.svg" alt="licence: PolyForm Noncommercial 1.0.0">
     <img src="assets/badge-python.svg" alt="python 3.8+">
-    <img src="assets/badge-tests.svg" alt="tests: 88 passed">
+    <img src="assets/badge-tests.svg" alt="tests: 101 passed">
     <img src="assets/badge-deps.svg" alt="dependencies: zero">
     <img src="assets/badge-offline.svg" alt="no network at runtime">
-    <img src="assets/badge-version.svg" alt="version 1.3.0">
+    <img src="assets/badge-version.svg" alt="version 1.4.0">
   </div>
 
   <div class="cta">
@@ -202,7 +202,7 @@ footer a{color:var(--tx2)}
 </div></section>
 
 <section id="commands"><div class="wrap">
-  <h2>Command reference — 103 rules</h2>
+  <h2>Command reference — 105 rules</h2>
   <div class="grid2">
     <div class="tblwrap"><table>
       <tr><th>Capture</th><th></th></tr>
@@ -237,11 +237,12 @@ footer a{color:var(--tx2)}
       <tr><td>daily HH:MM CMD · jobs · unjob N</td><td>scheduled commands</td></tr>
       <tr><td>dry CMD · why · log · undo N · aliases</td><td>safety and provenance</td></tr>
       <tr><td>2key on/phone · approve CODE · timeline · replay TS</td><td>two-key, history, rebuild</td></tr>
-      <tr><td>when 22:30 then … · every 30m · file GLOB · not … by</td><td>trigger DSL</td></tr>
+      <tr><td>when 22:30 then … · every 30m · file GLOB · not … by · clip matches</td><td>trigger DSL</td></tr>
+      <tr><td>unless away/weekend/file · watch FOLDER · away on</td><td>conditions and pauses</td></tr>
       <tr><td>chain NAME: a ; b · for each row in X.csv</td><td>sequences and loops</td></tr>
       <tr><td>card add Q|A · review · grade 5 · decide A|B</td><td>spaced repetition, a seeded pick</td></tr>
       <tr><td>importcsv PATH TABLE · sql SELECT …</td><td>CSV into sqlite, read-only out</td></tr>
-      <tr><td>csv filter/sort/join/pivot · chart 1,4,9 · net worth</td><td>shell data verbs, payoff, position</td></tr>
+      <tr><td>csv filter/sort/join/pivot(city,plan) · chart 1,4,9 · net worth</td><td>shell data verbs, payoff, position</td></tr>
     </table></div>
   </div>
 </div></section>
@@ -252,13 +253,13 @@ footer a{color:var(--tx2)}
     <div class="tblwrap"><table>
       <tr><th>Property</th><th>Measured</th></tr>
       <tr><td>dependencies</td><td>0 — Python standard library only</td></tr>
-      <tr><td>rules / catalogue / slots</td><td>103 / 106 / 6</td></tr>
+      <tr><td>rules / catalogue / slots</td><td>105 / 109 / 6</td></tr>
       <tr><td>packs</td><td>12</td></tr>
-      <tr><td>python source</td><td>112,500 bytes across 17 files</td></tr>
-      <tr><td>console</td><td>57,280 bytes, one HTML file</td></tr>
-      <tr><td>rule-path latency</td><td>0.65 ms/call (read), 3.58 ms/call (write) — both under the 5 ms budget</td></tr>
+      <tr><td>python source</td><td>116,743 bytes across 17 files</td></tr>
+      <tr><td>console</td><td>58,665 bytes, one HTML file</td></tr>
+      <tr><td>rule-path latency</td><td>0.78 ms/call (read), 4.17 ms/call (write) — both under the 5 ms budget</td></tr>
       <tr><td>engine heap</td><td>0.1 MB</td></tr>
-      <tr><td>acceptance tests</td><td>88 passing</td></tr>
+      <tr><td>acceptance tests</td><td>101 passing</td></tr>
     </table></div>
     <div>
       <h3>Where the milliseconds go</h3>
@@ -349,7 +350,7 @@ python3 ~/pico.py --ui   <span class="c"># local console on 127.0.0.1:8765</span
 </div></section>
 
 <footer><div class="wrap">
-  <span>pico 1.3.0</span>
+  <span>pico 1.4.0</span>
   <span>·</span>
   <a href="app.html">Console</a>
   <a href="https://github.com/drsamonline/pico">Source</a>

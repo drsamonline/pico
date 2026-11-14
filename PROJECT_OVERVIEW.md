@@ -4,7 +4,7 @@
 
 ## In one sentence
 
-A personal automation engine that runs on the Python standard library alone: 103 rules, four risk
+A personal automation engine that runs on the Python standard library alone: 105 rules, four risk
 tiers, universal undo, slot dialogue, replay, a trigger DSL, and an optional language model that
 may only ever propose a command.
 
@@ -49,14 +49,14 @@ network call at runtime except the one you ask for.
 | | |
 | --- | --- |
 | dependencies | 0 |
-| rules | 103 |
+| rules | 105 |
 | packs | 12 |
-| python source | 112,500 bytes, 17 files |
-| console | 57,280 bytes, one HTML file |
-| read latency | 0.65 ms/call |
-| write latency | 3.58 ms/call |
+| python source | 116,743 bytes, 17 files |
+| console | 58,665 bytes, one HTML file |
+| read latency | 0.78 ms/call |
+| write latency | 4.17 ms/call |
 | engine heap | 0.1 MB |
-| tests | 88 passing |
+| tests | 101 passing |
 
 ## Shape of the repository
 

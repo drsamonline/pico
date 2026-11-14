@@ -216,7 +216,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.3.0</small>
+      pico <small id="ver">v1.4.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -347,7 +347,9 @@ const GROUPS = [
     ["when file ~/Downloads/*.csv then count {file}","new file"],
     ["chain morning: add x ; brief","name a run"],["chain morning","run it"],
     ["for each row in x.csv then add {name}","csv loop"],
-    ["triggers","list"],["csv pivot city sum amt x.csv","group"]]},
+    ["triggers","list"],["csv pivot city,plan sum amt x.csv","group"],
+    ["when 22:30 unless away then brief","gated"],["watch ~/Downloads then count {file}","folder"],
+    ["when clip matches ^ORD then notify {clip}","clipboard"],["away on","pause"]]},
 ];
 
 const CATALOG = GROUPS.flatMap(g => g.items.map(i => i[0]));
@@ -517,6 +519,8 @@ const H = {
       +`\nmax ${money(Math.max(...v))} over ${v.length} value(s)`;},
   when:()=>"Saved triggers need the local engine — they run on a clock, not on a page.",
   triggers:()=>"Saved triggers need the local engine.",
+  watch:()=>"Folder watches need the local engine — they poll a real directory.",
+  away:()=>"The away flag lives in the local engine's state.",
   untrigger:()=>"Saved triggers need the local engine.",
   chain:()=>"Chains live in the local engine — run: python pico.py chain morning",
   loopCsv:()=>"The CSV loop needs the local engine — it writes real files.",
@@ -672,6 +676,8 @@ const RULES = [
   [/^csv join (?<key>\w+) (?<p1>\S+\.csv) (?<p2>\S+\.csv)$/i,"csvJoin"],
   [/^when (?<spec>.+?) then (?<actions>.+)$/i,"when"],
   [/^triggers$/i,"triggers"],
+  [/^watch (?<folder>\S+) then (?<actions>.+)$/i,"watch"],
+  [/^away (?<v>on|off)$/i,"away"],
   [/^untrigger (?<n>\d+)$/i,"untrigger"],
   [/^chain (?<name>\w+)\s*:\s*(?<body>.+)$/i,"chain"],
   [/^chain (?<name>\w+)$/i,"chain"],
@@ -1038,7 +1044,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.3.0";
+$("#ver").textContent="v1.4.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){
