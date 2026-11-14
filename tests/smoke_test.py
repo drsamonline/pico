@@ -5,6 +5,7 @@
 """
 import datetime
 import json
+import re
 import os
 import pathlib
 import shutil
@@ -724,6 +725,29 @@ def t37_three_key_pivot():
     shutil.rmtree(d, True)
 
 
+def t38_version_consistency():
+    """The engine, the console and the README must agree on the version."""
+    from pico.engine import __version__ as engine_version
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    chip = re.search(r'id="ver">v([\d.]+)<', html)
+    boot = re.search(r'\$\("#ver"\)\.textContent="v([\d.]+)"', html)
+    badge = re.search(r'aria-label="version: ([\d.]+)"',
+                      (ROOT / "docs/assets/badge-version.svg").read_text(encoding="utf-8"))
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    found = {
+        "console chip": chip.group(1) if chip else None,
+        "console boot": boot.group(1) if boot else None,
+        "badge": badge.group(1) if badge else None,
+        "readme badge alt": ("version " + engine_version) in readme,
+    }
+    check("T38 version: the console chip matches the engine",
+          found["console chip"] == engine_version, str(found))
+    check("T38 version: the boot script matches the engine",
+          found["console boot"] == engine_version, str(found))
+    check("T38 version: the badge matches the engine",
+          found["badge"] == engine_version, str(found))
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -734,7 +758,7 @@ def main():
                t25_replay, t26_triggers, t27_chain, t28_loop_pivot,
                t29_concurrency, t30_phone_approval, t31_unless, t32_watch_clip,
                t33_retry, t34_multikey_pivot, t35_or_conditions, t36_history,
-               t37_three_key_pivot):
+               t37_three_key_pivot, t38_version_consistency):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

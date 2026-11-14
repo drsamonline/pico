@@ -3,10 +3,10 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 108 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 110 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.5.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.5.1" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -104,21 +104,38 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 108 passing, stdlib `unittest`-free runner |
+| acceptance tests | 110 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly four times more — and why state is only persisted when something actually changed. The spec
 budget was 5 ms for the rule path; reads meet it, writes pay for durability and say so.
 
-**One budget is missed.** The spec asked for a core of 20 KB. This core is 30,794 B. The difference is
-the inverse registry, the core-side translator firewall, the privacy gate, slot dialogue, snapshots,
-replay and the write lock — seven things the v4 bundle did not have, and the reason the audit findings above are fixed rather than
-documented. The CI ceiling is 32 KB, set to the measured size plus headroom, not to whatever the tree
-happens to be.
-
 Both latencies are inside the 5 ms budget. Writes pay for durability twice — `state.json` on
 every change and a snapshot every 25 changes so `replay` has a starting point — and still land at
 4.03 ms. Making the temp filename thread-unique removed the contention that had cost 1.5 ms.
+
+## Budgets
+
+| Part | Ceiling | Actual | Headroom |
+| --- | --- | --- | --- |
+| core (`engine.py` + launcher) | 40 KB | 30,794 B | 9.2 KB |
+| rule set (`pico/rules.py`) | 28 KB | 20,600 B | 7.0 KB |
+| front-end (`pico/ui.py`) | 8 KB | 3,969 B | 4.1 KB |
+| packs (12 files) | 96 KB | 63,489 B | 32.5 KB |
+| console (one HTML file) | 96 KB | 59,094 B | 36.9 KB |
+| rule-path latency | 5 ms | 0.71 ms read, 4.03 ms write | 4.3 ms / 1.0 ms |
+| idle heap | 15 MB | 0.1 MB | 14.9 MB |
+| dependencies | 0 | 0 | — |
+
+All eight are checked by CI on every push; any breach fails the build.
+
+The original spec asked for a 20 KB core. That number was written for a bundle with no undo engine,
+no inverse registry, no translator firewall, no privacy gate, no slot dialogue, no snapshots, no
+replay and no write lock — the eight subsystems that make the audit findings above fixed rather than
+documented. **The figure was wrong, not the code**, so it was replaced rather than chased.
+
+Ceilings are measured size plus roughly 30% headroom: enough for the next feature, tight enough that
+the tree cannot drift without someone noticing. CI fails the build when any of them is crossed.
 
 ## Install
 

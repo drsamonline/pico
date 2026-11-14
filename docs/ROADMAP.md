@@ -40,6 +40,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | Item | Why | Exit test |
 | --- | --- | --- |
 | **Trigger backoff** | a rule that keeps failing still fires on schedule | exponential backoff with a stated reason |
+| **Budget headroom is finite** | core sits at 30.8 KB of a 40 KB ceiling; the next two subsystems need a split first | `pico/engine.py` divides into state, ladder and ledger modules |
 
 ## Next — cheap and useful
 

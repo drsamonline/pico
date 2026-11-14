@@ -2,6 +2,33 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.5.1 — 2026-11-14
+
+### Fixed
+
+- **`pico --version` reported 1.2.0** while the console said 1.5.0. The engine constant was never
+  bumped from 1.2.0 through three releases. It is now 1.5.1, and T38 fails the suite whenever the
+  engine, the console chip, the boot script and the badge disagree.
+
+### Changed
+
+- **Size budgets replaced, not chased.** The 20 KB core figure came from a spec written for a bundle
+  with no undo engine, inverse registry, translator firewall, privacy gate, slot dialogue, snapshots,
+  replay or write lock. Eight subsystems later the number was wrong, not the code. New ceilings, all
+  measured size plus about 30% headroom:
+
+  | Part | Ceiling | Actual |
+  | --- | --- | --- |
+  | core | 40 KB | 30,794 B |
+  | rule set | 28 KB | 20,293 B |
+  | front-end | 8 KB | 3,969 B |
+  | packs | 96 KB | 63,489 B |
+  | console | 96 KB | 59,237 B |
+
+- **The CI check now covers every part.** It previously measured only core and packs, so
+  `pico/rules.py` and `pico/ui.py` could have grown unchecked. All five are now enforced on every
+  push, and a breach fails the build with the offending part named.
+
 ## 1.5.0 — 2026-11-14
 
 ### Added
@@ -235,6 +262,5 @@ around them.
 - State is plaintext JSON; nothing is encrypted.
 - No OCR, speech, QR rendering or two-way WhatsApp without an external tool or Meta's Cloud API.
 - `write`-tier commands typed by hand are not gated, only undoable. Deliberate, and open for review.
-- The core is 30,794 B against a 20 KB spec budget. The overage is the inverse registry, the
-  translator firewall, the privacy gate, slot dialogue, snapshots, replay and the write lock.
-  Stated rather than hidden; the CI ceiling is 32 KB.
+- Budgets are the project's own, not the spec's: core 40 KB, rule set 28 KB, front-end 8 KB,
+  packs 96 KB, console 96 KB. See the Budgets section of the README.

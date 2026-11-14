@@ -6,7 +6,7 @@ No third-party imports. Python 3.8+.
 import ast, difflib, json, operator, os, pathlib, re, secrets, sys, threading, time
 import datetime
 
-__version__ = "1.2.0"
+__version__ = "1.5.1"
 
 STATE_DEFAULT = {
     "tasks": [], "notes": {}, "spend": [], "events": [], "sites": {},
