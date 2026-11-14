@@ -825,7 +825,7 @@ def t42_core_modules():
     from pico.engine import Engine
     e, d = fresh("t42")
     check("T42 core: register records the command modules",
-          len(e.core_modules) == 5, str(len(e.core_modules)))
+          len(e.core_modules) == 6, str(len(e.core_modules)))
     check("T42 core: every module can see the engine",
           all(getattr(m, "E", None) is e for m in e.core_modules))
     e2, d2 = fresh("t42b")
@@ -901,6 +901,62 @@ def t45_installable():
           (ROOT / "docs" / "app.html").read_bytes() == (web / "index.html").read_bytes())
 
 
+def t46_quarantine_module():
+    import pico.cmd_files as F
+    import pico.cmd_quarantine as Q
+    from pico.engine import Engine
+    e, d = fresh("t46")
+    check("T46 modules: the quarantine lifecycle has its own module",
+          hasattr(Q, "safe_delete") and hasattr(Q, "restore") and hasattr(Q, "sweep"))
+    check("T46 modules: cmd_files no longer carries it",
+          not hasattr(F, "safe_delete") and not hasattr(F, "restore"))
+    check("T46 modules: both are registered with the engine",
+          F in e.core_modules and Q in e.core_modules)
+    check("T46 modules: both can see the engine",
+          F.E is e and Q.E is e)
+    check("T46 modules: previews survived",
+          hasattr(F.tidy, "preview") and hasattr(Q.safe_delete, "preview"))
+    shutil.rmtree(d, True)
+
+
+def t47_sort_types():
+    e, d = fresh("t47")
+    p = d / "m.csv"
+    p.write_text("name,score\nAsha,9\nRavi,10\nMeera,2\nZoya,n/a\n", "utf-8")
+
+    def col(cmd, i=1):
+        return [ln.split(" | ")[i] for ln in e.handle(cmd).splitlines()[1:5]]
+
+    base = "csv sort %s %s"
+    check("T47 sort: auto keeps numbers numeric and text last",
+          col(base % ("score", p)) == ["2", "9", "10", "n/a"], str(col(base % ("score", p))))
+    check("T47 sort: :number sorts numerically",
+          col(base % ("score:number desc", p)) == ["10", "9", "2", "n/a"],
+          str(col(base % ("score:number desc", p))))
+    check("T47 sort: :text sorts lexicographically",
+          col(base % ("score:text", p)) == ["10", "2", "9", "n/a"],
+          str(col(base % ("score:text", p))))
+    check("T47 sort: an unknown type is explained",
+          "number or :text" in e.handle(base % ("score:date", p)))
+    shutil.rmtree(d, True)
+
+
+def t48_install_prompt():
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    check("T48 prompt: the bar exists in the markup", 'id="install"' in html)
+    check("T48 prompt: it reacts to beforeinstallprompt",
+          "beforeinstallprompt" in html and "deferredInstall" in html)
+    check("T48 prompt: dismissal is remembered",
+          'pico.installDismissed' in html)
+    check("T48 prompt: it hides once installed",
+          "display-mode: standalone" in html and "appinstalled" in html)
+    check("T48 prompt: iOS gets an instruction instead",
+          "Add to Home Screen" in html)
+    check("T48 prompt: it never shows from file://",
+          "location.protocol.startsWith" in html)
+    shutil.rmtree(fresh("t48")[1], True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -913,7 +969,8 @@ def main():
                t33_retry, t34_multikey_pivot, t35_or_conditions, t36_history,
                t37_three_key_pivot, t38_version_consistency, t39_module_split,
                t40_backoff, t41_pivot_having, t42_core_modules,
-               t43_action_backoff, t44_pivot_order, t45_installable):
+               t43_action_backoff, t44_pivot_order, t45_installable,
+               t46_quarantine_module, t47_sort_types, t48_install_prompt):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

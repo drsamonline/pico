@@ -124,6 +124,19 @@ button{background:none;border:0;cursor:pointer;text-align:left}
 .sugg button:hover,.sugg button[data-sel="1"]{background:#1d2b39;color:var(--tx)}
 .sugg b{color:var(--acc);font-weight:600}
 
+/* install prompt */
+.install{display:none;align-items:center;gap:12px;padding:10px 12px;margin-bottom:12px;
+  border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:var(--r);
+  background:linear-gradient(90deg,rgba(62,207,142,.08),transparent)}
+.install[data-on="1"]{display:flex}
+.install p{font-size:12.5px;color:var(--tx2);flex:1;min-width:0}
+.install p b{color:var(--tx)}
+.install button{min-height:36px;padding:0 14px;border-radius:8px;font-size:12.5px;
+  font-weight:600;white-space:nowrap}
+.install .yes{background:var(--acc);color:#07120d}
+.install .no{color:var(--tx3);border:1px solid var(--line2);padding:0 10px}
+@media(max-width:760px){.install{flex-wrap:wrap}.install p{flex-basis:100%}}
+
 /* result card */
 .card{border:1px solid var(--line);border-left:3px solid var(--line2);
   background:linear-gradient(180deg,var(--panel) 0%,var(--bg2) 100%);
@@ -218,7 +231,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.7.0</small>
+      pico <small id="ver">v1.8.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -235,6 +248,11 @@ button{background:none;border:0;cursor:pointer;text-align:left}
         <div class="intro">
           <h1>Command console</h1>
           <p>Type what you want. pico resolves it against a fixed rule set — no model in the loop. Risk tiers decide what needs a second look.</p>
+        </div>
+        <div class="install" id="install">
+          <p><b>Install pico.</b> Standalone window, opens offline, no browser chrome.</p>
+          <button class="yes" id="installYes" type="button">Install</button>
+          <button class="no" id="installNo" type="button">Not now</button>
         </div>
         <div id="stream"></div>
         <div class="hist" id="hist"></div>
@@ -1049,7 +1067,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.7.0";
+$("#ver").textContent="v1.8.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){
@@ -1062,6 +1080,36 @@ if(SERVER){
   stream.lastChild.querySelector(".head .cmd").textContent="pico ready";
 }
 renderHistory();
+/* install prompt: only when the browser offers one, and only once */
+let deferredInstall = null;
+const installBar = document.getElementById("install");
+function showInstall(text){
+  if(localStorage.getItem("pico.installDismissed") === "1") return;
+  if(window.matchMedia("(display-mode: standalone)").matches) return;
+  if(text) installBar.querySelector("p").innerHTML = text;
+  installBar.dataset.on = "1";
+}
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+  showInstall("<b>Install pico.</b> Standalone window, opens offline, no browser chrome.");
+});
+document.getElementById("installYes").onclick = async () => {
+  installBar.dataset.on = "0";
+  if(deferredInstall){ deferredInstall.prompt(); deferredInstall = null; }
+};
+document.getElementById("installNo").onclick = () => {
+  installBar.dataset.on = "0";
+  localStorage.setItem("pico.installDismissed", "1");
+};
+window.addEventListener("appinstalled", () => { installBar.dataset.on = "0"; });
+
+/* iOS has no beforeinstallprompt: say what to do instead */
+if(/iphone|ipad|ipod/i.test(navigator.userAgent) &&
+   !window.matchMedia("(display-mode: standalone)").matches){
+  showInstall("<b>Add pico to your Home Screen.</b> Share, then Add to Home Screen.");
+}
+
 /* installable shell: only over http(s), never from file:// */
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
   window.addEventListener("load",()=>{

@@ -2,6 +2,37 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.8.0 — 2026-11-14
+
+### Changed
+
+- **The quarantine lifecycle has its own module.** `cmd_files.py` (7.3 KB) split into `cmd_files.py`
+  (3.9 KB: sort, archive, find, fill) and `cmd_quarantine.py` (3.6 KB: `safe delete`, `quarantine`,
+  `restore`, `sweep`, the index that remembers where a file came from). Six `cmd_*` modules now.
+- **`csv sort` takes a column type.** `csv sort score:number desc x.csv` forces a numeric read,
+  `:text` forces lexicographic, and the default compares numbers numerically and places text after
+  them. The default previously raised `TypeError` on a mixed column, because the sort key mixed
+  floats and strings.
+
+### Added
+
+- **A dismissible install prompt.** The console listens for `beforeinstallprompt` and offers Install /
+  Not now; the dismissal is remembered in `localStorage`. iOS, which never fires that event, gets the
+  Share → Add to Home Screen instruction instead. It never appears in standalone mode and never from
+  `file://`.
+
+### Fixed
+
+- `csv sort` on a mixed column crashed with `TypeError: '<' not supported between instances of 'str'
+  and 'float'`. The auto key is now a tuple, so the two never meet.
+- The `csv sort` handler read a `kind` group the pattern never defined, so every typed call raised
+  `IndexError: no such group` before the type was even considered.
+
+### Tests
+
+158 checks, up from 143. T46 covers the module split, T47 the three sort modes and the crash case,
+T48 the install prompt's triggers and guards.
+
 ## 1.7.0 — 2026-11-14
 
 ### Changed

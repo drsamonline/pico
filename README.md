@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.7.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.8.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -83,7 +83,7 @@ stays undoable. That asymmetry is deliberate: you meant it, the model might not 
 | Life | `habit add X` · `did X` · `habits` · `journal [show N]` · `contact k=v` · `contacts` · `wa NAME MSG` · `mail NAME SUBJ` · `card add Q\|A` · `review` · `grade N` |
 | Automation | `daily HH:MM CMD` · `jobs` · `unjob N` · `report weekly` · `decide A\|B` |
 | Triggers | `when 22:30 then CMD` · `when every 30m then CMD` · `when file GLOB then CMD` · `when not CMD by HH:MM then CMD` · `when clip matches RE then CMD` · `when SPEC unless away\|weekend\|weekday\|file G\|exists P then CMD` · `watch FOLDER then CMD` · `away on\|off` · `trigger log [N]` · `chain NAME: a ; b` · `for each row in X.csv then CMD` · `triggers` · `untrigger N` |
-| Data | `importcsv PATH TABLE` · `sql SELECT …` · `tables` · `csv filter COND PATH` · `csv sort COL PATH` · `csv join KEY A B` · `csv pivot COL[,COL] sum AMT PATH` · `chart 1,4,9` |
+| Data | `importcsv PATH TABLE` · `sql SELECT …` · `tables` · `csv filter COND PATH` · `csv sort COL[:number\|:text] PATH` · `csv join KEY A B` · `csv pivot COL[,COL] sum AMT PATH` · `chart 1,4,9` |
 | Web | `site k=url` · `open X` · `search X` · `weather [city]` |
 | Safety | `dry CMD` · `why` · `log` · `undo [N]` · `confirm` · `cancel` · `2key on\|phone` · `approve CODE` · `timeline` · `replay TS` · `aliases` · `unalias P` |
 | Model | `llm off\|local\|cloud\|auto` · `llm status` · `llm set K V` · `llm test S` · `llm forget` · `privacy never TAG` |
@@ -97,14 +97,14 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 126,197 bytes across 25 files |
+| python source | 124,495 bytes across 26 files |
 | core (engine + launcher) | 30,794 B — 10 KB over the spec's 20 KB, see below |
-| package / packs / console | 57,621 / 66,036 / 59,593 B |
+| package / packs / console | 57,967 / 66,528 / 61,886 B |
 | console | 54,573 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 143 passing, stdlib `unittest`-free runner |
+| acceptance tests | 158 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly four times more — and why state is only persisted when something actually changed. The spec
@@ -118,9 +118,9 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 14 files) | 64 KB | 57,621 B | 6.4 KB |
-| packs (12 files) | 96 KB | 66,036 B | 30.0 KB |
-| console (one HTML file) | 96 KB | 59,593 B | 36.4 KB |
+| package (`pico/` + launcher, 15 files) | 64 KB | 57,967 B | 6.1 KB |
+| packs (12 files) | 96 KB | 66,528 B | 29.5 KB |
+| console (one HTML file) | 96 KB | 61,886 B | 34.1 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |
 | dependencies | 0 | 0 | — |
@@ -132,10 +132,11 @@ The package is split by responsibility, so no single file has to be small:
 | File | Bytes | Owns |
 | --- | --- | --- |
 | `pico/engine.py` | 12,695 | composition, `handle()`, plugin loading |
-| `pico/cmd_files.py` | 7,271 | sort, archive, find, fill, quarantine |
+| `pico/cmd_files.py` | 3,981 | sort, archive, find, fill |
 | `pico/rules.py` | 5,830 | the pattern table, help, catalogue |
 | `pico/store.py` | 5,101 | state, atomic writes, snapshots, replay |
 | `pico/ui.py` | 4,502 | the local web server |
+| `pico/cmd_quarantine.py` | 3,570 | delete safety: quarantine, restore, sweep |
 | `pico/cmd_tasks.py` | 4,427 | tasks, notes, shopping, events, brief |
 | `pico/ledger.py` | 4,081 | execution, inverses, undo |
 | `pico/base.py` | 3,883 | constants and pure helpers |

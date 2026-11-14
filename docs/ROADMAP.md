@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.8 — shipped
+
+The quarantine lifecycle gets its own module; `csv sort` takes an explicit column type; the console
+gained a dismissible install prompt. 158 acceptance tests.
+
 ## 1.7 — shipped
 
 `pico/rules.py` split into five `cmd_*` modules behind a 5.8 KB registry; backoff moved from the rule
@@ -50,8 +55,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Install prompt** | the manifest is valid but nothing invites the user to install | a one-line, dismissible prompt on the console |
-| **Budget headroom is finite** | the package sits at 56.3 KB of a 64 KB ceiling | `pico/cmd_files.py` is the next candidate |
+| **Update prompt** | a new service worker installs silently; nothing says a newer build is ready | a line in the console when a new worker takes over |
+| **Budget headroom is finite** | the package sits at 56.6 KB of a 64 KB ceiling | `pico/engine.py` is now the largest file at 12.7 KB |
 
 ## Next — cheap and useful
 
@@ -59,7 +64,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv pivot` on a column of mixed types | numbers win when they parse, otherwise string compare | a stated type per column |
+| `csv filter` has no type hint | `sort` takes `:number`/`:text`, `filter` still guesses | `csv filter age>30:number x.csv` |
 
 ## Deliberately not built
 
