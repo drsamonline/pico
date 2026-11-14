@@ -3,10 +3,10 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 110 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 125 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.5.1" src="docs/assets/badge-version.svg">
+  <img alt="version 1.6.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,14 +97,14 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 118,545 bytes across 17 files |
+| python source | 122,170 bytes across 20 files |
 | core (engine + launcher) | 30,794 B — 10 KB over the spec's 20 KB, see below |
-| rule set / front-end / packs | 20,600 / 3,969 / 63,489 B |
+| package / packs / console | 55,814 / 65,018 / 59,247 B |
 | console | 54,573 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 110 passing, stdlib `unittest`-free runner |
+| acceptance tests | 125 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly four times more — and why state is only persisted when something actually changed. The spec
@@ -118,16 +118,28 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| core (`engine.py` + launcher) | 40 KB | 30,794 B | 9.2 KB |
-| rule set (`pico/rules.py`) | 28 KB | 20,600 B | 7.0 KB |
-| front-end (`pico/ui.py`) | 8 KB | 3,969 B | 4.1 KB |
-| packs (12 files) | 96 KB | 63,489 B | 32.5 KB |
-| console (one HTML file) | 96 KB | 59,094 B | 36.9 KB |
-| rule-path latency | 5 ms | 0.71 ms read, 4.03 ms write | 4.3 ms / 1.0 ms |
+| package (`pico/` + launcher, 9 files) | 64 KB | 55,814 B | 8.2 KB |
+| packs (12 files) | 96 KB | 65,018 B | 31.0 KB |
+| console (one HTML file) | 96 KB | 59,247 B | 36.8 KB |
+| rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |
 | dependencies | 0 | 0 | — |
 
-All eight are checked by CI on every push; any breach fails the build.
+All six are checked by CI on every push; any breach fails the build and names the part.
+
+The package is split by responsibility, so no single file has to be small:
+
+| File | Bytes | Owns |
+| --- | --- | --- |
+| `pico/rules.py` | 20,272 | the core command set |
+| `pico/engine.py` | 12,535 | composition, `handle()`, plugin loading |
+| `pico/store.py` | 5,101 | state, atomic writes, snapshots, replay |
+| `pico/ledger.py` | 4,081 | execution, inverses, undo |
+| `pico/ui.py` | 3,969 | the local web server |
+| `pico/base.py` | 3,883 | constants and pure helpers |
+| `pico/ladder.py` | 3,561 | rules, risk tiers, slot dialogue |
+| `pico.py` | 2,283 | launcher |
+| `pico/__init__.py` | 129 | exports |
 
 The original spec asked for a 20 KB core. That number was written for a bundle with no undo engine,
 no inverse registry, no translator firewall, no privacy gate, no slot dialogue, no snapshots, no

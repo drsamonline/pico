@@ -2,6 +2,34 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.6.0 — 2026-11-14
+
+### Changed
+
+- **`pico/engine.py` split into four modules.** 31 methods in one 31 KB file became:
+  `store.py` (state, atomic writes, snapshots, replay), `ladder.py` (rules, risk tiers, slot
+  dialogue, the translator firewall), `ledger.py` (execution, inverses, undo) and `base.py`
+  (constants and pure helpers). `Engine` is now `class Engine(StoreMixin, LadderMixin, LedgerMixin)`,
+  so every attribute a pack reaches for still resolves on the instance, and `engine.py` re-exports
+  `safe_eval`, `convert`, `normalize` and `__version__` for the code that imports them.
+- **Budget accounting follows the split.** The unit is now the package (64 KB ceiling, 55,814 B
+  actual) rather than one file, plus packs and console.
+- A linter pass over the whole tree after the split caught two names that had been in the old
+  module's import list but are used by the moved methods: `difflib` in `resolve` and `threading`
+  in `save`. Both fixed, plus a circular import in `replay` that is now a local import.
+
+### Added
+
+- **Trigger backoff** — a rule whose action still fails after the retry backs off for 2, 4, 8, 16,
+  32 then 60 minutes. `triggers` shows the failure count and the remaining wait; a success clears it.
+- **`csv pivot … having EXPR`** — `csv pivot city sum amt spend.csv having sum>100` filters groups
+  after aggregation, and says so when nothing survives.
+
+### Tests
+
+125 checks, up from 111. T39 asserts the mixin composition and the re-exports, T40 the backoff curve,
+T41 `having`.
+
 ## 1.5.1 — 2026-11-14
 
 ### Fixed

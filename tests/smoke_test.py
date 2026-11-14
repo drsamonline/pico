@@ -748,6 +748,75 @@ def t38_version_consistency():
           found["badge"] == engine_version, str(found))
 
 
+def t39_module_split():
+    import pico.base as B
+    import pico.ladder as L
+    import pico.ledger as G
+    import pico.store as S
+    from pico.engine import Engine
+    check("T39 split: Engine composes store, ladder and ledger",
+          all(issubclass(Engine, m) for m in (S.StoreMixin, L.LadderMixin, G.LedgerMixin)),
+          str(Engine.__mro__[:4]))
+    for mod, cls, names in (
+            (S, "StoreMixin", ["save", "_load_state", "replay", "timeline"]),
+            (L, "LadderMixin", ["resolve", "match_rule", "risk_of", "_slot_match"]),
+            (G, "LedgerMixin", ["_run", "undo", "set_inverse", "_apply_inverse"])):
+        have = getattr(mod, cls, None)
+        check("T39 split: %s owns its methods" % cls,
+              have is not None and all(hasattr(have, n) for n in names), cls)
+    check("T39 split: base holds the shared helpers",
+          all(hasattr(B, n) for n in ("safe_eval", "convert", "normalize", "STATE_DEFAULT")))
+    check("T39 split: engine re-exports what packs import",
+          all(hasattr(__import__("pico.engine", fromlist=["x"]), n)
+              for n in ("Engine", "safe_eval", "convert", "normalize", "__version__")))
+    e, d = fresh("t39")
+    check("T39 split: an engine still works end to end",
+          "4,339" in e.handle("emi 500000 8.5 240"))
+    shutil.rmtree(d, True)
+
+
+def t40_backoff():
+    e, d = fresh("t40")
+    e.handle("when every 1m then tasks")
+    mod = _trig_mod()
+    if mod is None:
+        check("T40 backoff: pack reachable", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    real = mod.E.handle
+    mod.E.handle = lambda cmd: "Command failed: staged"
+    now = datetime.datetime.now()
+    try:
+        mod.tick(now)
+        fired_soon = mod.tick(now + datetime.timedelta(seconds=90))
+        fired_later = mod.tick(now + datetime.timedelta(minutes=20))
+    finally:
+        mod.E.handle = real
+    listing = e.handle("triggers")
+    check("T40 backoff: a failure is counted and shown",
+          "fail(s)" in listing, listing.replace("\n", " | ")[:90])
+    check("T40 backoff: it does not retry immediately", not fired_soon, str(len(fired_soon)))
+    check("T40 backoff: it recovers once the window passes", bool(fired_later),
+          str(len(fired_later)))
+    shutil.rmtree(d, True)
+
+
+def t41_pivot_having():
+    e, d = fresh("t41")
+    p = d / "p.csv"
+    p.write_text("city,amt\nPune,350\nSurat,90\nNagpur,10\n", "utf-8")
+    out = e.handle("csv pivot city sum amt %s having sum>100" % p)
+    check("T41 having: only groups above the threshold survive",
+          "Pune" in out and "Surat" not in out and "Nagpur" not in out,
+          out.replace("\n", " | ")[:90])
+    check("T41 having: the total reflects the survivors", "350" in out)
+    check("T41 having: an impossible threshold says so",
+          "No group satisfies" in e.handle("csv pivot city sum amt %s having sum>99999" % p))
+    check("T41 having: a malformed clause is explained",
+          "looks like" in e.handle("csv pivot city sum amt %s having sumxx" % p))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -758,7 +827,8 @@ def main():
                t25_replay, t26_triggers, t27_chain, t28_loop_pivot,
                t29_concurrency, t30_phone_approval, t31_unless, t32_watch_clip,
                t33_retry, t34_multikey_pivot, t35_or_conditions, t36_history,
-               t37_three_key_pivot, t38_version_consistency):
+               t37_three_key_pivot, t38_version_consistency, t39_module_split,
+               t40_backoff, t41_pivot_having):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

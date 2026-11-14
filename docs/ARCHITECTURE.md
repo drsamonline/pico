@@ -21,9 +21,18 @@ nothing else. Front-ends hold no business logic.
 
 | File | Owns |
 | --- | --- |
-| `pico/engine.py` | state load/save, the resolution ladder, the risk gate, pending consent, the ledger, inverse application, the plugin loader, the notifier bus |
+| `pico/engine.py` | composition root: `__init__`, `handle()`, the plugin loader, the notifier bus |
+| `pico/store.py` | state load/save, the write lock, snapshots, replay, timeline |
+| `pico/ladder.py` | rule registration, `match_rule`, risk tiers, `resolve`, slot dialogue, the translator firewall |
+| `pico/ledger.py` | `_run`, the inverse registry, `undo` |
+| `pico/base.py` | constants and pure helpers — `safe_eval`, `convert`, `normalize` |
 | `pico/rules.py` | the core command set — tasks, notes, money log, time, files, web, meta |
 | `pico/ui.py` | `http.server`, token check, `POST /cmd`, `GET /api/state`, HTML injection |
+
+`Engine` is `class Engine(StoreMixin, LadderMixin, LedgerMixin)`, so every attribute a pack reaches
+for still resolves on the instance. `pico/engine.py` re-exports `safe_eval`, `convert`, `normalize`
+and `__version__`, which is what packs and tests import. T39 fails the suite if a mixin loses its
+methods or the re-exports disappear.
 | `packs/*.py` | capabilities. Each may define `setup(api)` and `RULES`; deleting one removes only its commands |
 | `web/index.html` | the console. One file, no external assets, works served or as `file://` |
 

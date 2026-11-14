@@ -129,10 +129,10 @@ footer a{color:var(--tx2)}
   <div class="badges">
     <img src="assets/badge-licence.svg" alt="licence: PolyForm Noncommercial 1.0.0">
     <img src="assets/badge-python.svg" alt="python 3.8+">
-    <img src="assets/badge-tests.svg" alt="tests: 108 passed">
+    <img src="assets/badge-tests.svg" alt="tests: 125 passed">
     <img src="assets/badge-deps.svg" alt="dependencies: zero">
     <img src="assets/badge-offline.svg" alt="no network at runtime">
-    <img src="assets/badge-version.svg" alt="version 1.5.1">
+    <img src="assets/badge-version.svg" alt="version 1.6.0">
   </div>
 
   <div class="cta">
@@ -242,7 +242,7 @@ footer a{color:var(--tx2)}
       <tr><td>chain NAME: a ; b · for each row in X.csv</td><td>sequences and loops</td></tr>
       <tr><td>card add Q|A · review · grade 5 · decide A|B</td><td>spaced repetition, a seeded pick</td></tr>
       <tr><td>importcsv PATH TABLE · sql SELECT …</td><td>CSV into sqlite, read-only out</td></tr>
-      <tr><td>csv filter/sort/join/pivot(a,b,c) · chart 1,4,9 · net worth</td><td>shell data verbs, payoff, position</td></tr>
+      <tr><td>csv filter/sort/join/pivot(a,b,c) having · chart 1,4,9 · net worth</td><td>shell data verbs, payoff, position</td></tr>
     </table></div>
   </div>
 </div></section>
@@ -255,11 +255,11 @@ footer a{color:var(--tx2)}
       <tr><td>dependencies</td><td>0 — Python standard library only</td></tr>
       <tr><td>rules / catalogue / slots</td><td>106 / 110 / 6</td></tr>
       <tr><td>packs</td><td>12</td></tr>
-      <tr><td>python source</td><td>118,545 bytes across 17 files</td></tr>
-      <tr><td>console</td><td>59,094 bytes, one HTML file</td></tr>
-      <tr><td>rule-path latency</td><td>0.71 ms/call (read), 4.03 ms/call (write) — both under the 5 ms budget</td></tr>
+      <tr><td>python source</td><td>122,170 bytes across 20 files</td></tr>
+      <tr><td>console</td><td>59,247 bytes, one HTML file</td></tr>
+      <tr><td>rule-path latency</td><td>0.7 ms/call (read), 4.0 ms/call (write) — both under the 5 ms budget</td></tr>
       <tr><td>engine heap</td><td>0.1 MB</td></tr>
-      <tr><td>acceptance tests</td><td>108 passing</td></tr>
+      <tr><td>acceptance tests</td><td>125 passing</td></tr>
     </table></div>
     <div>
       <h3>Where the milliseconds go</h3>
@@ -267,8 +267,7 @@ footer a{color:var(--tx2)}
       <code>state.json</code> and, every 25 changes, a snapshot — which is why the write path costs
       roughly six times the read path.</p>
       <p>Both are inside the 5 ms rule-path budget. The size budgets are the project's own and CI
-      fails the build when any part crosses: core 40 KB, rule set 28 KB, front-end 8 KB, packs 96 KB,
-      console 96 KB.</p>
+      fails the build when any part crosses: package 64 KB, packs 96 KB, console 96 KB.</p>
     </div>
   </div>
 </div></section>
@@ -351,7 +350,7 @@ python3 ~/pico.py --ui   <span class="c"># local console on 127.0.0.1:8765</span
 </div></section>
 
 <footer><div class="wrap">
-  <span>pico 1.5.1</span>
+  <span>pico 1.6.0</span>
   <span>·</span>
   <a href="app.html">Console</a>
   <a href="https://github.com/drsamonline/pico">Source</a>

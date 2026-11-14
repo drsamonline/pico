@@ -8,7 +8,7 @@ CATALOG = ["importcsv PATH TABLE - load a CSV into the local db",
            "sql SELECT … - query it", "tables - what is loaded",
            "csv filter COND PATH - rows matching", "csv sort COL [desc] PATH - ordered rows",
            "csv join KEY A.csv B.csv - inner join",
-           "csv pivot COL sum AMT PATH - group and aggregate"]
+           "csv pivot COL sum AMT PATH [having sum>100] - group and aggregate"]
 E = DB = None
 WRITE = re.compile(r"^\s*(insert|update|delete|drop|alter|create|replace|attach|pragma)\b", re.I)
 
@@ -194,6 +194,29 @@ def csv_pivot(m):
         groups.setdefault(k, []).append(v)
     if op not in ("sum", "count", "avg", "min", "max"):
         return "op is sum, count, avg, min or max."
+    having = m["having"]
+    if having:
+        h = re.split(r"(>=|<=|!=|>|<|=)", having, maxsplit=1)
+        if len(h) != 3:
+            return "having looks like: sum>100"
+        try:
+            limit = float(h[2])
+        except Exception:
+            return "having needs a number: %s" % h[2]
+        op_h = h[1]
+
+        def keep(v):
+            return {"=": v == limit, "!=": v != limit, ">": v > limit,
+                    "<": v < limit, ">=": v >= limit, "<=": v <= limit}[op_h]
+
+        dropped = [k for k, vals in groups.items()
+                   if not keep({"sum": sum(vals), "count": float(len(vals)),
+                                "avg": sum(vals) / len(vals), "min": min(vals),
+                                "max": max(vals)}[op])]
+        for k in dropped:
+            groups.pop(k)
+        if not groups:
+            return "No group satisfies having %s." % having
     out = ["%-24s %10s" % (",".join(keys), op + "(" + col + ")")]
     total = 0.0
     for k in sorted(groups, key=lambda x: -sum(groups[x])):
@@ -238,6 +261,7 @@ RULES = [
     (r"^csv filter (?P<cond>.+?) (?P<path>\S+\.csv)$", csv_filter),
     (r"^csv sort (?P<col>\w+)(?: (?P<dir>asc|desc))? (?P<path>\S+\.csv)$", csv_sort),
     (r"^csv join (?P<key>\w+) (?P<p1>\S+\.csv) (?P<p2>\S+\.csv)$", csv_join),
-    (r"^csv pivot (?P<key>[\w,]+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) (?P<path>\S+\.csv)$",
+    (r"^csv pivot (?P<key>[\w,]+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) "
+     r"(?P<path>\S+\.csv)(?: having (?P<having>\S+))?$",
      csv_pivot),
 ]

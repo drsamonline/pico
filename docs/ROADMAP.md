@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.6 — shipped
+
+106 rules. `pico/engine.py` split into store, ladder, ledger and base mixins; trigger backoff;
+`csv pivot … having EXPR`. 125 acceptance tests.
+
 ## 1.5 — shipped
 
 106 rules. OR-ed `unless` conditions, per-rule firing history with `trigger log`, Wayland clipboard
@@ -39,8 +44,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Trigger backoff** | a rule that keeps failing still fires on schedule | exponential backoff with a stated reason |
-| **Budget headroom is finite** | core sits at 30.8 KB of a 40 KB ceiling; the next two subsystems need a split first | `pico/engine.py` divides into state, ladder and ledger modules |
+| **Trigger backoff is per rule, not per action** | a rule with three actions backs off as a unit | per-action backoff |
+| **Budget headroom is finite** | the package sits at 54.5 KB of a 64 KB ceiling | `pico/rules.py` is the next candidate to split |
 
 ## Next — cheap and useful
 
@@ -48,7 +53,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv group-by` with a `having` clause | `pivot` has no filter on the aggregate | `pivot city sum amt x.csv having sum>100` |
+| `csv pivot` ordering | groups sort by aggregate descending; no `order by` | `… having sum>100 order by key` |
 
 ## Deliberately not built
 

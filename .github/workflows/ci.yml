@@ -93,16 +93,14 @@ jobs:
           def kb(n):
               return "%d B (%.1f KB)" % (n, n / 1024.0)
 
-          core = pathlib.Path("pico/engine.py").stat().st_size
-          core += pathlib.Path("pico.py").stat().st_size
-          core += pathlib.Path("pico/__init__.py").stat().st_size
-          rules = pathlib.Path("pico/rules.py").stat().st_size
-          front = pathlib.Path("pico/ui.py").stat().st_size
+          parts = sorted(pathlib.Path("pico").glob("*.py")) + [pathlib.Path("pico.py")]
+          package = sum(p.stat().st_size for p in parts)
           packs = sum(p.stat().st_size for p in pathlib.Path("packs").rglob("*.py"))
           console = pathlib.Path("web/index.html").stat().st_size
 
-          caps = [("core", core, 40), ("rule set", rules, 28),
-                  ("front-end", front, 8), ("packs", packs, 96),
+          for p in parts:
+              print("  %-22s %s" % (p, kb(p.stat().st_size)))
+          caps = [("package", package, 64), ("packs", packs, 96),
                   ("console", console, 96)]
           for name, size, cap in caps:
               print("%-10s %14s   cap %d KB" % (name, kb(size), cap))

@@ -123,6 +123,8 @@ def _clip():
 
 def _due(job, now):
     kind = job["kind"]
+    if job.get("backoff_until", 0) > now.timestamp():
+        return False
     if not _cond_ok(job.get("unless")):
         return False
     day = now.strftime("%Y-%m-%d")
@@ -202,13 +204,20 @@ def tick(now=None):
             job.pop("_fresh", None)
         results = run_actions(job["actions"], ctx)
         fired.append((i, job["actions"], results))
+        ok = not any(str(r).startswith("Command failed") for r in results)
         hist = job.setdefault("history", [])
         hist.append({"ts": now.strftime("%Y-%m-%dT%H:%M"),
-                     "out": " | ".join(str(r)[:60] for r in results)[:200],
-                     "ok": not any(str(r).startswith("Command failed") for r in results)})
+                     "out": " | ".join(str(r)[:60] for r in results)[:200], "ok": ok})
         del hist[:-5]
-        if not hist[-1]["ok"]:
+        if ok:
+            job.pop("fails", None)
+            job.pop("last_error", None)
+        else:
             job["last_error"] = hist[-1]["out"]
+            job["fails"] = job.get("fails", 0) + 1
+            # 2, 4, 8, 16, 32, 60 minutes — long enough to be visible
+            job["backoff_until"] = (now + datetime.timedelta(
+                minutes=min(60, 2 ** job["fails"]))).timestamp()
     if changed:
         save()
     return fired
@@ -320,6 +329,9 @@ def show(m):
             label += " unless " + _cond_label(u)
         err = job.get("last_error")
         n = len(job.get("history") or [])
+        if job.get("fails"):
+            mins = int((job.get("backoff_until", 0) - time.time()) / 60) + 1
+            label += "  [%d fail(s), backing off %dm]" % (job["fails"], max(1, mins))
         out.append("%d. %-32s -> %s%s%s" % (
             i + 1, label, " ; ".join(job["actions"]),
             ("\n   %d firing(s) recorded" % n) if n else "",

@@ -158,7 +158,6 @@ def quarantine(m):
     files = _q_list()
     if not files:
         return "Quarantine empty."
-    idx = _q_index()
     total = sum(f.stat().st_size for f in files)
     lines = ["%d. %s  (%s)" % (i + 1, f.name, _h(f.stat().st_size))
              for i, f in enumerate(files)]
