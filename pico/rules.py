@@ -22,10 +22,20 @@ def _S():
 
 
 # ------------------------------------------------------------------ tasks
+def _mark(t):
+    bits = []
+    if t.get("recur"):
+        bits.append("recur " + t["recur"])
+    due = t.get("due")
+    if due:
+        bits.append(("overdue " if due < datetime.date.today().isoformat() else "due ") + due)
+    return ("  <" + ", ".join(bits) + ">") if bits else ""
+
+
 def tasks_list(m):
     if not _S()["tasks"]:
         return "Nothing pending."
-    return "\n".join("[%s] %d. %s" % ("x" if t["done"] else " ", i + 1, t["text"])
+    return "\n".join("[%s] %d. %s%s" % ("x" if t["done"] else " ", i + 1, t["text"], _mark(t))
                      for i, t in enumerate(_S()["tasks"]))
 
 
@@ -62,6 +72,59 @@ def task_del(m):
         E.set_inverse("list_ins", {"key": "tasks", "i": i, "item": item})
         return "Deleted: " + item["text"]
     return "No such task."
+
+
+def task_recur(m):
+    every = m["every"].lower()
+    i = len(_S()["tasks"])
+    _S()["tasks"].append({"text": m["text"].strip(), "done": False, "recur": every})
+    _S().setdefault("recur", {})[str(i)] = datetime.date.today().isoformat()
+    E.set_inverse("list_rm", {"key": "tasks", "i": i})
+    return "Recurring %s: %s" % (every, m["text"].strip())
+
+
+def task_due(m):
+    i = int(m["n"]) - 1
+    ts = _S()["tasks"]
+    if not (0 <= i < len(ts)):
+        return "No such task."
+    old_due = ts[i].get("due")
+    ts[i]["due"] = m["date"]
+    E.set_inverse("task_due", {"i": i, "date": old_due})
+    return "Due %s: %s" % (m["date"], ts[i]["text"])
+
+
+def overdue(m):
+    today = datetime.date.today().isoformat()
+    rows = [(i, t) for i, t in enumerate(_S()["tasks"])
+            if not t["done"] and t.get("due") and t["due"] < today]
+    if not rows:
+        return "Nothing overdue."
+    return "\n".join("%d. %s  (due %s)" % (i + 1, t["text"], t["due"]) for i, t in rows)
+
+
+def safe_delete(m):
+    p = pathlib.Path(m["path"]).expanduser()
+    if not p.exists():
+        return "Path not found."
+    q = E.home / "quarantine"
+    q.mkdir(exist_ok=True)
+    dest = q / (datetime.datetime.now().strftime("%Y%m%d%H%M%S") + "_" + p.name)
+    shutil.move(str(p), str(dest))
+    E.set_inverse("move_back", {"map": [[str(p), str(dest)]]})
+    return "Quarantined: %s\nundo restores it; nothing was destroyed." % dest
+
+
+def safe_delete_preview(m):
+    p = pathlib.Path(m["path"]).expanduser()
+    if p.is_file():
+        return [str(p)]
+    if p.is_dir():
+        return [str(x) for x in list(p.rglob("*"))[:200]]
+    return []
+
+
+safe_delete.preview = safe_delete_preview
 
 
 def note_set(m):
@@ -383,6 +446,7 @@ def normalize_key(t):
 
 HELP = """CORE
   tasks | add X | done N | undone N | del N | brief
+  recur daily X | due N YYYY-MM-DD | overdue | safe delete PATH
   remember k=v | recall k | forget k
   buy X | shop | bought N | on MM-DD text
   spend AMT [CAT] | expenses | calc EXPR | convert V U to U
@@ -411,6 +475,10 @@ def register(engine):
         (r"^done\s+(?P<n>\d+)$", task_done),
         (r"^undone\s+(?P<n>\d+)$", task_undone),
         (r"^del\s+(?P<n>\d+)$", task_del),
+        (r"^recur\s+(?P<every>daily|weekly|monthly)\s+(?P<text>.+)$", task_recur),
+        (r"^due\s+(?P<n>\d+)\s+(?P<date>\d{4}-\d{2}-\d{2})$", task_due),
+        (r"^overdue$", overdue),
+        (r"^safe delete\s+(?P<path>.+)$", safe_delete),
         (r"^remember\s+(?P<key>\w+)\s*[:=]\s*(?P<val>.+)$", note_set),
         (r"^(recall|what is)\s+(?P<key>\w+)$", note_get),
         (r"^forget\s+(?P<key>\w+)$", note_del),
@@ -456,4 +524,6 @@ def register(engine):
         "dry CMD - preview without running", "why - last resolution",
         "log - recent ledger", "undo N - reverse actions",
         "aliases - learned phrasings", "unalias P - forget a phrasing",
+        "recur daily X - repeating task", "due N YYYY-MM-DD - set a due date",
+        "overdue - tasks past their date", "safe delete PATH - quarantine a file",
     ])

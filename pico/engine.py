@@ -3,14 +3,15 @@
 State, resolution ladder, risk gate, ledger with inverses, plugin loader.
 No third-party imports. Python 3.8+.
 """
-import ast, difflib, json, operator, os, pathlib, re, sys, threading, time
+import ast, difflib, json, operator, os, pathlib, re, secrets, sys, threading, time
 import datetime
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 STATE_DEFAULT = {
     "tasks": [], "notes": {}, "spend": [], "events": [], "sites": {},
     "shop": [], "aliases": {}, "undo": [], "llm_use": {},
+    "two_key": False, "recur": {},
 }
 
 RISK_RULES = [
@@ -124,11 +125,17 @@ class Engine:
         self.inverse_handlers = {}
         self.pack_modules = []
         self.privacy = {"never_send": []}
+        self.slot_rules = []
+        self.history = []
         self._busy = False
         self.api = self._build_api()
         self.register_core()
         if load_packs:
             self.load_packs()
+        try:
+            self.roll_recurring()
+        except Exception:
+            pass
 
     # -- state
     def _load_state(self):
@@ -155,7 +162,8 @@ class Engine:
 
     def save(self):
         tmp = self.state_file.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(self.S, indent=2, ensure_ascii=False), "utf-8")
+        tmp.write_text(json.dumps(self.S, indent=1, ensure_ascii=False,
+                                  separators=(",", ": ")), "utf-8")
         os.replace(tmp, self.state_file)
 
     def _warn(self, msg):
@@ -172,7 +180,7 @@ class Engine:
             "aliases": self.aliases, "inverse": self.set_inverse,
             "add_rule": self.add_rule, "add_rules": self.add_rules,
             "inverse_handler": self.register_inverse,
-            "privacy": self.privacy,
+            "privacy": self.privacy, "add_slots": self.add_slots,
             "engine": self, "version": __version__,
         }
 
@@ -182,6 +190,21 @@ class Engine:
 
     def register_inverse(self, name, fn):
         self.inverse_handlers[name] = fn
+
+    def add_slots(self, pattern, template, prompts):
+        """Register a partial command: match, then ask for the missing slots."""
+        self.slot_rules.append((re.compile(pattern, re.I), template, prompts))
+
+    def _slot_match(self, text):
+        for pat, tmpl, prompts in self.slot_rules:
+            m = pat.match(text)
+            if not m:
+                continue
+            have = {k: v for k, v in m.groupdict().items() if v is not None}
+            need = [k for k in re.findall(r"{(\w+)}", tmpl) if k not in have]
+            if need:
+                return {"tmpl": tmpl, "have": have, "need": need, "prompts": prompts}
+        return None
 
     def notify(self, msg):
         print("\n[!] " + str(msg), flush=True)
@@ -346,6 +369,8 @@ class Engine:
             pass
         if self._dirty:
             self.save()
+        self.history.append(cmd)
+        del self.history[:-20]
         return out
 
     def handle(self, text):
@@ -363,9 +388,12 @@ class Engine:
             self.pending = {}
             p = self.pending
         if low == "confirm" and p.get("confirm"):
-            cmd = self.pending.pop("confirm")["cmd"]
+            held = p["confirm"]
+            if held.get("code"):
+                return ("Two-key is on for danger actions. Approve with:\n"
+                        "approve " + held["code"])
             self.pending = {}
-            return self._run(cmd, "confirmed")
+            return self._run(held["cmd"], "confirmed")
         if low == "cancel":
             self.pending = {}
             return "Cancelled."
@@ -398,6 +426,41 @@ class Engine:
                 except Exception:
                     pass
             return "\n".join(lines)
+        slot = p.get("slot")
+        if slot:
+            self.pending = {}
+            slot["have"][slot["need"][0]] = t.strip()
+            slot["need"] = slot["need"][1:]
+            if slot["need"]:
+                self.pending = {"slot": slot, "at": time.time()}
+                return slot["prompts"].get(slot["need"][0], slot["need"][0] + "?")
+            cmd = slot["tmpl"].format(**slot["have"])
+            if not self.match_rule(cmd)[0]:
+                return "That did not produce a valid command: " + cmd
+            return self._run(cmd, "slot")
+        if low in ("again", "it", "that", "same"):
+            if not self.history:
+                return "Nothing to repeat yet."
+            return self.handle(self.history[-1])
+        m2k = re.fullmatch(r"2key\s+(on|off)", low)
+        if m2k:
+            self.S["two_key"] = m2k.group(1) == "on"
+            self._dirty = True
+            self.save()
+            return "Two-key: " + ("on — danger actions need the code printed here" if
+                                  self.S["two_key"] else "off")
+        ap = re.fullmatch(r"approve\s+(\w+)", low)
+        if ap:
+            held = p.get("confirm")
+            if not held:
+                return "Nothing waiting for approval."
+            if not secrets.compare_digest(ap.group(1), held.get("code", "")):
+                return "Wrong code. Still waiting."
+            self.pending = {}
+            return self._run(held["cmd"], "approved")
+        if low == "timeline" or low.startswith("timeline "):
+            since = t[8:].strip()
+            return self.timeline(since)
         if t in ("1", "2", "3") and p.get("choice"):
             i = int(t) - 1
             opts = p["choice"]
@@ -408,6 +471,10 @@ class Engine:
                 return self._run(cmd, "learned", original=said)
             self.pending = {}
             return "No option " + t + "."
+        sm = self._slot_match(t)
+        if sm:
+            self.pending = {"slot": sm, "at": time.time()}
+            return sm["prompts"].get(sm["need"][0], sm["need"][0] + "?")
         r = self.resolve(t)
         if not r["cmd"]:
             opts = r.get("options") or []
@@ -424,21 +491,62 @@ class Engine:
             return "Blocked: that phrase contains a never-send domain, so it never reaches the model."
         rk = self.risk_of(cmd)
         if rk in ("send", "danger") or (rk == "write" and r["src"] in ("llm", "cache")):
-            self.pending = {"confirm": {"cmd": cmd}, "at": time.time()}
+            held = {"cmd": cmd}
+            gate = ""
+            if rk == "danger" and self.S.get("two_key"):
+                held["code"] = secrets.token_hex(3)
+                gate = "\nTwo-key: approve " + held["code"]
+            self.pending = {"confirm": held, "at": time.time()}
             fn, m = self.match_rule(cmd)
-            extra = ""
+            preview = ""
             prev = getattr(fn, "preview", None)
             if prev:
                 try:
-                    extra = "\nAffects: %d item(s)" % len(prev(m))
+                    preview = "\nAffects: %d item(s)" % len(prev(m))
                 except Exception:
                     pass
-            return "[%s] About to run: %s%s\nType 'confirm' or 'cancel'." % (rk, cmd, extra)
+            tail = "approve <code>" if gate else "confirm"
+            return "[%s] About to run: %s%s%s\nType '%s' or 'cancel'." % (
+                rk, cmd, preview, gate, tail)
         return self._run(cmd, r["src"], original=t)
 
     reply = handle
 
     # -- ledger / undo
+    def timeline(self, since=""):
+        if not self.ledger_file.exists():
+            return "Ledger empty."
+        rows = []
+        for line in self.ledger_file.read_text("utf-8").splitlines():
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            if since and r.get("ts", "") < since:
+                continue
+            rows.append("%s  %-7s %-6s %s" % (r.get("ts", "")[5:19], r.get("tier", ""),
+                                              r.get("src", ""), r.get("cmd", "")))
+        return "\n".join(rows[-40:]) or "Nothing since " + since
+
+    def roll_recurring(self):
+        """Reopen a recurring task once the day turns over."""
+        today = datetime.date.today().isoformat()
+        recur = self.S.setdefault("recur", {})
+        changed = False
+        for i, task in enumerate(self.S.get("tasks", [])):
+            key = str(i)
+            if not task.get("recur"):
+                continue
+            if recur.get(key) != today and task.get("done"):
+                task["done"] = False
+                recur[key] = today
+                changed = True
+            elif key not in recur:
+                recur[key] = today
+        if changed:
+            self.save()
+        return changed
+
     def tail_log(self, n=8):
         if not self.ledger_file.exists():
             return "Empty."
@@ -475,6 +583,8 @@ class Engine:
             S["tasks"][a["i"]]["done"] = True
         elif kind == "task_undone":
             S["tasks"][a["i"]]["done"] = False
+        elif kind == "task_due":
+            S["tasks"][a["i"]]["due"] = a["date"]
         elif kind == "note_set":
             S["notes"][a["k"]] = a["v"]
         elif kind == "note_del":

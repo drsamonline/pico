@@ -1,6 +1,6 @@
 # Command reference
 
-66 rules. `[optional]` means the argument may be omitted. Every command is case-insensitive and
+83 rules, plus 6 slot rules that ask one question instead of failing. `[optional]` means the argument may be omitted. Every command is case-insensitive and
 `<angle brackets>` are the risk tier.
 
 ## Capture
@@ -16,6 +16,9 @@
 | `forget k` | safe | reversible |
 | `buy X` · `shop` · `bought N` | safe | shopping list |
 | `on YYYY-MM-DD text` · `on MM-DD text` | safe | appears in `brief` on that date |
+| `recur daily\|weekly\|monthly X` | safe | reopens itself when the day turns over |
+| `due N YYYY-MM-DD` | safe | sets a due date on task N; reversible |
+| `overdue` | safe | tasks past their date |
 | `brief` · `today` · `agenda` | safe | date, open tasks, today's events, month spend |
 
 ## Money
@@ -64,6 +67,11 @@ the seven arithmetic operators, with size caps on powers and results.
 | `sortlines PATH` | safe | sorted unique lines, printed |
 | `dedupe PATH` | write | writes `NAME.deduped.txt`; reversible |
 | `redact PATH` | write | masks email, phone, URL; writes `NAME.redacted.txt`; reversible |
+| `safe delete PATH` | **danger** | moves to `~/.pico/quarantine/`; `undo` restores it |
+| `big files [N]` | safe | largest N files under Downloads, Documents, Desktop, Pictures |
+| `old files Nd` | safe | untouched for N days |
+| `dedupe files PATH` | safe | sha256 groups; reports only |
+| `dedupe files PATH apply` | write | quarantines the duplicates; reversible |
 
 ## Life
 
@@ -76,6 +84,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | `contact k=v` · `contacts` | safe | reversible |
 | `wa NAME MSG` | **send** | opens a `wa.me` deep link; you press send |
 | `mail NAME SUBJ` | **send** | opens a `mailto:` draft |
+| `card add Q\|A` · `review` · `grade 0-5` · `cards` | safe | SM-2 spaced repetition over your own notes |
 
 `journal 5` records the text "5". To read entries use `journal show 5`.
 
@@ -86,6 +95,8 @@ the seven arithmetic operators, with size caps on powers and results.
 | `daily HH:MM CMD` | safe | reversible; fires while pico runs |
 | `jobs` | safe | list |
 | `unjob N` | **danger** | reversible |
+| `report weekly` · `report month` | safe | commands run, by tier and source; tasks; spend |
+| `decide A\|B\|C` | safe | one pick, seeded from the options and the date, so it is stable all day |
 
 ## Web
 
@@ -94,6 +105,14 @@ the seven arithmetic operators, with size caps on powers and results.
 | `site k=url` · `open X` | safe | shortcut, path, or domain |
 | `search X` | safe | opens DuckDuckGo |
 | `weather [city]` | safe | the only command that needs the network; degrades to a message offline |
+
+## Data
+
+| Command | Tier | Notes |
+| --- | --- | --- |
+| `importcsv PATH TABLE` | safe | loads a CSV into `~/.pico/pico.db` (sqlite3), reversible |
+| `sql SELECT …` | safe | read-only: SELECT, WITH and PRAGMA only. 50-row cap |
+| `tables` | safe | what is loaded, and how many rows |
 
 ## Safety
 
@@ -105,6 +124,24 @@ the seven arithmetic operators, with size caps on powers and results.
 | `undo [N]` | reverses the last N actions that have an inverse; names the ones that do not |
 | `confirm` · `cancel` | resolve or discard a pending send/danger action (120 s TTL) |
 | `aliases` · `unalias P` | inspect or remove learned phrasings |
+| `2key on` · `2key off` | danger actions then print a 6-hex code; `approve <code>` completes them |
+| `timeline [TS]` | the ledger as a readable list, optionally since an ISO timestamp |
+| `again` · `it` · `that` | repeat the previous command |
+
+## Slot dialogue
+
+Six partial commands ask one question rather than printing a syntax lesson:
+
+| You type | It asks |
+| --- | --- |
+| `emi 500000 8.5` | how many months? |
+| `sip 5000 12` | how many years? |
+| `fd 100000 7.1` | how many years? |
+| `gst 1000` | GST rate? |
+| `split 1000` | how many people? |
+| `disc 999` | discount percent? |
+
+`cancel` clears the question. Packs register their own with `api["add_slots"](pattern, template, prompts)`.
 
 ## Model (optional)
 

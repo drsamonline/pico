@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="pico">
 <title>pico — command console</title>
 <style>
 :root{
@@ -137,6 +140,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
 .b-alias{color:#79c0ff;border-color:#1f4d73;background:rgba(31,111,235,.1)}
 .b-typo{color:#d2a8ff;border-color:#4c2d73;background:rgba(163,113,247,.1)}
 .b-fuzzy{color:#d2a8ff;border-color:#4c2d73;background:rgba(163,113,247,.1)}
+.b-slot{color:#79c0ff;border-color:#1f4d73;background:rgba(31,111,235,.12)}
 .b-llm{color:#ffa657;border-color:#7d4415;background:rgba(240,136,62,.1)}
 .b-safe{color:var(--safe);border-color:#22543d;background:rgba(62,207,142,.09)}
 .b-write{color:var(--write);border-color:#5c4a15;background:rgba(227,179,65,.09)}
@@ -212,7 +216,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.0.0</small>
+      pico <small id="ver">v1.1.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -313,7 +317,7 @@ const GROUPS = [
   {name:"Capture", icon:"inbox", items:[
     ["tasks","list"],["add X","task"],["done N","close"],["undone N","reopen"],
     ["del N","delete"],["brief","today"],["remember k=v","note"],["recall k","read"],
-    ["on MM-DD text","event"]]},
+    ["on MM-DD text","event"],["recur daily X","repeat"],["overdue","late"]]},
   {name:"Money", icon:"coin", items:[
     ["spend AMT CAT","log"],["expenses","month"],["budget","caps"],
     ["emi P R N","loan"],["sip A R Y","invest"],["fd P R Y","deposit"],
@@ -324,14 +328,17 @@ const GROUPS = [
   {name:"Files", icon:"file", items:[
     ["tidy","sort downloads"],["backup PATH","zip"],["find NAME","locate"],
     ["templates","list"],["fill letter k=v","fill"],["count PATH","size"],
-    ["extract emails PATH","pull"]]},
+    ["extract emails PATH","pull"],["big files","fat"],
+    ["old files 30d","stale"],["safe delete PATH","quarantine"]]},
   {name:"Life", icon:"heart", items:[
     ["habit add walk","new"],["did walk","log"],["habits","streaks"],
     ["journal text","write"],["journal show 5","read"],["contact bob=91...","save"],
-    ["wa bob hi","open"],["mail bob Hi","draft"]]},
+    ["wa bob hi","open"],["mail bob Hi","draft"],
+    ["card add Q|A","card"],["review","recall"]]},
   {name:"Safety", icon:"shield", items:[
     ["dry CMD","preview"],["why","last"],["log","ledger"],["undo","reverse"],
-    ["confirm","approve"],["cancel","abort"],["aliases","learned"],["llm status","model"]]},
+    ["confirm","approve"],["cancel","abort"],["aliases","learned"],["llm status","model"],
+    ["timeline","history"],["report weekly","week"],["decide a|b","pick"]]},
 ];
 
 const CATALOG = GROUPS.flatMap(g => g.items.map(i => i[0]));
@@ -461,6 +468,37 @@ const H = {
   unalias:m=>{const k=norm(m.p);if(!(k in S.aliases))return "No such alias.";delete S.aliases[k];return "Alias removed.";},
   why:()=> lastRun?JSON.stringify(lastRun,null,2):"Nothing run yet.",
   log:()=>(S.undo.length?S.undo.slice(-8).map(u=>JSON.stringify({cmd:u.cmd,op:u.op})).join("\n"):"Empty."),
+  overdue:()=>{const t=new Date().toISOString().slice(0,10);
+    const r=S.tasks.map((x,i)=>[i,x]).filter(([,x])=>!x.done&&x.due&&x.due<t);
+    return r.length?r.map(([i,x])=>`${i+1}. ${x.text}  (due ${x.due})`).join("\n"):"Nothing overdue.";},
+  recur:m=>{const i=S.tasks.length;S.tasks.push({text:m.text.trim(),done:false,recur:m.every.toLowerCase()});
+    inv("list_rm",{key:"tasks",i});return `Recurring ${m.every.toLowerCase()}: ${m.text.trim()}`;},
+  due:m=>{const i=+m.n-1;if(!(i>=0&&i<S.tasks.length))return "No such task.";
+    S.tasks[i].due=m.date;return `Due ${m.date}: ${S.tasks[i].text}`;},
+  decide:m=>{const o=m.options.split("|").map(x=>x.trim()).filter(Boolean);
+    if(o.length<2)return "Give at least two options: decide tea|coffee";
+    let h=0;const src=o.join("|")+new Date().toISOString().slice(0,10);
+    for(let i=0;i<src.length;i++){h=(h*31+src.charCodeAt(i))>>>0;}
+    return `${o[h%o.length]}\n\n(from ${o.length} options, seed ${h.toString(16).slice(0,8)} — same answer all day)`;},
+  reportWeekly:()=>{const done=S.tasks.filter(t=>t.done).length,open=S.tasks.filter(t=>!t.done).length;
+    const mon=new Date().toISOString().slice(0,7);const sp={};
+    S.spend.filter(r=>r.d.startsWith(mon)).forEach(r=>sp[r.cat]=(sp[r.cat]||0)+r.amt);
+    const tot=Object.keys(sp).reduce((a,c)=>a+sp[c],0);
+    return `pico — last 7 days\ntasks      ${done} done, ${open} open\n`+
+      (tot?`spend      ${money(tot)} this month`:"no spend logged");},
+  timeline:()=>(S.undo.length?S.undo.slice(-12).map(u=>`${u.op.padEnd(12)} ${u.cmd}`).join("\n"):"Ledger empty."),
+  twoKey:()=>"Two-key needs the local engine — it prints an approval code from the running process.",
+  safeDelete:()=>"Quarantine needs the local engine — run: python pico.py safe delete PATH",
+  bigFiles:()=>"Disk scan needs the local engine — run: python pico.py big files",
+  oldFiles:()=>"Disk scan needs the local engine — run: python pico.py old files 30d",
+  dedupeFiles:()=>"Hashing needs the local engine — run: python pico.py dedupe files PATH",
+  cardAdd:()=>"The deck lives in the local engine — run: python pico.py card add Q|A",
+  review:()=>"The deck lives in the local engine — run: python pico.py review",
+  grade:()=>"The deck lives in the local engine.",
+  cards:()=>"The deck lives in the local engine.",
+  importcsv:()=>"sqlite lives in the local engine — run: python pico.py importcsv PATH TABLE",
+  sql:()=>"sqlite lives in the local engine — run: python pico.py sql 'SELECT …'",
+  tables:()=>"sqlite lives in the local engine.",
   llmStatus:()=>"mode=off provider=ollama\nThis console is the demo build: no translator, no network.\nAll deterministic commands work with LLM off.",
   help:()=>"Type a command, or open Commands for the full list.",
   templates:()=>"email\ninvoice\nletter",
@@ -483,6 +521,26 @@ function streak(dates){
   iso=d.toISOString().slice(0,10);
   while(dates.includes(iso)){s++;d.setDate(d.getDate()-1);iso=d.toISOString().slice(0,10);}
   return s;
+}
+
+/* ---------- slot dialogue: a partial command asks one question ---------- */
+const SLOTS = [
+  [/^emi\s+(?<p>[\d.]+)\s+(?<r>[\d.]+)$/i, "emi {p} {r} {n}", {n:"Loan EMI: how many months?"}],
+  [/^sip\s+(?<a>[\d.]+)\s+(?<r>[\d.]+)$/i, "sip {a} {r} {y}", {y:"SIP: how many years?"}],
+  [/^fd\s+(?<p>[\d.]+)\s+(?<r>[\d.]+)$/i, "fd {p} {r} {y}", {y:"FD: how many years?"}],
+  [/^gst\s+(?<a>[\d.]+)$/i, "gst {a} {r}", {r:"GST rate? (5, 12, 18 or 28)"}],
+  [/^split\s+(?<a>[\d.]+)$/i, "split {a} {n}", {n:"Split between how many people?"}],
+  [/^disc\s+(?<a>[\d.]+)$/i, "disc {a} {r}", {r:"Discount percent?"}],
+];
+let pendingSlot = null;
+function slotMatch(text){
+  for(const [re,tmpl,prompts] of SLOTS){
+    const m=re.exec(text); if(!m) continue;
+    const have=Object.assign({},m.groups||{});
+    const need=(tmpl.match(/\{(\w+)\}/g)||[]).map(x=>x.slice(1,-1)).filter(k=>!(k in have));
+    if(need.length) return {tmpl,have,need,prompts};
+  }
+  return null;
 }
 
 /* ---------- rule table ---------- */
@@ -543,6 +601,24 @@ const RULES = [
   [/^weather(?:\s+(?<city>.+))?$/i,"weather"],
   [/^aliases$/i,"aliases"],
   [/^unalias\s+(?<p>.+)$/i,"unalias"],
+  [/^recur\s+(?<every>daily|weekly|monthly)\s+(?<text>.+)$/i,"recur"],
+  [/^due\s+(?<n>\d+)\s+(?<date>\d{4}-\d{2}-\d{2})$/i,"due"],
+  [/^overdue$/i,"overdue"],
+  [/^safe delete\s+(?<path>.+)$/i,"safeDelete"],
+  [/^big files(?:\s+(?<n>\d+))?$/i,"bigFiles"],
+  [/^old files\s+(?<n>\d+)d$/i,"oldFiles"],
+  [/^dedupe files\s+(?<path>\S+)(?:\s+(?<apply>apply))?$/i,"dedupeFiles"],
+  [/^card add (?<qa>.+)$/i,"cardAdd"],
+  [/^review$/i,"review"],
+  [/^grade (?<n>[0-5])$/i,"grade"],
+  [/^cards$/i,"cards"],
+  [/^report weekly$/i,"reportWeekly"],
+  [/^decide (?<options>.+\|.+)$/i,"decide"],
+  [/^importcsv\s+(?<path>\S+)\s+(?<table>\w+)$/i,"importcsv"],
+  [/^sql\s+(?<q>.+)$/i,"sql"],
+  [/^tables$/i,"tables"],
+  [/^timeline(?:\s+(?<since>.+))?$/i,"timeline"],
+  [/^2key\s+(?<v>on|off)$/i,"twoKey"],
   [/^why$/i,"why"],
   [/^log$/i,"log"],
   [/^llm\s+status$/i,"llmStatus"],
@@ -596,7 +672,7 @@ async function run(text){
                :"Would run: nothing - no rule matched.";
       resolved=r.cmd||text; src=r.src; tier=riskOf(r.cmd||text);
     }else if(/^cancel$/i.test(text)){
-      pendingConfirm=null;pendingChoice=null;out="Cancelled.";
+      pendingConfirm=null;pendingChoice=null;pendingSlot=null;out="Cancelled.";
     }else if(/^confirm$/i.test(text)){
       if(!pendingConfirm){out="Nothing pending.";}
       else{
@@ -606,6 +682,24 @@ async function run(text){
         out=hit&&H[hit.name]?String(H[hit.name](hit.groups)):"Not available in the demo.";
         save();
       }
+    }else if(pendingSlot){
+      const sl=pendingSlot; pendingSlot=null;
+      sl.have[sl.need[0]]=text.trim(); sl.need=sl.need.slice(1);
+      if(sl.need.length){
+        pendingSlot=sl;
+        out=sl.prompts[sl.need[0]]||sl.need[0]+"?";
+        resolved=text; src="slot";
+      }else{
+        const cmd=sl.tmpl.replace(/\{(\w+)\}/g,(_,k)=>sl.have[k]);
+        const hit=matchRule(cmd);
+        resolved=cmd; src="slot"; tier=riskOf(cmd);
+        out=hit&&H[hit.name]?String(H[hit.name](hit.groups)):"Not available in the demo.";
+        save();
+      }
+    }else if(slotMatch(text)){
+      pendingSlot=slotMatch(text);
+      out=pendingSlot.prompts[pendingSlot.need[0]]||pendingSlot.need[0]+"?";
+      resolved=text; src="slot";
     }else{
       const r=resolve(text);
       if(!r.cmd){
@@ -794,7 +888,11 @@ function updateSugg(){
 function paintSugg(){
   sugg.querySelectorAll("button").forEach((b,i)=>b.dataset.sel=i===selIdx?"1":"0");
 }
-input.addEventListener("input",updateSugg);
+let suggTimer=null;
+input.addEventListener("input",()=>{
+  clearTimeout(suggTimer);
+  suggTimer=setTimeout(updateSugg,80);
+});
 input.addEventListener("keydown",e=>{
   if(e.key==="Enter"){
     if(sugg.dataset.on==="1"&&selIdx>-1){e.preventDefault();input.value=suggList[selIdx];sugg.dataset.on="0";}
@@ -877,7 +975,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food · emi 5 8.5 240";
 }
-$("#ver").textContent="v1.0.0";
+$("#ver").textContent="v1.1.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){
@@ -892,10 +990,10 @@ if(SERVER){
 renderHistory();
 /* shareable runs: index.html#add buy milk|emi 500000 8.5 240 */
 if(location.hash.length>1){
-  let raw=location.hash.slice(1);
-  try{raw=decodeURIComponent(raw);}catch(e){}
-  raw.split("|").map(s=>s.trim()).filter(Boolean).slice(0,8)
-     .forEach((c,i)=>setTimeout(()=>run(c),i*120));
+  location.hash.slice(1).split("|").map(part=>{
+    try{return decodeURIComponent(part).trim();}catch(e){return part.trim();}
+  }).filter(Boolean).slice(0,8)
+    .forEach((c,i)=>setTimeout(()=>run(c),i*140));
 }
 </script>
 </body>

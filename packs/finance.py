@@ -9,6 +9,19 @@ E = None
 def setup(api):
     global E
     E = api["engine"]
+    # partial commands ask one question instead of printing a syntax lesson
+    api["add_slots"](r"^emi\s+(?P<p>[\d.]+)\s+(?P<r>[\d.]+)$", "emi {p} {r} {n}",
+                     {"n": "Loan EMI: how many months?"})
+    api["add_slots"](r"^sip\s+(?P<a>[\d.]+)\s+(?P<r>[\d.]+)$", "sip {a} {r} {y}",
+                     {"y": "SIP: how many years?"})
+    api["add_slots"](r"^fd\s+(?P<p>[\d.]+)\s+(?P<r>[\d.]+)$", "fd {p} {r} {y}",
+                     {"y": "FD: how many years?"})
+    api["add_slots"](r"^gst\s+(?P<a>[\d.]+)$", "gst {a} {r}",
+                     {"r": "GST rate? (5, 12, 18 or 28)"})
+    api["add_slots"](r"^split\s+(?P<a>[\d.]+)$", "split {a} {n}",
+                     {"n": "Split between how many people?"})
+    api["add_slots"](r"^disc\s+(?P<a>[\d.]+)$", "disc {a} {r}",
+                     {"r": "Discount percent?"})
     api["inverse_handler"]("budget_restore",
                            lambda a: (E.S.setdefault("budget", {}).__setitem__(a["cat"], a["v"])
                                       if a["v"] is not None

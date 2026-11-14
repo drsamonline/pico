@@ -3,36 +3,34 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.1 — shipped
+
+83 rules, four risk tiers, universal undo, slot dialogue, two-key approval, quarantine, recurring
+tasks, SM-2 cards, sqlite over CSV, weekly report, local console, Telegram bridge, optional
+translator, 52 acceptance tests. Measured in the [README](../README.md#measured).
+
 ## 1.0 — shipped
 
-66 rules, four risk tiers, universal undo, local console, Telegram bridge, optional translator,
-30 acceptance tests. Measured in the [README](../README.md#measured).
+66 rules, four risk tiers, universal undo, local console, Telegram bridge, optional translator.
 
 ## Next — worth the complexity
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Slot dialogue** | `emi` with two of three numbers currently just fails. Asking one question beats a syntax lesson | `emi 500000 8.5` → asks for months, then runs, in one turn |
-| **Context stack** | `done 2`, then `undo`, then `again` should work without retyping | `it`, `that`, `again` resolve to the previous command |
-| **Recurring tasks** | `recur daily water the plants` is the most requested shape of task in every planner | `recur daily X` creates a task that reappears each day, logged once |
-| **Two-key for danger** | Right now a danger action is one word away. A phone approval closes that | with two-key on, `unjob 1` cannot complete from the desktop alone |
-| **Blast radius everywhere** | `tidy` previews; `safe delete` and `restore` do not | `dry safe delete` names the file count before anything moves |
-| **`safe delete`** | A quarantine folder with a 30-day sweep is undo for humans | deleted file lands in `~/.pico/quarantine/`, `undo` restores it |
-| **Replay** | The ledger is already append-only; replay is a reader | `replay <ts>` rebuilds state from the nearest snapshot plus the log |
+| **Replay** | `timeline` reads the log; rebuilding state needs snapshots | `replay <ts>` reproduces state from the nearest snapshot plus the log |
 | **CSV as a loop** | `for each row in clients.csv then fill letter name={name}` turns a mail merge into one line | 50-row CSV produces 50 letters, one ledger line each |
+| **Quarantine sweep** | `safe delete` keeps files forever today | `quarantine sweep 30d` empties anything older than the window |
+| **Phone approval for two-key** | the code prints on the desktop; it should also go to the bound chat | with a token set, `approve` works from the phone only |
+| **Blast radius on every danger handler** | `tidy` and `safe delete` preview; `restore` does not | `dry restore` names the file count |
 
 ## Next — cheap and useful
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| `dedupe files` | sha256 grouping, no external tool | two identical files collapse to one plus a report |
-| `big files` / `old files Nd` | the two questions everyone asks of a disk | lists top 20 by size, and files older than N days |
-| `overdue` / `stale` | tasks with a due date that has passed | `on` gains an optional due field |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `report weekly` | the ledger already knows; this is a view | one page: tasks closed, spend by category, habits kept |
-| `card add Q\|A` + `review` | SM-2 spaced repetition, ~60 lines, no model | after 3 reviews the interval grows 1→6→15 days |
-| `decide A\|B\|C` | a coin flip that shows its work | returns a choice and the seed |
+| `csv filter/sort/join` | the sqlite pack covers query; the shell verbs are still missing | `csv filter age>30 people.csv` prints the rows |
+| `ascii chart` | `report` prints numbers; a sparkline reads faster | `chart 1,4,9,16` draws bars in the terminal |
 
 ## Deliberately not built
 
@@ -43,7 +41,7 @@ because "done" without a test is an opinion.
 | Two-way WhatsApp | Needs Meta's Cloud API and a public webhook. Telegram already works and needs nothing |
 | A plugin marketplace | Every pack is a file you can read in one sitting. A registry would be a supply-chain risk in a tool that promises no network |
 | Cloud sync | The point is that there is no server. Export/import a JSON file and use whatever you already trust |
-| A native mobile app | The console is one HTML file. An APK would be 40 MB of wrapper around a page your browser already renders |
+| A native mobile app | The console is one HTML file. An APK would be 40 MB of wrapper around a page your browser already renders. Add to Home Screen already gives standalone chrome |
 
 ## Open questions
 

@@ -280,11 +280,126 @@ def t12_ledger():
     shutil.rmtree(d, True)
 
 
+def t13_slots():
+    e, d = fresh("t13")
+    ask = e.handle("emi 500000 8.5")
+    check("T13 slots: a partial command asks one question",
+          "how many months" in ask.lower(), ask[:60])
+    out = e.handle("240")
+    check("T13 slots: the answer completes and runs the command",
+          "4,339" in out, out[:60])
+    check("T13 slots: cancel clears the question",
+          e.handle("split 1000").lower().startswith("split") and
+          e.handle("cancel") == "Cancelled." and "Nothing" in e.handle("tasks"),
+          "cancel path")
+    shutil.rmtree(d, True)
+
+
+def t14_context():
+    e, d = fresh("t14")
+    e.handle("add buy milk")
+    out = e.handle("again")
+    check("T14 context: 'again' repeats the last command",
+          out == "Added." and len(e.S["tasks"]) == 2, out[:40])
+    shutil.rmtree(d, True)
+
+
+def t15_recur():
+    e, d = fresh("t15")
+    e.handle("recur daily water plants")
+    e.handle("done 1")
+    check("T15 recur: a recurring task can be completed", e.S["tasks"][0]["done"])
+    e.S["recur"]["0"] = "2000-01-01"
+    e.save()
+    e2 = Engine(home=d)
+    check("T15 recur: it reopens on a new day",
+          e2.S["tasks"][0]["done"] is False, str(e2.S["tasks"][0]))
+    e2.handle("due 1 2026-01-01")
+    check("T15 recur: overdue lists it",
+          "water plants" in e2.handle("overdue"), e2.handle("overdue")[:60])
+    shutil.rmtree(d, True)
+
+
+def t16_two_key():
+    e, d = fresh("t16")
+    e.handle("daily 09:00 brief")
+    e.handle("2key on")
+    gate = e.handle("unjob 1")
+    check("T16 two-key: danger prints an approval code",
+          "approve" in gate.lower(), gate[:70])
+    check("T16 two-key: plain 'confirm' is refused",
+          "Two-key is on" in e.handle("confirm"))
+    import re as _re
+    code = _re.search(r"approve (\w+)", e.handle("unjob 1") or "")
+    out = e.handle("approve " + code.group(1)) if code else ""
+    check("T16 two-key: the code completes the action", out == "Removed.", out[:40])
+    shutil.rmtree(d, True)
+
+
+def t17_safe_delete():
+    e, d = fresh("t17")
+    f = d / "junk.txt"
+    f.write_text("x", "utf-8")
+    first = e.handle("safe delete %s" % f)
+    check("T17 quarantine: safe delete is danger-gated",
+          first.startswith("[danger]") and "Affects: 1" in first, first[:70])
+    e.handle("confirm")
+    check("T17 quarantine: the file left its original path", not f.exists())
+    check("T17 quarantine: it landed in quarantine",
+          any((d / "quarantine").iterdir()))
+    e.handle("undo")
+    check("T17 quarantine: undo restores it", f.exists())
+    shutil.rmtree(d, True)
+
+
+def t18_learn():
+    e, d = fresh("t18")
+    e.handle("card add What is 2+2?|4")
+    q = e.handle("review")
+    check("T18 cards: review shows the question", q.startswith("Q: What is 2+2?"), q[:50])
+    out = e.handle("grade 5")
+    check("T18 cards: a grade schedules the next review",
+          "Next in 1 day" in out and "A: 4" in out, out[:60])
+    check("T18 cards: nothing due afterwards", "Nothing due" in e.handle("review"))
+    shutil.rmtree(d, True)
+
+
+def t19_data():
+    e, d = fresh("t19")
+    csv_path = d / "people.csv"
+    csv_path.write_text("name,age\nAsha,34\nRavi,41\n", "utf-8")
+    out = e.handle("importcsv %s people" % csv_path)
+    check("T19 data: CSV imports", "2 row(s)" in out, out[:60])
+    rows = e.handle("sql SELECT name FROM people ORDER BY name")
+    check("T19 data: SQL reads it back", "Asha" in rows and "Ravi" in rows, rows[:60])
+    check("T19 data: writes are refused",
+          "Read-only" in e.handle("sql DROP TABLE people"))
+    shutil.rmtree(d, True)
+
+
+def t20_files():
+    e, d = fresh("t20")
+    a = d / "a.txt"
+    b = d / "b.txt"
+    a.write_text("same bytes", "utf-8")
+    b.write_text("same bytes", "utf-8")
+    import packs.files as PF
+    by_size = {}
+    for p in (a, b):
+        by_size.setdefault(p.stat().st_size, []).append(p)
+    h1, h2 = PF._sha(a), PF._sha(b)
+    check("T20 files: identical files hash identically", h1 == h2 and len(h1) == 64, h1[:12])
+    check("T20 files: size helper formats", PF._h(1536) == "1.5KB", PF._h(1536))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
                t6_lattice, t7_distillation, t8_privacy, t9_scheduler,
-               t10_maths, t11_state, t12_ledger):
+               t10_maths, t11_state, t12_ledger, t13_slots, t14_context,
+               t15_recur, t16_two_key, t17_safe_delete, t18_learn, t19_data,
+               t20_files):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

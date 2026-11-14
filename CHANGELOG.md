@@ -2,6 +2,51 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.1.0 — 2026-11-14
+
+Everything on the 1.0 "next" list that did not need a new dependency.
+
+### Added
+
+- **Slot dialogue** — six partial commands ask one question instead of printing a syntax lesson:
+  `emi 500000 8.5` → "how many months?" → runs. Packs register their own with
+  `api["add_slots"](pattern, template, prompts)`.
+- **Context** — `again`, `it` and `that` repeat the previous command.
+- **Recurring tasks** — `recur daily X` reopens itself when the day turns over.
+- **Due dates** — `due N YYYY-MM-DD`, and `overdue` to see what slipped.
+- **Two-key approval** — `2key on` makes every danger action print a 6-hex code; plain `confirm`
+  is refused and `approve <code>` completes it.
+- **Quarantine** — `safe delete PATH` moves a file to `~/.pico/quarantine/` and `undo` restores it.
+  Nothing is destroyed.
+- **Disk questions** — `big files`, `old files Nd`, `dedupe files PATH` (sha256, report only) and
+  `dedupe files PATH apply` (quarantines duplicates, reversible).
+- **Spaced repetition** — `card add Q|A`, `review`, `grade 0-5`, `cards`. SM-2, no model.
+- **Reports** — `report weekly`, `report month`, `decide A|B|C` (seeded, stable for the day).
+- **Data** — `importcsv PATH TABLE`, read-only `sql SELECT …`, `tables`. sqlite3, stdlib.
+- **`timeline [TS]`** — the ledger as a readable list.
+- Four new packs: `files`, `learn`, `report`, `data`.
+
+### Changed
+
+- State is serialised compactly: the read path fell from 1.77 ms to 0.98 ms per call, writes from
+  6.29 ms to 4.06 ms.
+- The console gained 18 commands, a slot-dialogue engine that mirrors the Python one, an 80 ms
+  debounce on suggestions, and iOS standalone meta tags.
+- `--hash` runs on the demo page now decode per segment, so `#decide tea%7Ccoffee` works.
+
+### Fixed
+
+- Two-key codes were clobbered by the preview block, so the gate never armed.
+- New packs shipped double-escaped regexes (`\\s` instead of `\s`), so four commands silently
+  never matched. Caught by the rule-matching test.
+- `re.Match` has no `.get()`, which broke the optional-argument paths in `files.py`.
+- `tables` used a connection outside its `with` block.
+
+### Tests
+
+52 checks, up from 30. T13–T20 cover slots, context, recurrence, two-key, quarantine, cards,
+sqlite and the hashing helpers.
+
 ## 1.0.0 — 2026-11-14
 
 First public release. The engine was rebuilt around the audit findings below rather than patched
@@ -54,5 +99,6 @@ around them.
 - State is plaintext JSON; nothing is encrypted.
 - No OCR, speech, QR rendering or two-way WhatsApp without an external tool or Meta's Cloud API.
 - `write`-tier commands typed by hand are not gated, only undoable. Deliberate, and open for review.
-- The core is 22,462 B against a 20 KB spec budget. The overage is the inverse registry, the
-  translator firewall and the privacy gate. Stated rather than hidden; the CI ceiling is 24 KB.
+- The core is 27,062 B against a 20 KB spec budget. The overage is the inverse registry, the
+  translator firewall, the privacy gate and slot dialogue. Stated rather than hidden; the CI
+  ceiling is 28 KB.

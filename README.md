@@ -3,15 +3,15 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 30 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 52 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.0.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.1.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
-66 rules, four risk tiers, universal undo, and an optional language model that is only
-ever allowed to *propose* a command. No account, no telemetry, no network at runtime.
+83 rules, four risk tiers, universal undo, slot dialogue, and an optional language model
+that is only ever allowed to *propose* a command. No account, no telemetry, no network.
 
 ```bash
 python3 pico.py tasks                      # one-shot
@@ -72,18 +72,19 @@ rule → alias → typo → fuzzy → teach → [optional LLM] → teach
 A `write`-tier command **proposed by the model** is gated like a send. Typed by hand, it runs and
 stays undoable. That asymmetry is deliberate: you meant it, the model might not have.
 
-## Commands — 66 rules
+## Commands — 83 rules
 
 | Group | Commands |
 | --- | --- |
-| Capture | `tasks` · `add X` · `done N` · `undone N` · `del N` · `brief` · `remember k=v` · `recall k` · `forget k` · `buy X` · `shop` · `bought N` · `on MM-DD text` |
+| Capture | `tasks` · `add X` · `done N` · `undone N` · `del N` · `brief` · `recur daily X` · `due N DATE` · `overdue` · `remember k=v` · `recall k` · `forget k` · `buy X` · `shop` · `bought N` · `on MM-DD text` |
 | Money | `spend AMT CAT` · `expenses` · `budget CAT AMT` · `budget` · `emi P R N` · `sip A R Y` · `fd P R Y` · `si P R Y` · `gst A R` · `split A N` · `disc A R` |
 | Time | `time` · `timer Nm MSG` · `remind HH:MM MSG` · `calc EXPR` · `convert V U to U` |
-| Files | `tidy [PATH]` · `backup PATH` · `find NAME` · `templates` · `fill TPL k=v` · `count PATH` · `extract TYPE PATH` · `sortlines PATH` · `dedupe PATH` · `redact PATH` |
-| Life | `habit add X` · `did X` · `habits` · `habit del X` · `journal [show N]` · `contact k=v` · `contacts` · `wa NAME MSG` · `mail NAME SUBJ` |
-| Automation | `daily HH:MM CMD` · `jobs` · `unjob N` |
+| Files | `tidy [PATH]` · `backup PATH` · `find NAME` · `safe delete PATH` · `big files` · `old files Nd` · `dedupe files PATH` · `templates` · `fill TPL k=v` · `count PATH` · `extract TYPE PATH` · `sortlines PATH` · `dedupe PATH` · `redact PATH` |
+| Life | `habit add X` · `did X` · `habits` · `journal [show N]` · `contact k=v` · `contacts` · `wa NAME MSG` · `mail NAME SUBJ` · `card add Q\|A` · `review` · `grade N` |
+| Automation | `daily HH:MM CMD` · `jobs` · `unjob N` · `report weekly` · `decide A\|B` |
+| Data | `importcsv PATH TABLE` · `sql SELECT …` · `tables` |
 | Web | `site k=url` · `open X` · `search X` · `weather [city]` |
-| Safety | `dry CMD` · `why` · `log` · `undo [N]` · `confirm` · `cancel` · `aliases` · `unalias P` |
+| Safety | `dry CMD` · `why` · `log` · `undo [N]` · `confirm` · `cancel` · `2key on` · `approve CODE` · `timeline` · `aliases` · `unalias P` |
 | Model | `llm off\|local\|cloud\|auto` · `llm status` · `llm set K V` · `llm test S` · `llm forget` · `privacy never TAG` |
 
 Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
@@ -93,24 +94,27 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | Property | Value |
 | --- | --- |
 | dependencies | 0 — Python standard library only |
-| rules / catalogue entries | 66 / 67 |
-| python source | 66,107 bytes across 11 files |
-| core (engine + launcher) | 22,462 B — 2 KB over the spec's 20 KB, see below |
-| rule set / front-end / packs | 14,954 / 3,969 / 24,864 B |
-| console | 48,886 bytes, one HTML file, no external assets |
-| rule-path latency (read) | 1.77 ms/call, 5,000 calls |
-| rule-path latency (write) | 6.29 ms/call, 200 calls |
+| rules / catalogue / slot rules | 83 / 85 / 6 |
+| packs | 11 |
+| python source | 87,800 bytes across 15 files |
+| core (engine + launcher) | 27,062 B — 7 KB over the spec's 20 KB, see below |
+| rule set / front-end / packs | 15,988 / 3,969 / 39,375 B |
+| console | 54,573 bytes, one HTML file, no external assets |
+| rule-path latency (read) | 0.98 ms/call, 4,000 calls |
+| rule-path latency (write) | 4.06 ms/call, 200 calls |
+| finance path | 0.95 ms/call, 2,000 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 30 passing, stdlib `unittest`-free runner |
+| acceptance tests | 52 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly four times more — and why state is only persisted when something actually changed. The spec
 budget was 5 ms for the rule path; reads meet it, writes pay for durability and say so.
 
-**One budget is missed.** The spec asked for a core of 20 KB. This core is 22,462 B. The difference is
-the inverse registry, the core-side translator firewall and the privacy gate — three things the v4
-bundle did not have, and the reason the audit findings above are fixed rather than documented. The CI
-ceiling is 24 KB, set to the measured size plus headroom, not to whatever the tree happens to be.
+**One budget is missed.** The spec asked for a core of 20 KB. This core is 27,062 B. The difference is
+the inverse registry, the core-side translator firewall, the privacy gate and slot dialogue — four
+things the v4 bundle did not have, and the reason the audit findings above are fixed rather than
+documented. The CI ceiling is 28 KB, set to the measured size plus headroom, not to whatever the tree
+happens to be. Compact state serialisation cut the read path from 1.77 ms to 0.98 ms.
 
 ## Install
 
