@@ -13,6 +13,56 @@ def _line(state, label, detail=""):
     return "%-4s  %-26s %s" % (state, label, detail)
 
 
+PROBES = {
+    "finance": "gst 100 18",
+    "habits": "habits",
+    "learn": "cards",
+    "life": "journal",
+    "report": "report month",
+    "schedule": "jobs",
+    "text": "templates",
+    "triggers": "triggers",
+    "llm": "llm status",
+    "files": "templates",
+    "data": "tables",
+}
+
+
+def probe(m):
+    """Run one read-only command per pack, through the handler, not through _run.
+
+    Nothing is logged and nothing is saved: `_run` is what writes the ledger, and a
+    diagnostic should not leave marks in the audit trail it is checking.
+    """
+    rows = []
+    for mod in E.pack_modules:
+        name = getattr(mod, "__name__", "?").replace("pico_pack_", "")
+        cmd = PROBES.get(name)
+        if not cmd:
+            rows.append(_line(OK, name, "no probe (no rules)" if name == "telegram"
+                              else "no probe defined"))
+            continue
+        fn, match = E.match_rule(cmd)
+        if fn is None:
+            rows.append(_line(FAIL, name, "probe %r matches no rule" % cmd))
+            continue
+        try:
+            out = fn(match)
+        except Exception as ex:
+            rows.append(_line(FAIL, name, "%s: %s" % (type(ex).__name__, ex)))
+            continue
+        text = str(out)
+        if text.startswith("Command failed") or not text:
+            rows.append(_line(FAIL, name, text[:60] or "empty reply"))
+        else:
+            rows.append(_line(OK, name, "%r -> %r" % (cmd, text.replace("\n", " ")[:40])))
+
+    bad = [r for r in rows if r.startswith(FAIL)]
+    head = "pico %s — probe" % __import__("pico.base", fromlist=["x"]).__version__
+    tail = "%d pack(s): %d ok, %d fail" % (len(rows), len(rows) - len(bad), len(bad))
+    return "\n".join([head, ""] + rows + ["", tail])
+
+
 def doctor(m):
     rows = []
     home = E.home

@@ -239,7 +239,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.12.0</small>
+      pico <small id="ver">v1.13.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -383,7 +383,7 @@ const GROUPS = [
     ["triggers","list"],["csv pivot city sum amt x.csv having sum>100","group"],
     ["when 22:30 unless away then brief","gated"],["watch ~/Downloads then count {file}","folder"],
     ["when clip matches ^ORD then notify {clip}","clipboard"],["away on","pause"],
-    ["trigger log","firings"],["doctor","self-check"],["doctor fix","repair"]]},
+    ["trigger log","firings"],["doctor","self-check"],["doctor fix","repair"],["doctor probe","smoke"]]},
 ];
 
 const CATALOG = GROUPS.flatMap(g => g.items.map(i => i[0]));
@@ -558,6 +558,7 @@ const H = {
   triggerLog:()=>"Firing history lives in the local engine.",
   doctor:()=>"The self-check reads the local engine's files.",
   doctorFix:()=>"Repairs need the local engine — it moves files, not the page.",
+  doctorProbe:()=>"Probes need the local engine — they call each pack directly.",
   untrigger:()=>"Saved triggers need the local engine.",
   chain:()=>"Chains live in the local engine — run: python pico.py chain morning",
   loopCsv:()=>"The CSV loop needs the local engine — it writes real files.",
@@ -717,6 +718,7 @@ const RULES = [
   [/^away (?<v>on|off)$/i,"away"],
   [/^trigger log(?: (?<n>\d+))?$/i,"triggerLog"],
   [/^doctor fix$/i,"doctorFix"],
+  [/^doctor probe$/i,"doctorProbe"],
   [/^doctor$/i,"doctor"],
   [/^untrigger (?<n>\d+)$/i,"untrigger"],
   [/^chain (?<name>\w+)\s*:\s*(?<body>.+)$/i,"chain"],
@@ -1110,7 +1112,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.12.0";
+$("#ver").textContent="v1.13.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){

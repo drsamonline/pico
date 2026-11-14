@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.12.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.13.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,13 +97,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 137,559 bytes across 29 files |
-| package / packs / console | 68,856 / 68,463 / 64,665 B |
+| python source | 139,403 bytes across 29 files |
+| package / packs / console | 70,700 / 68,463 / 64,665 B |
 | console | 64,665 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 210 passing, stdlib `unittest`-free runner |
+| acceptance tests | 216 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly six times more — and why state is only persisted when something actually changed.
@@ -116,7 +116,7 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 72 KB | 68,856 B | 4.9 KB |
+| package (`pico/` + launcher, 18 files) | 80 KB | 70,700 B | 11.2 KB |
 | packs (12 files) | 96 KB | 68,463 B | 27.6 KB |
 | console (one HTML file) | 96 KB | 64,665 B | 31.3 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
@@ -154,8 +154,12 @@ replay and no write lock — the eight subsystems that make the audit findings a
 documented. **The figure was wrong, not the code**, so it was replaced rather than chased.
 
 A ceiling is reviewed when a feature needs more, and the change is recorded here rather than made
-quietly. 1.10.0 took the package from 64 KB to 72 KB: `doctor` added 5.6 KB and left 1.6 KB of
-headroom, which is not enough to work in. CI fails the build when any ceiling is crossed.
+quietly. Two moves so far: **1.10.0**, 64 KB → 72 KB, because `doctor` added 5.6 KB and left 1.6 KB;
+**1.13.0**, 72 KB → 80 KB, because the package reached 70.7 KB and the next feature would not have
+fitted. CI fails the build when any ceiling is crossed.
+
+The package went from 55.8 KB at 1.6.0 to 70.7 KB at 1.13.0 — five new modules and three diagnostic
+commands. That growth is the features, not slack.
 
 ## Install
 

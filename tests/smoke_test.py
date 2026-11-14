@@ -1167,6 +1167,27 @@ def t59_repair_module():
     shutil.rmtree(d, True)
 
 
+def t60_doctor_probe():
+    e, d = fresh("t60")
+    out = e.handle("doctor probe")
+    check("T60 probe: it runs", out.startswith("pico ") and "pack(s)" in out, out[:50])
+    check("T60 probe: every pack with rules answers", "0 fail" in out,
+          out.splitlines()[-1])
+    check("T60 probe: it names a command per pack",
+          "'gst 100 18'" in out and "'jobs'" in out, out[:60])
+    check("T60 probe: telegram is reported as having no rules",
+          "no probe (no rules)" in out)
+    n_before = len(e.ledger_file.read_text("utf-8").splitlines()) \
+        if e.ledger_file.exists() else 0
+    e.handle("doctor probe")
+    n_after = len(e.ledger_file.read_text("utf-8").splitlines())
+    check("T60 probe: the probes themselves are not logged",
+          n_after == n_before + 1, "%d -> %d" % (n_before, n_after))
+    check("T60 probe: it does not change state",
+          e.S.get("tasks") == [] and e.S.get("spend") == [])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1184,7 +1205,7 @@ def main():
                t49_dispatch_module, t50_filter_types, t51_update_prompt,
                t52_doctor, t53_pivot_types, t54_offline_chip, t55_doctor_fix,
                t56_join_types, t57_android_doc, t58_thread_health,
-               t59_repair_module):
+               t59_repair_module, t60_doctor_probe):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

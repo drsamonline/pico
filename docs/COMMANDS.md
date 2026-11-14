@@ -159,6 +159,7 @@ minutes, and the rest of the rule keeps running. `triggers` shows how many actio
 | Command | Tier | Notes |
 | --- | --- | --- |
 | `doctor` | safe | checks home, state, ledger, rules, packs, templates, quarantine, snapshots, triggers, the per-pack data files, sqlite, tokens, two-key, the background-thread heartbeats and the Python version. Prints `ok` / `warn` / `FAIL` per line and a count |
+| `doctor probe` | safe | runs one read-only command per pack **through the handler, not through `_run`**, so nothing is logged and nothing is saved. Catches a pack that loads but cannot answer |
 | `doctor fix` | safe | repairs what can be repaired: creates missing directories, removes stray temp files, quarantines unreadable JSON (never deletes it), prunes old snapshots, prunes a stale quarantine index, regenerates an empty `web.token`. Lists each action |
 
 A fresh home reports all `ok`: nothing written yet is correct, not broken.

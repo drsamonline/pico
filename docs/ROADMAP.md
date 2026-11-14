@@ -3,6 +3,12 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.13 — shipped
+
+`doctor probe` runs one read-only command per pack through the handler, so a pack that loads but
+cannot answer is caught; nothing is logged. The package ceiling moved 72 KB → 80 KB, recorded in the
+README. 216 acceptance tests.
+
 ## 1.12 — shipped
 
 `doctor` reports the scheduler and Telegram heartbeats, so a thread that stopped is visible; `doctor
@@ -77,8 +83,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Doctor reads files, not behaviour** | it can see that `state.json` parses but not that `tidy` would work | a `doctor --dry` that runs one safe command per pack |
-| **Budget headroom is finite** | the package sits at 67.2 KB of a 72 KB ceiling | the next subsystem needs a trim or a recorded ceiling change |
+| **Probe covers reads only** | write paths (`tidy`, `fill`, `backup`) are still only exercised by the test suite | a `doctor probe --write` against a scratch directory |
+| **Budget headroom is finite** | the package sits at 69.0 KB of an 80 KB ceiling | two more subsystems fit before a decision is needed |
 
 ## Next — cheap and useful
 

@@ -2,6 +2,26 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.13.0 — 2026-11-14
+
+### Added
+
+- **`doctor probe`** — runs one read-only command per pack *through the handler, not through `_run`*.
+  A diagnostic should not leave marks in the audit trail it is checking, so nothing is logged and
+  nothing is saved. Catches the case `doctor` cannot: a pack that loads, registers its rules, and
+  still cannot answer. Twelve packs, one line each.
+
+### Changed
+
+- **The package ceiling moved 72 KB → 80 KB.** It reached 70.7 KB with 3 KB left, which the next
+  feature would not have fitted into. Recorded in the README with the reason, alongside the 1.10.0
+  move, and the CI comment now lists both.
+
+### Tests
+
+216 checks, up from 210. T60 asserts the probe runs, every pack with rules answers, a pack without
+rules is reported as such, and the probes themselves never reach the ledger.
+
 ## 1.12.0 — 2026-11-14
 
 ### Added
