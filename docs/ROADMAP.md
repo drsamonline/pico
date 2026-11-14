@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.5 — shipped
+
+106 rules. OR-ed `unless` conditions, per-rule firing history with `trigger log`, Wayland clipboard
+support, and `csv pivot` on any number of keys. 108 acceptance tests.
+
 ## 1.4 — shipped
 
 105 rules. `unless` conditions, `watch`, the clipboard trigger, `away`, a retry on a failing action,
@@ -34,8 +39,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Trigger history** | `triggers` shows the last error only | the last 5 firings per rule, with timings |
-| **`unless` on more than one condition** | one condition per rule | `unless away or weekend` |
+| **Trigger backoff** | a rule that keeps failing still fires on schedule | exponential backoff with a stated reason |
 
 ## Next — cheap and useful
 
@@ -43,7 +47,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv group-by` on three or more keys | `pivot` takes two | arbitrary key lists |
+| `csv group-by` with a `having` clause | `pivot` has no filter on the aggregate | `pivot city sum amt x.csv having sum>100` |
 
 ## Deliberately not built
 

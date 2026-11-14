@@ -1,6 +1,6 @@
 # Command reference
 
-105 rules, plus 6 slot rules that ask one question instead of failing. `[optional]` means the argument may be omitted. Every command is case-insensitive and
+106 rules, plus 6 slot rules that ask one question instead of failing. `[optional]` means the argument may be omitted. Every command is case-insensitive and
 `<angle brackets>` are the risk tier.
 
 ## Capture
@@ -124,7 +124,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | `csv filter COND PATH` | safe | `age>30`, `name=Asha`, `>= <= !=` |
 | `csv sort COL [asc\|desc] PATH` | safe | numeric when the column parses as a number |
 | `csv join KEY A.csv B.csv` | safe | inner join, 50-row cap |
-| `csv pivot COL[,COL] sum\|count\|avg\|min\|max FIELD PATH` | safe | group by one or two columns, aggregate another, with a total |
+| `csv pivot COL[,COL,…] sum\|count\|avg\|min\|max FIELD PATH` | safe | group by any number of columns, aggregate another, with a total |
 | `chart 1,4,9` | safe | horizontal bars scaled to the maximum |
 
 ## Triggers
@@ -140,13 +140,14 @@ action** — a saved rule should not be able to fire a message on its own.
 | `when file GLOB then CMD` | safe | new files only; `{file}` and `{files}` are substituted |
 | `when not CMD by HH:MM then CMD` | safe | negative trigger: fires if CMD has not run by that time today |
 | `when clip matches REGEX then CMD` | safe | clipboard poller; `{clip}` is the match. Inert if no clipboard tool exists |
-| `when SPEC unless COND then CMD` | safe | `COND` is `away`, `weekend`, `weekday`, `file GLOB`, `exists PATH` |
+| `when SPEC unless COND then CMD` | safe | `COND` is `away`, `weekend`, `weekday`, `file GLOB`, `exists PATH`. Join two with `or`: any one true vetoes |
 | `watch FOLDER then CMD` | safe | shorthand for a file trigger on `FOLDER/*` |
 | `away on` · `away off` | safe | pauses every trigger gated with `unless away` |
 | `chain NAME: a ; b ; c` | safe | defines a named sequence in `state.json` |
 | `chain NAME` | write | runs it |
 | `for each row in PATH.csv then CMD` | write | `{column}` substituted per row; 200-row cap |
-| `triggers` · `untrigger N` | safe | list and remove |
+| `triggers` · `untrigger N` | safe | list (with firing count) and remove |
+| `trigger log [N]` | safe | the last 5 firings per rule: timestamp, ok/FAIL, output |
 | `notify MSG` | safe | pushes through the notifier bus (console bell, Telegram) |
 
 Triggers fire only while pico runs (`--serve` or the REPL), checked every 15 seconds. A failing action

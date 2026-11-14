@@ -612,8 +612,9 @@ def t31_unless():
     texts = [t["text"] for t in e.S["tasks"]]
     check("T31 unless: it fires once away is off", "fired" in texts, str(texts))
     is_weekend = datetime.date.today().weekday() >= 5
-    check("T31 unless: `unless weekend` follows the calendar",
-          ("weekendjob" in texts) == is_weekend, str(texts))
+    check("T31 unless: `unless weekend` vetoes on a weekend, and only then",
+          ("weekendjob" in texts) == (not is_weekend),
+          "%s, weekend=%s" % (texts, is_weekend))
     shutil.rmtree(d, True)
 
 
@@ -672,6 +673,57 @@ def t34_multikey_pivot():
     shutil.rmtree(d, True)
 
 
+def t35_or_conditions():
+    e, d = fresh("t35")
+    out = e.handle("when 22:30 unless away or weekend then add fired")
+    check("T35 or: a two-condition unless is accepted", out.startswith("Trigger"), out[:60])
+    check("T35 or: one bad condition rejects the pair",
+          "Unrecognised unless" in e.handle("when 22:30 unless bogus or away then tasks"))
+    listing = e.handle("triggers")
+    check("T35 or: the listing renders both conditions",
+          "away or weekend" in listing, listing.replace("\n", " | ")[:80])
+    mod = _trig_mod()
+    if mod:
+        now = datetime.datetime.now().replace(hour=22, minute=30, second=0, microsecond=0)
+        e.handle("away on")
+        mod.tick(now)
+        e.handle("away off")
+        mod.tick(now)
+        texts = [x["text"] for x in e.S["tasks"]]
+        weekend = datetime.date.today().weekday() >= 5
+        check("T35 or: any true condition vetoes",
+              ("fired" in texts) is (not weekend), str(texts))
+    shutil.rmtree(d, True)
+
+
+def t36_history():
+    e, d = fresh("t36")
+    e.handle("when every 1m then add ticked")
+    mod = _trig_mod()
+    if mod is None:
+        check("T36 history: pack reachable", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    now = datetime.datetime.now()
+    mod.tick(now)
+    mod.tick(now + datetime.timedelta(minutes=2))
+    log = e.handle("trigger log")
+    check("T36 history: firings are recorded", "ok" in log and log.count("ok") >= 2, log[:90])
+    check("T36 history: the listing shows the count", "firing(s) recorded" in e.handle("triggers"))
+    shutil.rmtree(d, True)
+
+
+def t37_three_key_pivot():
+    e, d = fresh("t37")
+    p = d / "p.csv"
+    p.write_text("a,b,c,amt\nx,y,z,10\nx,y,z,5\nx,q,z,7\n", "utf-8")
+    out = e.handle("csv pivot a,b,c sum amt %s" % p)
+    check("T37 pivot: three keys group and total",
+          "x / y / z" in out and "15" in out and "22" in out,
+          out.replace("\n", " | ")[:100])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -681,7 +733,8 @@ def main():
                t20_files, t21_quarantine, t22_net_worth, t23_subs, t24_csv,
                t25_replay, t26_triggers, t27_chain, t28_loop_pivot,
                t29_concurrency, t30_phone_approval, t31_unless, t32_watch_clip,
-               t33_retry, t34_multikey_pivot):
+               t33_retry, t34_multikey_pivot, t35_or_conditions, t36_history,
+               t37_three_key_pivot):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

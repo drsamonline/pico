@@ -3,14 +3,14 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 101 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 108 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.4.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.5.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
-105 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, a trigger DSL,
+106 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, a trigger DSL,
 and an optional language model that is only ever allowed to *propose* a command. No account, no telemetry, no network.
 
 ```bash
@@ -72,7 +72,7 @@ rule → alias → typo → fuzzy → teach → [optional LLM] → teach
 A `write`-tier command **proposed by the model** is gated like a send. Typed by hand, it runs and
 stays undoable. That asymmetry is deliberate: you meant it, the model might not have.
 
-## Commands — 105 rules
+## Commands — 106 rules
 
 | Group | Commands |
 | --- | --- |
@@ -82,7 +82,7 @@ stays undoable. That asymmetry is deliberate: you meant it, the model might not 
 | Files | `tidy [PATH]` · `backup PATH` · `find NAME` · `safe delete PATH` · `quarantine` · `restore N` · `quarantine sweep Nd` · `big files` · `old files Nd` · `dedupe files PATH` · `templates` · `fill TPL k=v` · `count PATH` · `extract TYPE PATH` · `sortlines PATH` · `dedupe PATH` · `redact PATH` |
 | Life | `habit add X` · `did X` · `habits` · `journal [show N]` · `contact k=v` · `contacts` · `wa NAME MSG` · `mail NAME SUBJ` · `card add Q\|A` · `review` · `grade N` |
 | Automation | `daily HH:MM CMD` · `jobs` · `unjob N` · `report weekly` · `decide A\|B` |
-| Triggers | `when 22:30 then CMD` · `when every 30m then CMD` · `when file GLOB then CMD` · `when not CMD by HH:MM then CMD` · `when clip matches RE then CMD` · `when SPEC unless away\|weekend\|weekday\|file G\|exists P then CMD` · `watch FOLDER then CMD` · `away on\|off` · `chain NAME: a ; b` · `for each row in X.csv then CMD` · `triggers` · `untrigger N` |
+| Triggers | `when 22:30 then CMD` · `when every 30m then CMD` · `when file GLOB then CMD` · `when not CMD by HH:MM then CMD` · `when clip matches RE then CMD` · `when SPEC unless away\|weekend\|weekday\|file G\|exists P then CMD` · `watch FOLDER then CMD` · `away on\|off` · `trigger log [N]` · `chain NAME: a ; b` · `for each row in X.csv then CMD` · `triggers` · `untrigger N` |
 | Data | `importcsv PATH TABLE` · `sql SELECT …` · `tables` · `csv filter COND PATH` · `csv sort COL PATH` · `csv join KEY A B` · `csv pivot COL[,COL] sum AMT PATH` · `chart 1,4,9` |
 | Web | `site k=url` · `open X` · `search X` · `weather [city]` |
 | Safety | `dry CMD` · `why` · `log` · `undo [N]` · `confirm` · `cancel` · `2key on\|phone` · `approve CODE` · `timeline` · `replay TS` · `aliases` · `unalias P` |
@@ -95,16 +95,16 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | Property | Value |
 | --- | --- |
 | dependencies | 0 — Python standard library only |
-| rules / catalogue / slot rules | 105 / 109 / 6 |
+| rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 116,743 bytes across 17 files |
+| python source | 118,545 bytes across 17 files |
 | core (engine + launcher) | 30,794 B — 10 KB over the spec's 20 KB, see below |
-| rule set / front-end / packs | 20,600 / 3,969 / 61,687 B |
+| rule set / front-end / packs | 20,600 / 3,969 / 63,489 B |
 | console | 54,573 bytes, one HTML file, no external assets |
-| rule-path latency (read) | 0.78 ms/call, 4,000 calls |
-| rule-path latency (write) | 4.17 ms/call, 300 calls |
+| rule-path latency (read) | 0.71 ms/call, 4,000 calls |
+| rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 101 passing, stdlib `unittest`-free runner |
+| acceptance tests | 108 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly four times more — and why state is only persisted when something actually changed. The spec
@@ -118,7 +118,7 @@ happens to be.
 
 Both latencies are inside the 5 ms budget. Writes pay for durability twice — `state.json` on
 every change and a snapshot every 25 changes so `replay` has a starting point — and still land at
-4.17 ms. Making the temp filename thread-unique removed the contention that had cost 1.5 ms.
+4.03 ms. Making the temp filename thread-unique removed the contention that had cost 1.5 ms.
 
 ## Install
 

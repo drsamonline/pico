@@ -2,6 +2,31 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.5.0 — 2026-11-14
+
+### Added
+
+- **OR-ed conditions** — `when 22:30 unless away or weekend then …`. Any one true condition vetoes the
+  trigger. A pair containing an unrecognised condition is refused whole.
+- **Firing history** — the last 5 firings per rule are kept with timestamp, ok/FAIL and output.
+  `triggers` shows the count; `trigger log [N]` prints the detail.
+- **Wayland clipboard** — `wl-paste` is tried before `xclip` and `xsel`, so the clipboard trigger
+  works on a modern Linux session.
+- **`csv pivot` on any number of keys** — `csv pivot a,b,c sum amt x.csv`.
+
+### Fixed
+
+- **`unless weekend` fired on weekends.** `_cond_ok` mixed two meanings: it returned the *condition*
+  for `weekend` and the *negation* for `away`. Splitting it into `_cond_true` (does the condition
+  hold?) and `_cond_ok` (may the trigger fire?) made every condition consistent. The old T31
+  assertion had encoded the bug as expected behaviour and was inverted to match.
+- `triggers` crashed with `AttributeError: 'list' object has no attribute 'get'` once a rule carried
+  more than one condition.
+
+### Tests
+
+108 checks, up from 101. T35–T37 cover OR-ed conditions, firing history, and three-key pivot.
+
 ## 1.4.0 — 2026-11-14
 
 The trigger DSL finished.

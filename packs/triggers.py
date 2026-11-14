@@ -21,6 +21,7 @@ CATALOG = ["when HH:MM then CMD - time trigger",
            "for each row in PATH then CMD - CSV loop",
            "triggers - list", "untrigger N - remove",
            "when clip matches RE then CMD - clipboard trigger",
+           "trigger log [N] - the last firings",
            "watch FOLDER then CMD - new files in a folder", "away on|off - pause away-gated triggers"]
 
 P = T = E = REPLY = None
@@ -80,27 +81,35 @@ def notify(m):
 
 # ------------------------------------------------------------------ ticking
 def _cond_ok(cond):
-    """True means the condition passes and the trigger may fire."""
+    """True means the trigger may fire. A list of conditions is OR-ed: any true one vetoes."""
     if not cond:
         return True
+    if isinstance(cond, list):
+        return not any(_cond_true(c) for c in cond)
+    return not _cond_true(cond)
+
+
+def _cond_true(cond):
     kind, arg = cond["kind"], cond.get("arg")
     if kind == "away":
-        return not E.S.get("away")
+        return bool(E.S.get("away"))
     if kind == "weekend":
         return datetime.date.today().weekday() >= 5
     if kind == "weekday":
         return datetime.date.today().weekday() < 5
     if kind == "file":
-        return not any(pathlib.Path.home().glob(arg))
+        return any(pathlib.Path.home().glob(arg))
     if kind == "exists":
-        return not pathlib.Path(arg).expanduser().exists()
-    return True
+        return pathlib.Path(arg).expanduser().exists()
+    return False
 
 
 def _clip():
     """Best-effort clipboard read. Returns '' when no tool is available."""
     import subprocess
-    for cmd in (["pbpaste"], ["xclip", "-selection", "clipboard", "-o"],
+    for cmd in (["pbpaste"],
+                ["wl-paste", "--no-newline"],
+                ["xclip", "-selection", "clipboard", "-o"],
                 ["xsel", "--clipboard", "--output"],
                 ["powershell", "-NoProfile", "-Command", "Get-Clipboard"]):
         try:
@@ -191,7 +200,15 @@ def tick(now=None):
         if job.get("_fresh"):
             ctx = {"file": job["_fresh"][0], "files": " ".join(job["_fresh"])}
             job.pop("_fresh", None)
-        fired.append((i, job["actions"], run_actions(job["actions"], ctx)))
+        results = run_actions(job["actions"], ctx)
+        fired.append((i, job["actions"], results))
+        hist = job.setdefault("history", [])
+        hist.append({"ts": now.strftime("%Y-%m-%dT%H:%M"),
+                     "out": " | ".join(str(r)[:60] for r in results)[:200],
+                     "ok": not any(str(r).startswith("Command failed") for r in results)})
+        del hist[:-5]
+        if not hist[-1]["ok"]:
+            job["last_error"] = hist[-1]["out"]
     if changed:
         save()
     return fired
@@ -214,6 +231,12 @@ def loop():
 def _parse_unless(text):
     if not text:
         return None
+    parts = re.split(r"\s+or\s+", text, flags=re.I)
+    if len(parts) > 1:
+        out = [_parse_unless(p) for p in parts]
+        if any(o == "bad" for o in out):
+            return "bad"
+        return out
     t = text.strip().lower()
     if t in ("away", "weekend", "weekday"):
         return {"kind": t}
@@ -275,6 +298,12 @@ def when(m):
                                           " ; ".join(job["actions"]))
 
 
+def _cond_label(cond):
+    if isinstance(cond, list):
+        return " or ".join(_cond_label(c) for c in cond)
+    return cond.get("arg") or cond["kind"]
+
+
 def show(m):
     if not T:
         return "No triggers. Try: when 22:30 then backup ~/Documents ; tidy"
@@ -288,10 +317,34 @@ def show(m):
                  "negate": "not %s by %s" % (job.get("cmd", ""), job.get("by", ""))}[kind]
         u = job.get("unless")
         if u:
-            label += " unless " + (u.get("arg") or u["kind"])
+            label += " unless " + _cond_label(u)
         err = job.get("last_error")
-        out.append("%d. %-32s -> %s%s" % (i + 1, label, " ; ".join(job["actions"]),
-                                          ("\n   last error: " + err) if err else ""))
+        n = len(job.get("history") or [])
+        out.append("%d. %-32s -> %s%s%s" % (
+            i + 1, label, " ; ".join(job["actions"]),
+            ("\n   %d firing(s) recorded" % n) if n else "",
+            ("\n   last error: " + err) if err else ""))
+    return "\n".join(out)
+
+
+def log(m):
+    i = int(m["n"]) - 1 if m["n"] else 0
+    if not T:
+        return "No triggers."
+    if m["n"] and not (0 <= i < len(T)):
+        return "No such trigger."
+    picks = [T[i]] if m["n"] else T
+    out = []
+    for job in picks:
+        hist = job.get("history") or []
+        head = " ; ".join(job["actions"])[:60]
+        if not hist:
+            out.append(head + "\n   never fired")
+            continue
+        out.append(head)
+        for h in reversed(hist):
+            out.append("   %s  %s  %s" % (h["ts"], "ok  " if h["ok"] else "FAIL",
+                                          h["out"][:80]))
     return "\n".join(out)
 
 
@@ -367,6 +420,7 @@ RULES = [
     (r"^when (?P<spec>.+?) then (?P<actions>.+)$", when),
     (r"^triggers$", show),
     (r"^untrigger (?P<n>\d+)$", drop),
+    (r"^trigger log(?: (?P<n>\d+))?$", log),
     (r"^chain (?P<name>\w+)\s*:\s*(?P<body>.+)$", chain),
     (r"^chain (?P<name>\w+)$", chain),
     (r"^for each row in (?P<path>\S+) then (?P<cmd>.+)$", loop_csv),
