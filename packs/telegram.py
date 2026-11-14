@@ -13,6 +13,7 @@ import urllib.request
 
 CATALOG = []
 TOKEN = CHAT = REPLY = P = BIND = ENG = None
+LAST = 0.0   # heartbeat, read by `doctor`
 
 
 def setup(api):
@@ -29,6 +30,8 @@ def setup(api):
     BIND = bf.read_text("utf-8").strip() if bf.exists() else None
     REPLY = api["reply"]
     ENG = api["engine"]
+    global LAST
+    LAST = time.time()
     api["notifiers"].append(send)
     if not os.environ.get("PICO_NO_THREADS"):
         threading.Thread(target=poll, daemon=True).start()
@@ -50,9 +53,10 @@ def send(msg):
 
 
 def poll():
-    global CHAT
+    global CHAT, LAST
     offset = 0
     while True:
+        LAST = time.time()
         try:
             upd = call("getUpdates", timeout=60, offset=offset).get("result", [])
             for u in upd:

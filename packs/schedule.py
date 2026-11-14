@@ -7,6 +7,7 @@ import time
 
 CATALOG = ["daily HH:MM CMD - repeat a command", "jobs - list jobs", "unjob N - remove job"]
 P = J = REPLY = NOTIFY = E = None
+LAST = 0.0   # heartbeat, read by `doctor`
 
 
 def setup(api):
@@ -17,6 +18,8 @@ def setup(api):
     REPLY, NOTIFY = api["reply"], api["notify"]
     api["inverse_handler"]("job_rm", lambda a: (J.pop(a["i"]), save()))
     api["inverse_handler"]("job_add", lambda a: (J.insert(min(a["i"], len(J)), a["item"]), save()))
+    global LAST
+    LAST = time.time()
     if not os.environ.get("PICO_NO_THREADS"):
         threading.Thread(target=loop, daemon=True).start()
 
@@ -38,8 +41,10 @@ def tick(now=None):
 
 
 def loop():
+    global LAST
     last = None
     while True:
+        LAST = time.time()
         now = datetime.datetime.now()
         hm = now.strftime("%H:%M")
         if hm != last:

@@ -28,7 +28,11 @@ nothing else. Front-ends hold no business logic.
 | `pico/ledger.py` | `_run`, the inverse registry, `undo` |
 | `pico/base.py` | constants and pure helpers — `safe_eval`, `convert`, `normalize` |
 | `pico/rules.py` | the pattern table, help text and catalogue |
-| `pico/cmd_*.py` | the core handlers by domain — `tasks`, `money`, `time`, `files`, `quarantine`, `web`, `doctor` |
+| `pico/cmd_*.py` | the core handlers by domain — `tasks`, `money`, `time`, `files`, `quarantine`, `web`, `doctor`, `repair` |
+
+Packs that run a thread (`schedule`, `telegram`) publish a module-level `LAST` heartbeat;
+`doctor` reads it to tell a running thread from a stopped one, and to name a pack that never started
+as idle rather than stale.
 | `pico/ui.py` | `http.server`, token check, `POST /cmd`, `GET /api/state`, HTML injection |
 
 `Engine` is `class Engine(StoreMixin, LadderMixin, LedgerMixin, DispatchMixin)`, so every attribute a pack reaches

@@ -4,9 +4,10 @@ Handlers live in `cmd_*` modules by domain. This file is the registry: the patte
 table, the help text and the catalogue. `register()` wires them to an engine and
 records the modules so `Engine._bind_modules()` can rebind their `E` globals.
 """
-from . import (cmd_doctor, cmd_files, cmd_money, cmd_quarantine, cmd_tasks,
-               cmd_time, cmd_web)
-from .cmd_doctor import doctor, fix
+from . import (cmd_doctor, cmd_files, cmd_money, cmd_quarantine, cmd_repair,
+               cmd_tasks, cmd_time, cmd_web)
+from .cmd_doctor import doctor
+from .cmd_repair import fix
 from .cmd_files import backup, fill, find, tidy, tpl_list
 from .cmd_quarantine import quarantine, restore, safe_delete, sweep
 from .cmd_money import spend_add, spend_sum
@@ -18,7 +19,7 @@ from .cmd_web import open_any, search, site_set, weather
 
 CATALOG = []
 CORE_MODULES = (cmd_tasks, cmd_money, cmd_time, cmd_files, cmd_quarantine,
-                cmd_web, cmd_doctor)
+                cmd_web, cmd_doctor, cmd_repair)
 E = None
 
 

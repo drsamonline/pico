@@ -825,7 +825,7 @@ def t42_core_modules():
     from pico.engine import Engine
     e, d = fresh("t42")
     check("T42 core: register records the command modules",
-          len(e.core_modules) == 7, str(len(e.core_modules)))
+          len(e.core_modules) == 8, str(len(e.core_modules)))
     check("T42 core: every module can see the engine",
           all(getattr(m, "E", None) is e for m in e.core_modules))
     e2, d2 = fresh("t42b")
@@ -1124,6 +1124,49 @@ def t57_android_doc():
           "docs/ANDROID.md" in (ROOT / "README.md").read_text(encoding="utf-8"))
 
 
+def t58_thread_health():
+    e, d = fresh("t58")
+    out = e.handle("doctor")
+    line = next((ln for ln in out.splitlines() if ln.startswith(("ok    threads",
+                                                                "warn  threads"))), "")
+    check("T58 threads: doctor reports a heartbeat line", bool(line), out[:60])
+    check("T58 threads: the scheduler is running", "schedule" in line, line[:90])
+    check("T58 threads: a pack that never started is called idle, not stale",
+          "idle: telegram" in line, line[:90])
+    check("T58 threads: a fresh heartbeat is not a warning", line.startswith("ok"), line[:40])
+
+    # a stale heartbeat must warn
+    import time as _t
+    sched = next((m for m in e.pack_modules
+                  if getattr(m, "__name__", "").endswith("schedule")), None)
+    if sched is not None:
+        real = sched.LAST
+        sched.LAST = _t.time() - 400
+        try:
+            stale = e.handle("doctor")
+        finally:
+            sched.LAST = real
+        check("T58 threads: a stopped thread is a warning",
+              "warn  threads" in stale, stale[:60])
+    shutil.rmtree(d, True)
+
+
+def t59_repair_module():
+    import pico.cmd_doctor as D
+    import pico.cmd_repair as R
+    from pico.engine import Engine
+    e, d = fresh("t59")
+    check("T59 repair: fix has its own module",
+          hasattr(R, "fix") and not hasattr(D, "fix"))
+    check("T59 repair: both are registered with the engine",
+          D in e.core_modules and R in e.core_modules)
+    check("T59 repair: both can see the engine", D.E is e and R.E is e)
+    check("T59 repair: doctor still reports", "check(s)" in e.handle("doctor"))
+    check("T59 repair: fix still repairs", "fixed" in e.handle("doctor fix")
+          or "Nothing to fix" in e.handle("doctor fix"))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1140,7 +1183,8 @@ def main():
                t46_quarantine_module, t47_sort_types, t48_install_prompt,
                t49_dispatch_module, t50_filter_types, t51_update_prompt,
                t52_doctor, t53_pivot_types, t54_offline_chip, t55_doctor_fix,
-               t56_join_types, t57_android_doc):
+               t56_join_types, t57_android_doc, t58_thread_health,
+               t59_repair_module):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

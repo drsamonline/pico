@@ -13,104 +13,6 @@ def _line(state, label, detail=""):
     return "%-4s  %-26s %s" % (state, label, detail)
 
 
-def fix(m):
-    """Repair what `doctor` can repair, and say what it did."""
-    done = []
-    home = E.home
-
-    for name in ("templates", "rules", "snapshots", "quarantine", "backups"):
-        d = home / name
-        if not d.exists():
-            d.mkdir(parents=True, exist_ok=True)
-            done.append("created %s/" % name)
-
-    # stray temp files from an interrupted write
-    strays = list(home.glob("state.json.tmp*"))
-    for f in strays:
-        try:
-            f.unlink()
-        except Exception:
-            pass
-    if strays:
-        done.append("removed %d stray temp file(s)" % len(strays))
-
-    # an unreadable state file is moved aside, never deleted
-    sf = E.state_file
-    if sf.exists():
-        try:
-            json.loads(sf.read_text("utf-8"))
-        except Exception:
-            bad = sf.with_name(
-                "state.json.corrupt-" + datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-            try:
-                sf.rename(bad)
-                done.append("quarantined unreadable state.json -> %s" % bad.name)
-            except Exception as ex:
-                done.append("could not move state.json: %s" % ex)
-
-    # snapshots beyond the rolling limit
-    snaps = sorted((home / "snapshots").glob("*.json")) if (home / "snapshots").exists() else []
-    extra = snaps[:-12]
-    for f in extra:
-        try:
-            f.unlink()
-        except Exception:
-            pass
-    if extra:
-        done.append("pruned %d old snapshot(s)" % len(extra))
-
-    # per-pack data files that will not parse
-    for name in ("jobs.json", "habits.json", "cards.json", "life.json",
-                 "triggers.json", "llm.json", "llm_cache.json"):
-        f = home / name
-        if not f.exists():
-            continue
-        try:
-            json.loads(f.read_text("utf-8"))
-        except Exception:
-            bad = f.with_name(f.name + ".corrupt-" +
-                              datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-            try:
-                f.rename(bad)
-                done.append("quarantined unreadable %s" % name)
-            except Exception:
-                pass
-
-    # a quarantine index that points at files which are gone
-    q = home / "quarantine"
-    if q.exists():
-        idx_f = q / "index.json"
-        if idx_f.exists():
-            try:
-                idx = json.loads(idx_f.read_text("utf-8"))
-            except Exception:
-                idx = {}
-            live = {p.name for p in q.iterdir() if p.is_file() and p.name != "index.json"}
-            stale = [k for k in idx if k not in live]
-            if stale:
-                for k in stale:
-                    idx.pop(k, None)
-                idx_f.write_text(json.dumps(idx, indent=1), "utf-8")
-                done.append("pruned %d stale quarantine index entr%s"
-                            % (len(stale), "y" if len(stale) == 1 else "ies"))
-
-    # the console token
-    tok = home / "web.token"
-    if not tok.exists() or not tok.read_text("utf-8").strip():
-        import secrets
-        tok.write_text(secrets.token_urlsafe(24), "utf-8")
-        try:
-            tok.chmod(0o600)
-        except Exception:
-            pass
-        done.append("generated web.token")
-
-    if not done:
-        return "Nothing to fix. Run `doctor` for the full report."
-    return "\n".join(["fixed:"] + ["  " + d for d in done] +
-                     ["", "Run `doctor` again to confirm."])
-
-
 def doctor(m):
     rows = []
     home = E.home
@@ -223,6 +125,32 @@ def doctor(m):
     rows.append(_line(OK, "two-key",
                       "phone only" if E.S.get("two_key_phone")
                       else ("on" if E.S.get("two_key") else "off")))
+
+    # background threads, via the heartbeat each one writes
+    import time as _t
+    beats, idle = [], []
+    for mod in E.pack_modules:
+        beat = getattr(mod, "LAST", None)
+        if beat is None:
+            continue
+        name = getattr(mod, "__name__", "?").replace("pico_pack_", "")
+        if not beat:
+            idle.append(name)          # the pack never started its thread
+            continue
+        beats.append((name, int(_t.time() - beat)))
+    if beats:
+        worst = max(beats, key=lambda x: x[1])
+        state = OK if worst[1] < 120 else WARN
+        detail = ", ".join("%s %ds" % (n, a) for n, a in sorted(beats))
+        if idle:
+            detail += " | idle: " + ", ".join(sorted(idle))
+        if worst[1] >= 120:
+            detail += " — a thread may have stopped; --serve keeps them alive"
+        rows.append(_line(state, "threads", detail))
+    else:
+        rows.append(_line(OK, "threads",
+                          "none running" + (" (idle: %s)" % ", ".join(sorted(idle))
+                                            if idle else "")))
 
     # python
     rows.append(_line(OK if sys.version_info >= (3, 8) else FAIL, "python",

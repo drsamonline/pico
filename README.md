@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.11.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.12.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,13 +97,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 135,885 bytes across 28 files |
-| package / packs / console | 67,422 / 68,463 / 64,665 B |
+| python source | 137,559 bytes across 29 files |
+| package / packs / console | 68,856 / 68,463 / 64,665 B |
 | console | 64,665 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 200 passing, stdlib `unittest`-free runner |
+| acceptance tests | 210 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly six times more — and why state is only persisted when something actually changed.
@@ -116,7 +116,7 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 17 files) | 72 KB | 67,422 B | 6.3 KB |
+| package (`pico/` + launcher, 18 files) | 72 KB | 68,856 B | 4.9 KB |
 | packs (12 files) | 96 KB | 68,463 B | 27.6 KB |
 | console (one HTML file) | 96 KB | 64,665 B | 31.3 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
@@ -131,7 +131,8 @@ The package is split by responsibility, so no single file has to be small:
 | --- | --- | --- |
 | `pico/dispatch.py` | 7,071 | `handle()`, the single entry point |
 | `pico/engine.py` | 6,004 | composition, plugin loading, notifier bus |
-| `pico/cmd_doctor.py` | 5,567 | the self-check |
+| `pico/cmd_doctor.py` | 6,078 | the self-check |
+| `pico/cmd_repair.py` | 4,159 | `doctor fix` |
 | `pico/cmd_files.py` | 3,981 | sort, archive, find, fill |
 | `pico/rules.py` | 5,830 | the pattern table, help, catalogue |
 | `pico/store.py` | 5,101 | state, atomic writes, snapshots, replay |

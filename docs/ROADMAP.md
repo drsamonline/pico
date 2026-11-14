@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.12 — shipped
+
+`doctor` reports the scheduler and Telegram heartbeats, so a thread that stopped is visible; `doctor
+fix` moves to its own module. 210 acceptance tests.
+
 ## 1.11 — shipped
 
 `doctor fix` repairs the eight things `doctor` can only report; `csv join` takes the same
@@ -72,8 +77,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Doctor does not check the scheduler** | a job thread that died is invisible | `doctor` reports whether the scheduler and Telegram threads are alive |
-| **Budget headroom is finite** | the package sits at 65.8 KB of a 72 KB ceiling | `pico/cmd_doctor.py` grew to 8.5 KB; split it before adding more checks |
+| **Doctor reads files, not behaviour** | it can see that `state.json` parses but not that `tidy` would work | a `doctor --dry` that runs one safe command per pack |
+| **Budget headroom is finite** | the package sits at 67.2 KB of a 72 KB ceiling | the next subsystem needs a trim or a recorded ceiling change |
 
 ## Next — cheap and useful
 

@@ -2,6 +2,31 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.12.0 — 2026-11-14
+
+### Added
+
+- **`doctor` reads thread heartbeats.** `schedule` and `telegram` publish a module-level `LAST`
+  timestamp from inside their loops; `doctor` compares it with now and reports each pack's age. Under
+  120 s is `ok`, older is `warn` with the reason, and a pack that never started a thread is named
+  *idle* rather than stale — a missing Telegram token is not a fault.
+
+### Changed
+
+- **`doctor fix` has its own module.** `cmd_doctor.py` had grown to 8.5 KB doing two jobs; `doctor`
+  and `fix` now live in `cmd_doctor.py` and `cmd_repair.py`. Eight `cmd_*` modules.
+
+### Fixed
+
+- The first heartbeat pass reported `telegram 1794680609s`, because the pack leaves `LAST` at zero
+  when there is no token. Zero now means "never started", not "stopped 56 years ago".
+- `cmd_repair.py` carried a duplicate `import secrets` inside the function as well as at the top.
+
+### Tests
+
+210 checks, up from 200. T58 covers the heartbeat line, the idle case and the stale case, T59 the
+module split.
+
 ## 1.11.0 — 2026-11-14
 
 ### Added
