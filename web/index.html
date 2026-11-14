@@ -57,6 +57,11 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   color:var(--tx2);border:1px solid var(--line2);background:var(--panel);
   padding:4px 9px;border-radius:999px;white-space:nowrap}
 .chip b{color:var(--tx);font-weight:600}
+.chip[data-state="offline"]{border-color:#6e2a26;color:#ffb4ae;
+  background:rgba(248,81,73,.10)}
+.chip[data-state="offline"] .dot{background:var(--danger);box-shadow:0 0 0 3px rgba(248,81,73,.16)}
+.chip[data-state="busy"]{border-color:#5c4a15;color:var(--write)}
+.chip[data-state="busy"] .dot{background:var(--write);box-shadow:0 0 0 3px rgba(227,179,65,.16)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--safe);box-shadow:0 0 0 3px rgba(62,207,142,.14)}
 .dot.off{background:var(--tx3);box-shadow:0 0 0 3px rgba(95,115,133,.16)}
 
@@ -234,7 +239,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.9.0</small>
+      pico <small id="ver">v1.10.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -378,7 +383,7 @@ const GROUPS = [
     ["triggers","list"],["csv pivot city sum amt x.csv having sum>100","group"],
     ["when 22:30 unless away then brief","gated"],["watch ~/Downloads then count {file}","folder"],
     ["when clip matches ^ORD then notify {clip}","clipboard"],["away on","pause"],
-    ["trigger log","firings"]]},
+    ["trigger log","firings"],["doctor","self-check"]]},
 ];
 
 const CATALOG = GROUPS.flatMap(g => g.items.map(i => i[0]));
@@ -551,6 +556,7 @@ const H = {
   watch:()=>"Folder watches need the local engine — they poll a real directory.",
   away:()=>"The away flag lives in the local engine's state.",
   triggerLog:()=>"Firing history lives in the local engine.",
+  doctor:()=>"The self-check reads the local engine's files.",
   untrigger:()=>"Saved triggers need the local engine.",
   chain:()=>"Chains live in the local engine — run: python pico.py chain morning",
   loopCsv:()=>"The CSV loop needs the local engine — it writes real files.",
@@ -709,6 +715,7 @@ const RULES = [
   [/^watch (?<folder>\S+) then (?<actions>.+)$/i,"watch"],
   [/^away (?<v>on|off)$/i,"away"],
   [/^trigger log(?: (?<n>\d+))?$/i,"triggerLog"],
+  [/^doctor$/i,"doctor"],
   [/^untrigger (?<n>\d+)$/i,"untrigger"],
   [/^chain (?<name>\w+)\s*:\s*(?<body>.+)$/i,"chain"],
   [/^chain (?<name>\w+)$/i,"chain"],
@@ -749,6 +756,23 @@ function resolve(text){
 
 /* ---------- run ---------- */
 let lastRun=null;
+let offlineTimer = null;
+function markOffline(){
+  setStat("offline");
+  if(offlineTimer) return;
+  /* poll the state endpoint until the engine answers again */
+  offlineTimer = setInterval(() => {
+    fetch("/api/state").then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(st => { applyState(st); markOnline(); })
+      .catch(() => {});
+  }, 5000);
+}
+function markOnline(){
+  if(!offlineTimer) return;
+  clearInterval(offlineTimer);
+  offlineTimer = null;
+  setStat("ready");
+}
 async function run(text){
   text=(text||"").trim();
   if(!text)return;
@@ -761,7 +785,12 @@ async function run(text){
       const j=await r.json();
       out=j.out; resolved=j.resolved||text; src=j.src||"rule"; tier=j.tier||riskOf(text);
       if(j.state) applyState(j.state);
-    }catch(e){ out="Connection lost: "+e.message; }
+      markOnline();
+    }catch(e){
+      out = "The engine is not answering.\n" + e.message
+          + "\n\nIs pico still running? Start it with: python3 pico.py --ui";
+      markOffline();
+    }
   }else{
     if(text.toLowerCase()==="undo"||/^undo\s+\d+$/i.test(text)){
       out=demoUndo(parseInt(text.split(/\s+/)[1]||"1",10));
@@ -906,7 +935,11 @@ function renderHistory(){
     histEl.appendChild(b);
   });
 }
-function setStat(t){$("#stat").textContent=t;}
+function setStat(t){
+  const chip = $("#stat").parentElement;
+  $("#stat").textContent = t;
+  chip.dataset.state = t === "offline" ? "offline" : (t === "running" ? "busy" : "");
+}
 
 function applyState(st){
   if(!st)return;
@@ -1075,7 +1108,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.9.0";
+$("#ver").textContent="v1.10.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){

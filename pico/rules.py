@@ -4,8 +4,9 @@ Handlers live in `cmd_*` modules by domain. This file is the registry: the patte
 table, the help text and the catalogue. `register()` wires them to an engine and
 records the modules so `Engine._bind_modules()` can rebind their `E` globals.
 """
-from . import (cmd_files, cmd_money, cmd_quarantine, cmd_tasks, cmd_time,
-               cmd_web)
+from . import (cmd_doctor, cmd_files, cmd_money, cmd_quarantine, cmd_tasks,
+               cmd_time, cmd_web)
+from .cmd_doctor import doctor
 from .cmd_files import backup, fill, find, tidy, tpl_list
 from .cmd_quarantine import quarantine, restore, safe_delete, sweep
 from .cmd_money import spend_add, spend_sum
@@ -17,7 +18,7 @@ from .cmd_web import open_any, search, site_set, weather
 
 CATALOG = []
 CORE_MODULES = (cmd_tasks, cmd_money, cmd_time, cmd_files, cmd_quarantine,
-                cmd_web)
+                cmd_web, cmd_doctor)
 E = None
 
 
@@ -55,6 +56,7 @@ HELP = """CORE
   site k=URL | open X | search X | weather [CITY]
 SAFETY
   dry CMD | why | log | undo [N] | confirm | cancel | aliases | unalias P
+  doctor | timeline | replay TS | 2key on|off|phone
 PACKS
   emi/sip/fd/si/gst/split/disc | habit add/did/habits | journal [show N]
   contact/wa/mail | daily HH:MM CMD | jobs | unjob N | llm off/local/cloud/auto"""
@@ -105,6 +107,7 @@ def register(engine):
         (r"^open\s+(?P<t>.+)$", open_any),
         (r"^search\s+(?P<q>.+)$", search),
         (r"^weather(?:\s+(?P<city>.+))?$", weather),
+        (r"^doctor$", doctor),
         (r"^aliases$", aliases),
         (r"^unalias\s+(?P<p>.+)$", unalias),
     ]
@@ -125,6 +128,7 @@ def register(engine):
         "weather [city] - forecast", "help - command list",
         "dry CMD - preview without running", "why - last resolution",
         "log - recent ledger", "undo N - reverse actions",
+        "doctor - self-check every subsystem",
         "aliases - learned phrasings", "unalias P - forget a phrasing",
         "recur daily X - repeating task", "due N YYYY-MM-DD - set a due date",
         "overdue - tasks past their date", "safe delete PATH - quarantine a file",

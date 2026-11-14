@@ -825,7 +825,7 @@ def t42_core_modules():
     from pico.engine import Engine
     e, d = fresh("t42")
     check("T42 core: register records the command modules",
-          len(e.core_modules) == 6, str(len(e.core_modules)))
+          len(e.core_modules) == 7, str(len(e.core_modules)))
     check("T42 core: every module can see the engine",
           all(getattr(m, "E", None) is e for m in e.core_modules))
     e2, d2 = fresh("t42b")
@@ -1006,6 +1006,59 @@ def t51_update_prompt():
           (ROOT / "docs" / "sw.js").read_bytes() == (ROOT / "web" / "sw.js").read_bytes())
 
 
+def t52_doctor():
+    e, d = fresh("t52")
+    out = e.handle("doctor")
+    check("T52 doctor: it runs and reports", out.startswith("pico ") and "check(s)" in out, out[:50])
+    check("T52 doctor: a fresh home is all ok", "0 fail" in out, out.splitlines()[-1])
+    check("T52 doctor: it names the rules count", "rules" in out)
+    check("T52 doctor: it lists the loaded packs",
+          "finance" in out and "triggers" in out)
+    e.handle("add one")
+    e.handle("habit add walk")
+    out2 = e.handle("doctor")
+    check("T52 doctor: it sees the files that now exist",
+          "jobs.json" in out2 or "habits.json" in out2, out2[:60])
+    (d / "state.json").write_text("{broken", "utf-8")
+    e2 = Engine(home=d, quiet=True)
+    check("T52 doctor: a corrupt state is caught, not fatal",
+          "0 fail" in e2.handle("doctor") or "quarantined" in e2.handle("doctor"),
+          e2.handle("doctor").splitlines()[-1])
+    shutil.rmtree(d, True)
+
+
+def t53_pivot_types():
+    e, d = fresh("t53")
+    p = d / "n.csv"
+    p.write_text("zip,amt\n9,100\n10,200\n2,50\n", "utf-8")
+    base = "csv pivot %s sum amt %s order by key"
+
+    def first(key):
+        rows = e.handle(base % (key, p)).splitlines()
+        return [ln.split()[0] for ln in rows[1:4]]
+
+    check("T53 pivot types: default sorts keys as text",
+          first("zip") == ["10", "2", "9"], str(first("zip")))
+    check("T53 pivot types: :number sorts numerically",
+          first("zip:number") == ["2", "9", "10"], str(first("zip:number")))
+    check("T53 pivot types: an unknown key type is explained",
+          "number or :text" in e.handle("csv pivot zip:date sum amt %s" % p))
+    shutil.rmtree(d, True)
+
+
+def t54_offline_chip():
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    check("T54 offline: the chip has an offline state",
+          'data-state="offline"' in html)
+    check("T54 offline: a failed request marks it",
+          "markOffline" in html and "Connection lost" not in html)
+    check("T54 offline: it polls until the engine returns",
+          "setInterval" in html and "markOnline" in html)
+    check("T54 offline: the message says how to start the engine",
+          "pico.py --ui" in html)
+    shutil.rmtree(fresh("t54")[1], True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1020,7 +1073,8 @@ def main():
                t40_backoff, t41_pivot_having, t42_core_modules,
                t43_action_backoff, t44_pivot_order, t45_installable,
                t46_quarantine_module, t47_sort_types, t48_install_prompt,
-               t49_dispatch_module, t50_filter_types, t51_update_prompt):
+               t49_dispatch_module, t50_filter_types, t51_update_prompt,
+               t52_doctor, t53_pivot_types, t54_offline_chip):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

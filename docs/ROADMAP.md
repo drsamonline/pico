@@ -3,6 +3,12 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.10 — shipped
+
+`doctor`, a self-check that names what is wrong across fourteen subsystems; `csv pivot` key typing;
+and an offline chip that turns red when the engine stops answering and recovers by itself. 184
+acceptance tests. The package ceiling moved 64 KB → 72 KB, recorded in the README.
+
 ## 1.9 — shipped
 
 The dispatcher gets its own module, `csv filter` takes the same `:number`/`:text` hint as `sort`, and
@@ -60,8 +66,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Offline indicator** | the console does not say when the engine is unreachable | a chip that turns amber when a `/cmd` request fails |
-| **Budget headroom is finite** | the package sits at 57.0 KB of a 64 KB ceiling | `pico/dispatch.py` is now the largest file at 7.1 KB |
+| **Doctor `--fix`** | `doctor` reports but never repairs | `doctor --fix` quarantines a broken state file and regenerates tokens |
+| **Budget headroom is finite** | the package sits at 62.4 KB of a 72 KB ceiling | `pico/dispatch.py` is the largest file at 7.1 KB |
 
 ## Next — cheap and useful
 
@@ -69,7 +75,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv pivot` has no type hint | `sort` and `filter` take `:number`/`:text`, `pivot` still guesses | the same suffix on the key column |
+| `csv join` has no type hint | `sort`, `filter` and `pivot` take `:number`/`:text`; `join` compares as text | the same suffix on the join key |
 
 ## Deliberately not built
 

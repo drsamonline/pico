@@ -8,7 +8,7 @@ CATALOG = ["importcsv PATH TABLE - load a CSV into the local db",
            "sql SELECT … - query it", "tables - what is loaded",
            "csv filter COL[:number|:text]OP VAL PATH - rows matching", "csv sort COL[:number|:text] [desc] PATH - ordered rows",
            "csv join KEY A.csv B.csv - inner join",
-           "csv pivot COL sum AMT PATH [having sum>100] - group and aggregate"]
+           "csv pivot COL[:number] sum AMT PATH [having sum>100] - group and aggregate"]
 E = DB = None
 WRITE = re.compile(r"^\s*(insert|update|delete|drop|alter|create|replace|attach|pragma)\b", re.I)
 
@@ -211,7 +211,18 @@ def csv_pivot(m):
     header, rows, err = _load(m["path"])
     if err:
         return err
-    keys = [k.strip() for k in m["key"].split(",") if k.strip()]
+    raw_keys = [k.strip() for k in m["key"].split(",") if k.strip()]
+    kinds = {}
+    keys = []
+    for k in raw_keys:
+        if ":" in k:
+            name, kind = [x.strip() for x in k.split(":", 1)]
+            if kind not in ("number", "text"):
+                return "Key type is :number or :text — csv pivot city:number sum amt x.csv"
+            keys.append(name)
+            kinds[name] = kind
+        else:
+            keys.append(k)
     op, col = m["op"].lower(), m["col"].strip()
     for c in keys + [col]:
         if c not in header:
@@ -250,8 +261,21 @@ def csv_pivot(m):
             return "No group satisfies having %s." % having
     by = (m["order"] or "").strip().lower()
     direction = (m["dir"] or "").strip().lower()
+
+    def key_of(name):
+        parts = name.split(" / ")
+        out = []
+        for i, part in enumerate(parts):
+            col = keys[i] if i < len(keys) else ""
+            if kinds.get(col) == "number":
+                n = _num(part)
+                out.append((0, n, "") if n is not None else (1, 0.0, part.lower()))
+            else:
+                out.append((2, 0.0, part.lower()))
+        return out
+
     if by == "key":
-        order = sorted(groups, reverse=direction == "desc")
+        order = sorted(groups, key=key_of, reverse=direction == "desc")
     elif by == "value":
         order = sorted(groups, key=lambda x: sum(groups[x]), reverse=direction != "asc")
     else:
@@ -300,7 +324,7 @@ RULES = [
     (r"^csv filter (?P<cond>.+?) (?P<path>\S+\.csv)$", csv_filter),
     (r"^csv sort (?P<col>[\w:]+)(?: (?P<dir>asc|desc))? (?P<path>\S+\.csv)$", csv_sort),
     (r"^csv join (?P<key>\w+) (?P<p1>\S+\.csv) (?P<p2>\S+\.csv)$", csv_join),
-    (r"^csv pivot (?P<key>[\w,]+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) "
+    (r"^csv pivot (?P<key>[\w,:]+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) "
      r"(?P<path>\S+\.csv)(?: having (?P<having>\S+))?"
      r"(?: order by (?P<order>key|value)(?: (?P<dir>asc|desc))?)?$",
      csv_pivot),

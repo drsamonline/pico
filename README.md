@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.9.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.10.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,13 +97,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 125,418 bytes across 27 files |
-| package / packs / console | 58,347 / 66,528 / 63,417 B |
-| console | 63,417 bytes, one HTML file, no external assets |
+| python source | 131,802 bytes across 28 files |
+| package / packs / console | 63,914 / 67,888 / 64,665 B |
+| console | 64,665 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 171 passing, stdlib `unittest`-free runner |
+| acceptance tests | 181 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly six times more — and why state is only persisted when something actually changed.
@@ -116,9 +116,9 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 16 files) | 64 KB | 58,347 B | 5.7 KB |
-| packs (12 files) | 96 KB | 66,528 B | 29.5 KB |
-| console (one HTML file) | 96 KB | 63,417 B | 32.6 KB |
+| package (`pico/` + launcher, 17 files) | 72 KB | 63,914 B | 8.1 KB |
+| packs (12 files) | 96 KB | 67,888 B | 28.1 KB |
+| console (one HTML file) | 96 KB | 64,665 B | 31.3 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |
 | dependencies | 0 | 0 | — |
@@ -131,6 +131,7 @@ The package is split by responsibility, so no single file has to be small:
 | --- | --- | --- |
 | `pico/dispatch.py` | 7,071 | `handle()`, the single entry point |
 | `pico/engine.py` | 6,004 | composition, plugin loading, notifier bus |
+| `pico/cmd_doctor.py` | 5,567 | the self-check |
 | `pico/cmd_files.py` | 3,981 | sort, archive, find, fill |
 | `pico/rules.py` | 5,830 | the pattern table, help, catalogue |
 | `pico/store.py` | 5,101 | state, atomic writes, snapshots, replay |
@@ -151,8 +152,9 @@ no inverse registry, no translator firewall, no privacy gate, no slot dialogue, 
 replay and no write lock — the eight subsystems that make the audit findings above fixed rather than
 documented. **The figure was wrong, not the code**, so it was replaced rather than chased.
 
-Ceilings are measured size plus roughly 30% headroom: enough for the next feature, tight enough that
-the tree cannot drift without someone noticing. CI fails the build when any of them is crossed.
+A ceiling is reviewed when a feature needs more, and the change is recorded here rather than made
+quietly. 1.10.0 took the package from 64 KB to 72 KB: `doctor` added 5.6 KB and left 1.6 KB of
+headroom, which is not enough to work in. CI fails the build when any ceiling is crossed.
 
 ## Install
 

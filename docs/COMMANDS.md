@@ -124,7 +124,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | `csv filter COL[:number\|:text]OP VAL PATH` | safe | `age>30`, `name=Asha`, `>= <= !=`. `:number` drops non-numeric rows, `:text` compares lexicographically |
 | `csv sort COL[:number\|:text] [asc\|desc] PATH` | safe | auto compares numbers numerically and text after them; `:number` and `:text` force one reading |
 | `csv join KEY A.csv B.csv` | safe | inner join, 50-row cap |
-| `csv pivot COL[,COL,…] sum\|count\|avg\|min\|max FIELD PATH [having EXPR] [order by key\|value [asc\|desc]]` | safe | group by any number of columns, aggregate another, with a total. `having sum>100` filters groups; `order by` sets the sort |
+| `csv pivot COL[:number\|:text][,…] sum\|count\|avg\|min\|max FIELD PATH [having EXPR] [order by key\|value [asc\|desc]]` | safe | group by any number of columns, aggregate another, with a total. `having sum>100` filters groups; `order by` sets the sort; the key type decides how `order by key` compares |
 | `chart 1,4,9` | safe | horizontal bars scaled to the maximum |
 
 ## Triggers
@@ -153,6 +153,14 @@ action** — a saved rule should not be able to fire a message on its own.
 Triggers fire only while pico runs (`--serve` or the REPL), checked every 15 seconds. A failing action
 is retried once; if it still fails **that action alone** backs off for 2, 4, 8, 16, 32 then 60
 minutes, and the rest of the rule keeps running. `triggers` shows how many actions are backing off.
+
+## Diagnostics
+
+| Command | Tier | Notes |
+| --- | --- | --- |
+| `doctor` | safe | checks home, state, ledger, rules, packs, templates, quarantine, snapshots, triggers, the per-pack data files, sqlite, tokens, two-key and the Python version. Prints `ok` / `warn` / `FAIL` per line and a count |
+
+A fresh home reports all `ok`: nothing written yet is correct, not broken.
 
 ## Safety
 

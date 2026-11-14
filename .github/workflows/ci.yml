@@ -88,8 +88,9 @@ jobs:
           # a write lock. That is eight subsystems the 20 KB figure never accounted
           # for, so the number was wrong rather than the code.
           #
-          # Ceilings are measured size plus ~30% headroom, which is enough for the
-          # next feature without letting the tree drift.
+          # A ceiling is reviewed when a feature needs more, not raised silently:
+          # 1.10.0 took the package from 64 KB to 72 KB because `doctor` added
+          # 5.6 KB, and the README records the change with the reason.
           def kb(n):
               return "%d B (%.1f KB)" % (n, n / 1024.0)
 
@@ -100,7 +101,7 @@ jobs:
 
           for p in parts:
               print("  %-22s %s" % (p, kb(p.stat().st_size)))
-          caps = [("package", package, 64), ("packs", packs, 96),
+          caps = [("package", package, 72), ("packs", packs, 96),
                   ("console", console, 96)]
           for name, size, cap in caps:
               print("%-10s %14s   cap %d KB" % (name, kb(size), cap))

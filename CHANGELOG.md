@@ -2,6 +2,37 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.10.0 — 2026-11-14
+
+### Added
+
+- **`doctor`** — a self-check across fourteen subsystems: home, `state.json`, the ledger, the rule
+  table, loaded packs, templates, quarantine, snapshots, triggers, the per-pack data files
+  (`jobs.json`, `habits.json`, `cards.json`, `life.json`), sqlite, the tokens, two-key state and the
+  Python version. One line each, `ok` / `warn` / `FAIL`, then a count. A fresh home reports all `ok`:
+  nothing written yet is correct, not broken.
+- **`csv pivot` key typing** — `csv pivot zip:number sum amt x.csv` makes `order by key` compare
+  numerically; `:text` forces a lexicographic read.
+- **An offline chip.** A failed `/cmd` turns the status chip red, explains that the engine is not
+  answering, says how to start it, and polls `/api/state` every 5 s until it comes back — then
+  recovers without a reload.
+
+### Changed
+
+- **The package ceiling moved 64 KB → 72 KB.** `doctor` added 5.6 KB and left 1.6 KB of headroom,
+  which is not enough to work in. The change is recorded in the README rather than made quietly, and
+  the CI comment now states the review policy: a ceiling is reviewed when a feature needs more.
+
+### Fixed
+
+- `doctor` reported a missing `state.json` as `FAIL` on a brand-new install. Nothing has been written
+  yet, so it is `ok`; T52 caught it.
+
+### Tests
+
+184 checks, up from 171. T52 covers `doctor` including the corrupt-state case, T53 the three pivot key
+types, T54 the offline chip's states and recovery.
+
 ## 1.9.0 — 2026-11-14
 
 ### Changed
