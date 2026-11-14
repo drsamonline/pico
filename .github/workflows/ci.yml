@@ -32,26 +32,42 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import ast, pathlib, sys
-          allowed = set(sys.stdlib_module_names) if hasattr(sys, "stdlib_module_names") else set()
+          import ast, importlib.util, pathlib, sys, sysconfig
+          stdlib_dir = pathlib.Path(sysconfig.get_paths()["stdlib"]).resolve()
+
+          def is_stdlib(name):
+              if hasattr(sys, "stdlib_module_names"):      # 3.10+
+                  return name in sys.stdlib_module_names
+              if name in sys.builtin_module_names or name == "__future__":
+                  return True
+              try:
+                  spec = importlib.util.find_spec(name)
+              except Exception:
+                  return False
+              if not spec or not spec.origin or spec.origin in ("built-in", "frozen"):
+                  return name in sys.builtin_module_names
+              try:
+                  return stdlib_dir in pathlib.Path(spec.origin).resolve().parents
+              except Exception:
+                  return False
+
           bad = []
           for p in pathlib.Path(".").rglob("*.py"):
               if "tests" in p.parts:
                   continue
-              tree = ast.parse(p.read_text(encoding="utf-8"))
-              for node in ast.walk(tree):
+              for node in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
                   mods = []
                   if isinstance(node, ast.Import):
                       mods = [a.name.split(".")[0] for a in node.names]
                   elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
                       mods = [node.module.split(".")[0]]
                   for m in mods:
-                      if m in ("pico", "packs") or (allowed and m in allowed):
+                      if m in ("pico", "packs") or is_stdlib(m):
                           continue
                       bad.append("%s: %s" % (p, m))
           if bad:
-              print("\n".join(bad)); sys.exit(1)
-          print("no third-party imports")
+              print("\n".join(sorted(set(bad)))); sys.exit(1)
+          print("no third-party imports (python %s)" % sys.version.split()[0])
           PY
 
       - name: Size budget
