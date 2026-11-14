@@ -129,6 +129,9 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:var(--r);
   background:linear-gradient(90deg,rgba(62,207,142,.08),transparent)}
 .install[data-on="1"]{display:flex}
+.install[data-tone="update"]{border-left-color:var(--acc2);
+  background:linear-gradient(90deg,rgba(31,111,235,.10),transparent)}
+.install[data-tone="update"] .yes{background:var(--acc2);color:#fff}
 .install p{font-size:12.5px;color:var(--tx2);flex:1;min-width:0}
 .install p b{color:var(--tx)}
 .install button{min-height:36px;padding:0 14px;border-radius:8px;font-size:12.5px;
@@ -231,7 +234,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.8.0</small>
+      pico <small id="ver">v1.9.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -253,6 +256,11 @@ button{background:none;border:0;cursor:pointer;text-align:left}
           <p><b>Install pico.</b> Standalone window, opens offline, no browser chrome.</p>
           <button class="yes" id="installYes" type="button">Install</button>
           <button class="no" id="installNo" type="button">Not now</button>
+        </div>
+        <div class="install" id="update" data-tone="update">
+          <p><b>A newer build is ready.</b> Reload to pick it up.</p>
+          <button class="yes" id="updateYes" type="button">Reload</button>
+          <button class="no" id="updateNo" type="button">Later</button>
         </div>
         <div id="stream"></div>
         <div class="hist" id="hist"></div>
@@ -1067,7 +1075,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.8.0";
+$("#ver").textContent="v1.9.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){
@@ -1112,9 +1120,35 @@ if(/iphone|ipad|ipod/i.test(navigator.userAgent) &&
 
 /* installable shell: only over http(s), never from file:// */
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-  window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  const updateBar = document.getElementById("update");
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if(reloading){ location.reload(); }
   });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      reg.addEventListener("updatefound", () => {
+        const fresh = reg.installing;
+        if(!fresh) return;
+        fresh.addEventListener("statechange", () => {
+          /* an existing controller means this is an update, not a first install */
+          if(fresh.state === "installed" && navigator.serviceWorker.controller){
+            updateBar.dataset.on = "1";
+          }
+        });
+      });
+    }).catch(() => {});
+  });
+  document.getElementById("updateYes").onclick = () => {
+    updateBar.dataset.on = "0";
+    reloading = true;
+    const waiting = navigator.serviceWorker.getRegistration();
+    Promise.resolve(waiting).then(r => {
+      if(r && r.waiting) r.waiting.postMessage({type:"skip"});
+      else location.reload();
+    });
+  };
+  document.getElementById("updateNo").onclick = () => { updateBar.dataset.on = "0"; };
 }
 
 /* shareable runs: index.html#add buy milk|emi 500000 8.5 240 */

@@ -2,6 +2,30 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.9.0 — 2026-11-14
+
+### Changed
+
+- **`handle()` moved to `pico/dispatch.py`.** `engine.py` fell from 12,695 B to 6,004 B; the largest
+  file in the package is now 7,071 B. `Engine` is `StoreMixin, LadderMixin, LedgerMixin,
+  DispatchMixin`.
+- **`csv filter` takes the same column type as `csv sort`** — `csv filter score:number>9 x.csv`.
+  `:number` drops rows that do not parse, `:text` compares lexicographically, and the default keeps
+  the old guess.
+
+### Added
+
+- **A Reload bar when a newer build is waiting.** The service worker reports an update through
+  `updatefound` + `statechange`, and the console offers Reload / Later. Reload posts `skip` to the
+  waiting worker and only reloads on `controllerchange`, so the swap is not interrupted. The cache
+  name is versioned, so a new build actually replaces the old shell.
+- The README's measured section lost a stale row and paragraph left over from before the budgets
+  were restated.
+
+### Tests
+
+171 checks, up from 158. T49 the dispatcher split, T50 the three filter modes, T51 the update bar.
+
 ## 1.8.0 — 2026-11-14
 
 ### Changed

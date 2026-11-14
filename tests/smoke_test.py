@@ -957,6 +957,55 @@ def t48_install_prompt():
     shutil.rmtree(fresh("t48")[1], True)
 
 
+def t49_dispatch_module():
+    import pico.dispatch as D
+    from pico.engine import Engine
+    check("T49 dispatch: handle lives in its own module",
+          hasattr(D, "DispatchMixin") and hasattr(D.DispatchMixin, "handle")
+          and hasattr(D.DispatchMixin, "_handle"))
+    check("T49 dispatch: the engine composes it", issubclass(Engine, D.DispatchMixin))
+    check("T49 dispatch: engine.py no longer defines handle",
+          "def handle" not in (ROOT / "pico" / "engine.py").read_text(encoding="utf-8"))
+    e, d = fresh("t49")
+    check("T49 dispatch: a command still round-trips",
+          "4,339" in e.handle("emi 500000 8.5 240"))
+    shutil.rmtree(d, True)
+
+
+def t50_filter_types():
+    e, d = fresh("t50")
+    p = d / "m.csv"
+    p.write_text("name,score\nAsha,9\nRavi,10\nMeera,2\nZoya,n/a\n", "utf-8")
+    base = "csv filter score%s>9 %s"
+
+    def names(suffix):
+        out = e.handle(base % (suffix, p))
+        return [ln.split(" | ")[0] for ln in out.splitlines()[1:-1]]
+
+    check("T50 filter: auto compares numbers numerically and text as text",
+          names("") == ["Ravi", "Zoya"], str(names("")))
+    check("T50 filter: :number drops the non-numeric row", names(":number") == ["Ravi"],
+          str(names(":number")))
+    check("T50 filter: :text compares lexicographically", names(":text") == ["Zoya"],
+          str(names(":text")))
+    check("T50 filter: an unknown type is explained",
+          "number or :text" in e.handle(base % (":date", p)))
+    shutil.rmtree(d, True)
+
+
+def t51_update_prompt():
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    sw = (ROOT / "web" / "sw.js").read_text(encoding="utf-8")
+    check("T51 update: the bar exists", 'id="update"' in html)
+    check("T51 update: it fires only for an update, not a first install",
+          "navigator.serviceWorker.controller" in html and "updatefound" in html)
+    check("T51 update: reload waits for the new worker",
+          "controllerchange" in html and "skipWaiting" in sw)
+    check("T51 update: the cache name is versioned", "pico-" in sw and "CACHE" in sw)
+    check("T51 update: the demo copy is in sync",
+          (ROOT / "docs" / "sw.js").read_bytes() == (ROOT / "web" / "sw.js").read_bytes())
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -970,7 +1019,8 @@ def main():
                t37_three_key_pivot, t38_version_consistency, t39_module_split,
                t40_backoff, t41_pivot_having, t42_core_modules,
                t43_action_backoff, t44_pivot_order, t45_installable,
-               t46_quarantine_module, t47_sort_types, t48_install_prompt):
+               t46_quarantine_module, t47_sort_types, t48_install_prompt,
+               t49_dispatch_module, t50_filter_types, t51_update_prompt):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

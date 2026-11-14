@@ -21,7 +21,8 @@ nothing else. Front-ends hold no business logic.
 
 | File | Owns |
 | --- | --- |
-| `pico/engine.py` | composition root: `__init__`, `handle()`, the plugin loader, the notifier bus |
+| `pico/engine.py` | composition root: `__init__`, the plugin loader, the notifier bus |
+| `pico/dispatch.py` | `handle()` and `_handle()` — the only way in |
 | `pico/store.py` | state load/save, the write lock, snapshots, replay, timeline |
 | `pico/ladder.py` | rule registration, `match_rule`, risk tiers, `resolve`, slot dialogue, the translator firewall |
 | `pico/ledger.py` | `_run`, the inverse registry, `undo` |
@@ -30,7 +31,7 @@ nothing else. Front-ends hold no business logic.
 | `pico/cmd_*.py` | the core handlers by domain — `tasks`, `money`, `time`, `files`, `web` |
 | `pico/ui.py` | `http.server`, token check, `POST /cmd`, `GET /api/state`, HTML injection |
 
-`Engine` is `class Engine(StoreMixin, LadderMixin, LedgerMixin)`, so every attribute a pack reaches
+`Engine` is `class Engine(StoreMixin, LadderMixin, LedgerMixin, DispatchMixin)`, so every attribute a pack reaches
 for still resolves on the instance. `rules.register()` records the five `cmd_*` modules on
 `engine.core_modules`, and `_bind_modules()` rebinds their `E` globals alongside every pack's — which
 is what keeps two engines in one process isolated. `pico/engine.py` re-exports `safe_eval`, `convert`, `normalize`

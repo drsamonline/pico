@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.9 — shipped
+
+The dispatcher gets its own module, `csv filter` takes the same `:number`/`:text` hint as `sort`, and
+the console offers a Reload bar when a newer service worker is waiting. 171 acceptance tests.
+
 ## 1.8 — shipped
 
 The quarantine lifecycle gets its own module; `csv sort` takes an explicit column type; the console
@@ -55,8 +60,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Update prompt** | a new service worker installs silently; nothing says a newer build is ready | a line in the console when a new worker takes over |
-| **Budget headroom is finite** | the package sits at 56.6 KB of a 64 KB ceiling | `pico/engine.py` is now the largest file at 12.7 KB |
+| **Offline indicator** | the console does not say when the engine is unreachable | a chip that turns amber when a `/cmd` request fails |
+| **Budget headroom is finite** | the package sits at 57.0 KB of a 64 KB ceiling | `pico/dispatch.py` is now the largest file at 7.1 KB |
 
 ## Next — cheap and useful
 
@@ -64,7 +69,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv filter` has no type hint | `sort` takes `:number`/`:text`, `filter` still guesses | `csv filter age>30:number x.csv` |
+| `csv pivot` has no type hint | `sort` and `filter` take `:number`/`:text`, `pivot` still guesses | the same suffix on the key column |
 
 ## Deliberately not built
 

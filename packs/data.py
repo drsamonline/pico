@@ -6,7 +6,7 @@ import sqlite3
 
 CATALOG = ["importcsv PATH TABLE - load a CSV into the local db",
            "sql SELECT … - query it", "tables - what is loaded",
-           "csv filter COND PATH - rows matching", "csv sort COL[:number|:text] [desc] PATH - ordered rows",
+           "csv filter COL[:number|:text]OP VAL PATH - rows matching", "csv sort COL[:number|:text] [desc] PATH - ordered rows",
            "csv join KEY A.csv B.csv - inner join",
            "csv pivot COL sum AMT PATH [having sum>100] - group and aggregate"]
 E = DB = None
@@ -106,16 +106,31 @@ def csv_filter(m):
     if len(parts) != 3:
         return "Condition looks like: age>30  or  name=Asha"
     col, op, want = parts[0].strip(), parts[1], parts[2].strip()
+    kind = ""
+    if ":" in col:
+        col, kind = [x.strip() for x in col.split(":", 1)]
+    if kind and kind not in ("number", "text"):
+        return "Type is :number or :text — csv filter age:number>30 x.csv"
     if col not in header:
         return "No column '%s'. Columns: %s" % (col, ", ".join(header))
     hits = []
     for r in rows:
         have = r.get(col, "")
-        a, b = _num(have), _num(want)
-        if a is None or b is None:
+        if kind == "text":
             a, b = have.lower(), want.lower()
-        ok = {"=": a == b, "!=": a != b, ">": a > b, "<": a < b,
-              ">=": a >= b, "<=": a <= b}[op]
+        elif kind == "number":
+            a, b = _num(have), _num(want)
+            if a is None or b is None:
+                continue
+        else:
+            a, b = _num(have), _num(want)
+            if a is None or b is None:
+                a, b = have.lower(), want.lower()
+        try:
+            ok = {"=": a == b, "!=": a != b, ">": a > b, "<": a < b,
+                  ">=": a >= b, "<=": a <= b}[op]
+        except TypeError:
+            ok = False
         if ok:
             hits.append(r)
     if not hits:

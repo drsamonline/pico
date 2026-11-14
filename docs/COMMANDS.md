@@ -121,7 +121,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | `importcsv PATH TABLE` | safe | loads a CSV into `~/.pico/pico.db` (sqlite3), reversible |
 | `sql SELECT …` | safe | read-only: SELECT, WITH and PRAGMA only. 50-row cap |
 | `tables` | safe | what is loaded, and how many rows |
-| `csv filter COND PATH` | safe | `age>30`, `name=Asha`, `>= <= !=` |
+| `csv filter COL[:number\|:text]OP VAL PATH` | safe | `age>30`, `name=Asha`, `>= <= !=`. `:number` drops non-numeric rows, `:text` compares lexicographically |
 | `csv sort COL[:number\|:text] [asc\|desc] PATH` | safe | auto compares numbers numerically and text after them; `:number` and `:text` force one reading |
 | `csv join KEY A.csv B.csv` | safe | inner join, 50-row cap |
 | `csv pivot COL[,COL,…] sum\|count\|avg\|min\|max FIELD PATH [having EXPR] [order by key\|value [asc\|desc]]` | safe | group by any number of columns, aggregate another, with a total. `having sum>100` filters groups; `order by` sets the sort |

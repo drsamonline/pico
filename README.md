@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.8.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.9.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,18 +97,16 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 124,495 bytes across 26 files |
-| core (engine + launcher) | 30,794 B — 10 KB over the spec's 20 KB, see below |
-| package / packs / console | 57,967 / 66,528 / 61,886 B |
-| console | 54,573 bytes, one HTML file, no external assets |
+| python source | 125,418 bytes across 27 files |
+| package / packs / console | 58,347 / 66,528 / 63,417 B |
+| console | 63,417 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 158 passing, stdlib `unittest`-free runner |
+| acceptance tests | 171 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
-roughly four times more — and why state is only persisted when something actually changed. The spec
-budget was 5 ms for the rule path; reads meet it, writes pay for durability and say so.
+roughly six times more — and why state is only persisted when something actually changed.
 
 Both latencies are inside the 5 ms budget. Writes pay for durability twice — `state.json` on
 every change and a snapshot every 25 changes so `replay` has a starting point — and still land at
@@ -118,9 +116,9 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 15 files) | 64 KB | 57,967 B | 6.1 KB |
+| package (`pico/` + launcher, 16 files) | 64 KB | 58,347 B | 5.7 KB |
 | packs (12 files) | 96 KB | 66,528 B | 29.5 KB |
-| console (one HTML file) | 96 KB | 61,886 B | 34.1 KB |
+| console (one HTML file) | 96 KB | 63,417 B | 32.6 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |
 | dependencies | 0 | 0 | — |
@@ -131,7 +129,8 @@ The package is split by responsibility, so no single file has to be small:
 
 | File | Bytes | Owns |
 | --- | --- | --- |
-| `pico/engine.py` | 12,695 | composition, `handle()`, plugin loading |
+| `pico/dispatch.py` | 7,071 | `handle()`, the single entry point |
+| `pico/engine.py` | 6,004 | composition, plugin loading, notifier bus |
 | `pico/cmd_files.py` | 3,981 | sort, archive, find, fill |
 | `pico/rules.py` | 5,830 | the pattern table, help, catalogue |
 | `pico/store.py` | 5,101 | state, atomic writes, snapshots, replay |
