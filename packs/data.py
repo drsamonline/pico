@@ -7,7 +7,8 @@ import sqlite3
 CATALOG = ["importcsv PATH TABLE - load a CSV into the local db",
            "sql SELECT … - query it", "tables - what is loaded",
            "csv filter COND PATH - rows matching", "csv sort COL [desc] PATH - ordered rows",
-           "csv join KEY A.csv B.csv - inner join"]
+           "csv join KEY A.csv B.csv - inner join",
+           "csv pivot COL sum AMT PATH - group and aggregate"]
 E = DB = None
 WRITE = re.compile(r"^\s*(insert|update|delete|drop|alter|create|replace|attach|pragma)\b", re.I)
 
@@ -175,6 +176,37 @@ def csv_join(m):
     return "\n".join(out)
 
 
+def csv_pivot(m):
+    header, rows, err = _load(m["path"])
+    if err:
+        return err
+    key, op, col = m["key"].strip(), m["op"].lower(), m["col"].strip()
+    for c in (key, col):
+        if c not in header:
+            return "No column '%s'. Columns: %s" % (c, ", ".join(header))
+    groups = {}
+    for r in rows:
+        k = r.get(key, "")
+        v = _num(r.get(col, ""))
+        if v is None:
+            v = 0.0
+        groups.setdefault(k, []).append(v)
+    if op not in ("sum", "count", "avg", "min", "max"):
+        return "op is sum, count, avg, min or max."
+    out = ["%-16s %10s" % (key, op + "(" + col + ")")]
+    total = 0.0
+    for k in sorted(groups, key=lambda x: -sum(groups[x])):
+        vals = groups[k]
+        v = {"sum": sum(vals), "count": float(len(vals)), "avg": sum(vals) / len(vals),
+             "min": min(vals), "max": max(vals)}[op]
+        total += v if op in ("sum", "count") else 0.0
+        out.append("%-16s %10s" % (k, "{:,.2f}".format(v).rstrip("0").rstrip(".")))
+    if op in ("sum", "count"):
+        out.append("%-16s %10s" % ("total", "{:,.2f}".format(total).rstrip("0").rstrip(".")))
+    out.append("%d group(s) over %d row(s)" % (len(groups), len(rows)))
+    return "\n".join(out)
+
+
 def tables(m):
     if not DB.exists():
         return "No data yet."
@@ -205,4 +237,6 @@ RULES = [
     (r"^csv filter (?P<cond>.+?) (?P<path>\S+\.csv)$", csv_filter),
     (r"^csv sort (?P<col>\w+)(?: (?P<dir>asc|desc))? (?P<path>\S+\.csv)$", csv_sort),
     (r"^csv join (?P<key>\w+) (?P<p1>\S+\.csv) (?P<p2>\S+\.csv)$", csv_join),
+    (r"^csv pivot (?P<key>\w+) (?P<op>sum|count|avg|min|max) (?P<col>\w+) (?P<path>\S+\.csv)$",
+     csv_pivot),
 ]

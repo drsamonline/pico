@@ -17,7 +17,7 @@ STATE_DEFAULT = {
 RISK_RULES = [
     (r"^(wa|mail|sms|tg|bulk|send)\b", "send"),
     (r"^(panic|shutdown|kill|restore|safe delete|unjob|habit del|vault|wipe)\b", "danger"),
-    (r"^(tidy|rename|backup|fill|batch|autofile|zip|unzip|export)\b", "write"),
+    (r"^(tidy|rename|backup|fill|batch|autofile|zip|unzip|export|for each|chain)\b", "write"),
 ]
 
 DENY_LLM = re.compile(
@@ -127,6 +127,8 @@ class Engine:
         self.privacy = {"never_send": []}
         self.slot_rules = []
         self.history = []
+        self.approve_source = None
+        self._lock = threading.RLock()
         self.snapshots = self.home / "snapshots"
         self._since_snap = 0
         self._busy = False
@@ -163,10 +165,13 @@ class Engine:
         return s
 
     def save(self):
-        tmp = self.state_file.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(self.S, indent=1, ensure_ascii=False,
-                                  separators=(",", ": ")), "utf-8")
-        os.replace(tmp, self.state_file)
+        """Atomic, and safe against the scheduler thread writing at the same time."""
+        with self._lock:
+            tmp = self.state_file.with_name(
+                "state.json.tmp.%d.%d" % (os.getpid(), threading.get_ident()))
+            tmp.write_text(json.dumps(self.S, indent=1, ensure_ascii=False,
+                                      separators=(",", ": ")), "utf-8")
+            os.replace(tmp, self.state_file)
 
     def _warn(self, msg):
         if not self.quiet:
@@ -445,13 +450,17 @@ class Engine:
             if not self.history:
                 return "Nothing to repeat yet."
             return self.handle(self.history[-1])
-        m2k = re.fullmatch(r"2key\s+(on|off)", low)
+        m2k = re.fullmatch(r"2key\s+(on|off|phone)", low)
         if m2k:
-            self.S["two_key"] = m2k.group(1) == "on"
+            self.S["two_key"] = m2k.group(1) != "off"
+            self.S["two_key_phone"] = m2k.group(1) == "phone"
             self._dirty = True
             self.save()
-            return "Two-key: " + ("on — danger actions need the code printed here" if
-                                  self.S["two_key"] else "off")
+            if m2k.group(1) == "phone":
+                return ("Two-key: phone only. Codes go to the bound chat and "
+                        "approve is refused at this desk.")
+            return "Two-key: " + ("on" if self.S["two_key"] else "off")
+
         ap = re.fullmatch(r"approve\s+(\w+)", low)
         if ap:
             held = p.get("confirm")
@@ -459,6 +468,9 @@ class Engine:
                 return "Nothing waiting for approval."
             if not secrets.compare_digest(ap.group(1), held.get("code", "")):
                 return "Wrong code. Still waiting."
+            if self.S.get("two_key_phone") and self.approve_source != "phone":
+                return ("Two-key is phone-only: approve must come from the bound chat, "
+                        "not this terminal.")
             self.pending = {}
             return self._run(held["cmd"], "approved")
         if low.startswith("replay "):
@@ -524,6 +536,10 @@ class Engine:
     # -- ledger / undo
     def _maybe_snapshot(self):
         """Keep a rolling 12 snapshots, written every 25 mutating commands."""
+        with self._lock:
+            self._snapshot_locked()
+
+    def _snapshot_locked(self):
         self._since_snap += 1
         if self._since_snap < 25:
             return

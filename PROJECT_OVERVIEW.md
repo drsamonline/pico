@@ -4,9 +4,9 @@
 
 ## In one sentence
 
-A personal automation engine that runs on the Python standard library alone: 95 rules, four risk
-tiers, universal undo, slot dialogue, replay, and an optional language model that may only ever
-propose a command.
+A personal automation engine that runs on the Python standard library alone: 103 rules, four risk
+tiers, universal undo, slot dialogue, replay, a trigger DSL, and an optional language model that
+may only ever propose a command.
 
 ## The problem it solves
 
@@ -23,7 +23,7 @@ Delete the model and nothing stops working.
 | Time | clock, countdown, daily reminder, unit and temperature conversion, AST-safe arithmetic |
 | Files | sort by type, zip a tree, find by name, fill a template, count, extract, dedupe, redact |
 | Life | habit streaks, journal, contacts, WhatsApp and mail deep links |
-| Automation | daily jobs, a ledger, universal undo, alias learning, slot dialogue, two-key approval, `dry` / `why` / `log` / `timeline` |
+| Automation | daily jobs, triggers on time/file/absence, chains, CSV loops, a ledger, universal undo, alias learning, slot dialogue, two-key approval, `dry` / `why` / `log` / `timeline` / `replay` |
 | Data | CSV into sqlite3, read-only SQL out, `csv filter/sort/join`, `chart` |
 | Faces | CLI, REPL, local web console, Telegram bridge — all through one `handle()` |
 
@@ -49,14 +49,14 @@ network call at runtime except the one you ask for.
 | | |
 | --- | --- |
 | dependencies | 0 |
-| rules | 95 |
-| packs | 11 |
-| python source | 101,502 bytes, 16 files |
-| console | 54,573 bytes, one HTML file |
-| read latency | 1.09 ms/call |
-| write latency | 5.12 ms/call |
+| rules | 103 |
+| packs | 12 |
+| python source | 112,500 bytes, 17 files |
+| console | 57,280 bytes, one HTML file |
+| read latency | 0.65 ms/call |
+| write latency | 3.58 ms/call |
 | engine heap | 0.1 MB |
-| tests | 68 passing |
+| tests | 88 passing |
 
 ## Shape of the repository
 

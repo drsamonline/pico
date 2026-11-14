@@ -216,7 +216,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.2.0</small>
+      pico <small id="ver">v1.3.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -342,6 +342,12 @@ const GROUPS = [
     ["confirm","approve"],["cancel","abort"],["aliases","learned"],["llm status","model"],
     ["timeline","history"],["report weekly","week"],["decide a|b","pick"],
     ["chart 1,4,9","bars"],["replay TS","rebuild"]]},
+  {name:"Triggers", icon:"bolt", items:[
+    ["when 22:30 then brief","time"],["when every 30m then brief","repeat"],
+    ["when file ~/Downloads/*.csv then count {file}","new file"],
+    ["chain morning: add x ; brief","name a run"],["chain morning","run it"],
+    ["for each row in x.csv then add {name}","csv loop"],
+    ["triggers","list"],["csv pivot city sum amt x.csv","group"]]},
 ];
 
 const CATALOG = GROUPS.flatMap(g => g.items.map(i => i[0]));
@@ -509,6 +515,13 @@ const H = {
     const top=Math.max(...v.map(Math.abs))||1;
     return v.map(x=>`${String(money(x)).padStart(9)} ${"#".repeat(Math.round(Math.abs(x)/top*40))}`).join("\n")
       +`\nmax ${money(Math.max(...v))} over ${v.length} value(s)`;},
+  when:()=>"Saved triggers need the local engine — they run on a clock, not on a page.",
+  triggers:()=>"Saved triggers need the local engine.",
+  untrigger:()=>"Saved triggers need the local engine.",
+  chain:()=>"Chains live in the local engine — run: python pico.py chain morning",
+  loopCsv:()=>"The CSV loop needs the local engine — it writes real files.",
+  csvPivot:()=>"csv pivot needs the local engine.",
+  twoKeyPhone:()=>"Phone-only approval needs the local engine and a bound chat.",
   replay:()=>"Replay needs the local engine — snapshots and the ledger live there.",
   csvFilter:()=>"CSV verbs need the local engine — run: python pico.py csv filter age>30 PATH",
   csvSort:()=>"CSV verbs need the local engine.",
@@ -657,6 +670,14 @@ const RULES = [
   [/^csv filter (?<cond>.+?) (?<path>\S+\.csv)$/i,"csvFilter"],
   [/^csv sort (?<col>\w+)(?: (?<dir>asc|desc))? (?<path>\S+\.csv)$/i,"csvSort"],
   [/^csv join (?<key>\w+) (?<p1>\S+\.csv) (?<p2>\S+\.csv)$/i,"csvJoin"],
+  [/^when (?<spec>.+?) then (?<actions>.+)$/i,"when"],
+  [/^triggers$/i,"triggers"],
+  [/^untrigger (?<n>\d+)$/i,"untrigger"],
+  [/^chain (?<name>\w+)\s*:\s*(?<body>.+)$/i,"chain"],
+  [/^chain (?<name>\w+)$/i,"chain"],
+  [/^for each row in (?<path>\S+) then (?<cmd>.+)$/i,"loopCsv"],
+  [/^csv pivot (?<key>\w+) (?<op>sum|count|avg|min|max) (?<col>\w+) (?<path>\S+\.csv)$/i,"csvPivot"],
+  [/^2key\s+(?<v>on|off|phone)$/i,"twoKeyPhone"],
   [/^replay\s+(?<target>.+)$/i,"replay"],
   [/^timeline(?:\s+(?<since>.+))?$/i,"timeline"],
   [/^2key\s+(?<v>on|off)$/i,"twoKey"],
@@ -880,7 +901,8 @@ const ICONS={inbox:'<path d="M3 12h5l2 3h4l2-3h5"/><rect x="3" y="5" width="18" 
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   file:'<path d="M6 3h7l5 5v13H6z"/><path d="M13 3v5h5"/>',
   heart:'<path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z"/>',
-  shield:'<path d="M12 3l7 3v6c0 4.2-3 7.4-7 9-4-1.6-7-4.8-7-9V6z"/>'};
+  shield:'<path d="M12 3l7 3v6c0 4.2-3 7.4-7 9-4-1.6-7-4.8-7-9V6z"/>',
+  bolt:'<path d="M13 2L4.5 13.5H11l-1 8.5L19 10h-6.5z"/>'};
 const rail=$(".rail");
 GROUPS.forEach((g,gi)=>{
   const wrap=document.createElement("div");
@@ -1016,7 +1038,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.2.0";
+$("#ver").textContent="v1.3.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){

@@ -12,11 +12,11 @@ import urllib.parse
 import urllib.request
 
 CATALOG = []
-TOKEN = CHAT = REPLY = P = BIND = None
+TOKEN = CHAT = REPLY = P = BIND = ENG = None
 
 
 def setup(api):
-    global TOKEN, CHAT, REPLY, P, BIND
+    global TOKEN, CHAT, REPLY, P, BIND, ENG
     tf = api["HOME"] / "telegram.token"
     if not tf.exists():
         return
@@ -28,6 +28,7 @@ def setup(api):
     bf = api["HOME"] / "telegram.bindcode"
     BIND = bf.read_text("utf-8").strip() if bf.exists() else None
     REPLY = api["reply"]
+    ENG = api["engine"]
     api["notifiers"].append(send)
     if not os.environ.get("PICO_NO_THREADS"):
         threading.Thread(target=poll, daemon=True).start()
@@ -70,7 +71,11 @@ def poll():
                     continue
                 if cid != CHAT:
                     continue
-                send(REPLY(text[1:] if text.startswith("/") else text))
+                try:
+                    ENG.approve_source = "phone"
+                    send(REPLY(text[1:] if text.startswith("/") else text))
+                finally:
+                    ENG.approve_source = None
         except Exception:
             time.sleep(5)
 

@@ -3,6 +3,12 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.3 — shipped
+
+103 rules. The trigger DSL (`when` on time, interval, file and absence), chains, CSV loops, `csv pivot`,
+phone-only approval, and a write lock that took the write path under the 5 ms budget. 88 acceptance
+tests.
+
 ## 1.2 — shipped
 
 95 rules. Replay from snapshots, the full quarantine lifecycle, net worth and debt avalanche,
@@ -23,9 +29,9 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **CSV as a loop** | `for each row in clients.csv then fill letter name={name}` turns a mail merge into one line | 50-row CSV produces 50 letters, one ledger line each |
-| **Trigger DSL** | `when 22:30 unless away then backup ~/Documents ; tidy` — `daily` is the only trigger today | a rule fires on time, file, or clipboard match |
-| **Approval from the phone only** | the code reaches the chat, but `approve` also works at the desk | with a token set, the desktop refuses `approve` |
+| **`unless` conditions** | `when 22:30 unless away then …` — the `unless` half is not parsed yet | a condition can veto a trigger |
+| **Clipboard trigger** | `when clip matches REGEX then …` needs an external tool on each platform | a copied order number fires a command |
+| **Trigger retry** | a trigger whose action throws is logged and skipped for that minute | one retry with a stated reason |
 
 ## Next — cheap and useful
 
@@ -33,8 +39,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
 | `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| `csv pivot` | `join` and `filter` exist; grouping is the missing verb | `csv pivot cat sum amt spend.csv` |
-| `watch FOLDER then CMD` | the last trigger that needs no DSL | a new file in a folder fires a command |
+| `watch FOLDER then CMD` | `when file GLOB` covers it, but the ergonomic name is missing | a new file in a folder fires a command |
+| `csv group-by` on multiple keys | `pivot` takes one key | two-key grouping |
 
 ## Deliberately not built
 

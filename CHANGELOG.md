@@ -2,6 +2,47 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.3.0 — 2026-11-14
+
+The last of the "next" list, plus a concurrency bug the trigger thread exposed.
+
+### Added
+
+- **Trigger DSL** — `when 22:30 then a ; b`, `when every 30m then …`, `when file GLOB then …` with
+  `{file}` substitution, and the negative trigger `when not CMD by 21:00 then …`. Actions are
+  validated against the rule set when saved. `triggers` lists, `untrigger N` removes.
+- **Chains** — `chain morning: add stretch ; tasks` defines a named sequence; `chain morning` runs it.
+- **CSV loops** — `for each row in clients.csv then add call {name}`. 200-row cap, per-row failures
+  reported rather than swallowed.
+- **`csv pivot`** — `csv pivot city sum amt spend.csv`, with `count`, `avg`, `min`, `max` and a total.
+- **Phone-only approval** — `2key phone` sends the code to the bound chat and refuses `approve` at
+  the terminal. The Telegram pack marks the approval source.
+- **`notify MSG`** — a first-class action, so a trigger can say something without running a command.
+- Chains and loops refuse to carry a send or danger action. A saved rule cannot fire a message.
+
+### Fixed
+
+- **Concurrent writers corrupted state.** The scheduler thread and the REPL shared one
+  `state.json.tmp` path, so a trigger firing during a command produced
+  `FileNotFoundError: state.json.tmp`. `save()` now takes a re-entrant lock and writes to a
+  thread-unique temp name. A four-thread stress test writing 480 tasks concurrently reports zero
+  errors and zero lost writes (T29).
+- `chain` read `m["body"]` on a pattern without that group, so every `chain NAME` raised
+  `IndexError: no such group`.
+- Trigger actions were validated with `if not E.match_rule(a)`, but `match_rule` returns a tuple and
+  `(None, None)` is truthy — so an invalid action was accepted. Now checks `[0] is None`.
+- `when` was briefly a `write`-tier command, which meant saving a trigger asked for confirmation.
+
+### Performance
+
+Both latency budgets are met for the first time: reads 0.65 ms (was 1.09), writes 3.58 ms (was 5.12).
+The thread-unique temp filename removed the contention that had been costing about 1.5 ms per write.
+
+### Tests
+
+88 checks, up from 68. T26–T30 cover triggers, chains, the CSV loop and pivot, concurrent writers, and
+phone-only approval.
+
 ## 1.2.0 — 2026-11-14
 
 The rest of the 1.1 "next" list.
@@ -140,6 +181,6 @@ around them.
 - State is plaintext JSON; nothing is encrypted.
 - No OCR, speech, QR rendering or two-way WhatsApp without an external tool or Meta's Cloud API.
 - `write`-tier commands typed by hand are not gated, only undoable. Deliberate, and open for review.
-- The core is 30,036 B against a 20 KB spec budget. The overage is the inverse registry, the
-  translator firewall, the privacy gate, slot dialogue, snapshots and replay. Stated rather than
-  hidden; the CI ceiling is 32 KB.
+- The core is 30,794 B against a 20 KB spec budget. The overage is the inverse registry, the
+  translator firewall, the privacy gate, slot dialogue, snapshots, replay and the write lock.
+  Stated rather than hidden; the CI ceiling is 32 KB.

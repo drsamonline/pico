@@ -1,6 +1,6 @@
 # Command reference
 
-95 rules, plus 6 slot rules that ask one question instead of failing. `[optional]` means the argument may be omitted. Every command is case-insensitive and
+103 rules, plus 6 slot rules that ask one question instead of failing. `[optional]` means the argument may be omitted. Every command is case-insensitive and
 `<angle brackets>` are the risk tier.
 
 ## Capture
@@ -124,7 +124,28 @@ the seven arithmetic operators, with size caps on powers and results.
 | `csv filter COND PATH` | safe | `age>30`, `name=Asha`, `>= <= !=` |
 | `csv sort COL [asc\|desc] PATH` | safe | numeric when the column parses as a number |
 | `csv join KEY A.csv B.csv` | safe | inner join, 50-row cap |
+| `csv pivot COL sum\|count\|avg\|min\|max FIELD PATH` | safe | group by one column, aggregate another, with a total |
 | `chart 1,4,9` | safe | horizontal bars scaled to the maximum |
+
+## Triggers
+
+A saved rule: one condition, one or more commands. Actions are validated against the rule set when
+saved, run through the same risk gate, and **a chain or loop refuses to carry a send or danger
+action** — a saved rule should not be able to fire a message on its own.
+
+| Command | Tier | Notes |
+| --- | --- | --- |
+| `when HH:MM then CMD ; CMD` | safe | fires once per day at that minute |
+| `when every 30m then CMD` | safe | `s`, `m`, `h` |
+| `when file GLOB then CMD` | safe | new files only; `{file}` and `{files}` are substituted |
+| `when not CMD by HH:MM then CMD` | safe | negative trigger: fires if CMD has not run by that time today |
+| `chain NAME: a ; b ; c` | safe | defines a named sequence in `state.json` |
+| `chain NAME` | write | runs it |
+| `for each row in PATH.csv then CMD` | write | `{column}` substituted per row; 200-row cap |
+| `triggers` · `untrigger N` | safe | list and remove |
+| `notify MSG` | safe | pushes through the notifier bus (console bell, Telegram) |
+
+Triggers fire only while pico runs (`--serve` or the REPL), checked every 15 seconds.
 
 ## Safety
 
@@ -137,6 +158,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | `confirm` · `cancel` | resolve or discard a pending send/danger action (120 s TTL) |
 | `aliases` · `unalias P` | inspect or remove learned phrasings |
 | `2key on` · `2key off` | danger actions then print a 6-hex code; `approve <code>` completes them |
+| `2key phone` | the code goes to the bound chat and `approve` is **refused at the terminal** |
 | `timeline [TS]` | the ledger as a readable list, optionally since an ISO timestamp |
 | `replay TS` | rebuilds state as of an ISO timestamp into `~/.pico/replay-<ts>/`. Snapshots are written every 25 mutations, 12 kept. Live state is never touched |
 | `again` · `it` · `that` | repeat the previous command |

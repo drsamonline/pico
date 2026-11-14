@@ -479,6 +479,110 @@ def t25_replay():
     shutil.rmtree(d, True)
 
 
+def t26_triggers():
+    e, d = fresh("t26")
+    out = e.handle("when 22:30 then brief ; tasks")
+    check("T26 triggers: a time trigger saves", out.startswith("Trigger 1 saved"), out[:60])
+    check("T26 triggers: a bad condition is explained",
+          "Unrecognised" in e.handle("when bogus then tasks"))
+    check("T26 triggers: an action that matches no rule is rejected",
+          "does not match any rule" in e.handle("when 22:30 then qwertyuiop zzz"))
+    e.handle("when every 30m then brief")
+    e.handle("when not did meds by 21:00 then notify Meds not logged")
+    listing = e.handle("triggers")
+    check("T26 triggers: all three are listed",
+          "22:30" in listing and "1800s" in listing and "not did meds" in listing,
+          listing.replace("\n", " | ")[:90])
+    import sys as _sys
+    mod = next((m for n, m in _sys.modules.items()
+                if n.startswith("pico_pack_triggers") and hasattr(m, "tick")), None)
+    if mod is None:
+        check("T26 triggers: pack reachable", False, "not loaded")
+    else:
+        now = datetime.datetime.now().replace(hour=22, minute=30, second=0, microsecond=0)
+        first = mod.tick(now)
+        second = mod.tick(now)
+        check("T26 triggers: a time trigger fires once",
+              any("brief" in " ".join(a) for _, a, _ in first) and not second,
+              "%d / %d" % (len(first), len(second)))
+    shutil.rmtree(d, True)
+
+
+def t27_chain():
+    e, d = fresh("t27")
+    e.handle("chain morning: add stretch ; tasks")
+    out = e.handle("chain morning")
+    check("T27 chain: a named sequence runs every step",
+          "Added." in out and "stretch" in out, out.replace("\n", " ")[:70])
+    check("T27 chain: an unknown name says how to define one",
+          "Define one" in e.handle("chain nope"))
+    e.handle("chain bad: wa bob hi")
+    check("T27 chain: a send-tier step is refused inside a chain",
+          "skipped" in e.handle("chain bad"), e.handle("chain bad")[:80])
+    shutil.rmtree(d, True)
+
+
+def t28_loop_pivot():
+    e, d = fresh("t28")
+    csv_path = d / "rows.csv"
+    csv_path.write_text("name,city,amt\nAsha,Pune,100\nRavi,Pune,250\nMeera,Surat,90\n", "utf-8")
+    out = e.handle("for each row in %s then add call {name}" % csv_path)
+    check("T28 loop: every row runs the command", "3 of 3" in out, out[:50])
+    check("T28 loop: placeholders were substituted",
+          [t["text"] for t in e.S["tasks"]] == ["call Asha", "call Ravi", "call Meera"],
+          str([t["text"] for t in e.S["tasks"]]))
+    piv = e.handle("csv pivot city sum amt %s" % csv_path)
+    check("T28 loop: pivot groups and totals",
+          "350" in piv and "90" in piv and "440" in piv, piv.replace("\n", " | ")[:80])
+    check("T28 loop: a send-tier body is refused",
+          "Refused" in e.handle("for each row in %s then wa bob hi" % csv_path))
+    shutil.rmtree(d, True)
+
+
+def t29_concurrency():
+    e, d = fresh("t29")
+    import threading as _th
+    errs = []
+
+    def hammer(n):
+        try:
+            for i in range(60):
+                e.handle("add t%d_%d" % (n, i))
+        except Exception as ex:
+            errs.append(ex)
+
+    ts = [_th.Thread(target=hammer, args=(k,)) for k in range(3)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    check("T29 concurrency: parallel writers do not collide", not errs, str(errs[:1]))
+    check("T29 concurrency: no state is lost", len(e.S["tasks"]) == 180,
+          str(len(e.S["tasks"])))
+    reloaded = Engine(home=d, quiet=True)
+    check("T29 concurrency: the file on disk is valid", len(reloaded.S["tasks"]) == 180)
+    check("T29 concurrency: no temp files left behind",
+          not list(d.glob("state.json.tmp*")))
+    shutil.rmtree(d, True)
+
+
+def t30_phone_approval():
+    e, d = fresh("t30")
+    e.handle("daily 09:00 brief")
+    out = e.handle("2key phone")
+    check("T30 phone: two-key phone mode is announced", "phone only" in out, out[:60])
+    gate = e.handle("unjob 1")
+    import re as _re
+    code = _re.search(r"approve (\w+)", gate or "")
+    check("T30 phone: a code is issued", bool(code), gate[:60])
+    if code:
+        check("T30 phone: the desk is refused",
+              "phone-only" in e.handle("approve " + code.group(1)))
+        e.approve_source = "phone"
+        out = e.handle("approve " + code.group(1))
+        e.approve_source = None
+        check("T30 phone: the phone completes it", out == "Removed.", out[:40])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -486,7 +590,8 @@ def main():
                t10_maths, t11_state, t12_ledger, t13_slots, t14_context,
                t15_recur, t16_two_key, t17_safe_delete, t18_learn, t19_data,
                t20_files, t21_quarantine, t22_net_worth, t23_subs, t24_csv,
-               t25_replay):
+               t25_replay, t26_triggers, t27_chain, t28_loop_pivot,
+               t29_concurrency, t30_phone_approval):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()
