@@ -1749,6 +1749,22 @@ def t87_replay_dirs_are_pruned():
     shutil.rmtree(d, True)
 
 
+def t88_backups_window():
+    e, d = fresh("t88")
+    (d / "src.txt").write_text("hello", "utf-8")
+    for _ in range(25):
+        e.handle("backup %s" % (d / "src.txt"))
+    made = sorted((d / "backups").glob("*.zip"))
+    check("T88 backups: the window holds", len(made) == 20, str(len(made)))
+    check("T88 backups: no two share a name", len({p.name for p in made}) == len(made))
+    check("T88 backups: the newest is a real zip",
+          made[-1].read_bytes()[:2] == b"PK", str(made[-1].name))
+    check("T88 backups: the count is reported",
+          "older backup(s) removed" in e.handle("backup %s" % (d / "src.txt")),
+          e.handle("backup %s" % (d / "src.txt"))[-50:])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1775,7 +1791,7 @@ def main():
                t79_scale, t81_report_plural,
                t82_ledger_generations_dated, t83_retention_policy,
                t84_budget_tool, t85_replay_reconstructs, t86_console_encoding,
-               t87_replay_dirs_are_pruned):
+               t87_replay_dirs_are_pruned, t88_backups_window):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

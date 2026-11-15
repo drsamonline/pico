@@ -51,12 +51,12 @@ network call at runtime except the one you ask for.
 | dependencies | 0 |
 | rules | 106 |
 | packs | 12 |
-| python source | 154,790 bytes, 29 files |
-| console | 69,998 bytes, one HTML file |
+| python source | 155,687 bytes, 29 files |
+| console | 70,278 bytes, one HTML file |
 | read latency | 0.71 ms/call |
 | write latency | 4.03 ms/call |
 | engine heap | 0.1 MB |
-| tests | 331 passing |
+| tests | 335 passing |
 
 ## Shape of the repository
 

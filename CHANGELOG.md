@@ -2,6 +2,36 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.29.0 — 2026-11-15
+
+### Fixed
+
+- **Backups overwrote each other and grew without limit.** The name carried a date only, so a second
+  backup on the same day replaced the first — 25 backups produced one file. Across days nothing was ever
+  removed. Names now carry microseconds and a rolling window of 20 is kept; the message says how many
+  were dropped. Pruning is safe here because every file was produced by `backup` from a source the user
+  still has.
+- **`doctor` now warns when the quarantine grows.** Deleted files are held until someone sweeps them,
+  and nothing sweeps automatically. The line reports the count and size, turns into a warning past 50 MB
+  or 100 files, and names the command that fixes it.
+
+### The same bug, three times
+
+Microsecond-resolution names have now been needed in three places, each found separately:
+
+| Release | Where | Symptom |
+| --- | --- | --- |
+| 1.23.0 | ledger generations | five rotations in one second became one file |
+| 1.26.1 | snapshots | replay could not tell two snapshots apart |
+| 1.29.0 | backups | 25 backups became one file |
+
+A one-second stamp is not an identifier. It is worth stating once rather than rediscovering.
+
+### Tests
+
+335 checks, up from 331. T88 runs 25 backups and asserts the window, unique names, that the newest is a
+real zip, and that the count is reported.
+
 ## 1.28.0 — 2026-11-15
 
 ### Fixed

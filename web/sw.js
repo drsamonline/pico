@@ -1,5 +1,5 @@
 /* pico service worker — cache the shell so the console opens offline. */
-const CACHE = "pico-1.28.0";
+const CACHE = "pico-1.29.0";
 const SHELL = ["./app.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {

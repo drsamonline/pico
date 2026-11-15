@@ -3,10 +3,10 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 331 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 335 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.28.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.29.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,13 +97,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 109 / 113 / 6 |
 | packs | 12 |
-| python source | 154,790 bytes across 29 files |
-| package / packs / console | 84,046 / 70,744 / 69,998 B |
-| console | 69,998 bytes, one HTML file, no external assets |
+| python source | 155,687 bytes across 29 files |
+| package / packs / console | 84,943 / 70,744 / 70,278 B |
+| console | 70,278 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 331 passing, stdlib `unittest`-free runner |
+| acceptance tests | 335 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 more — and why state is only persisted when something actually changed. Both stay inside the 5 ms
@@ -127,9 +127,9 @@ decision.
 
 | Part | Baseline | Ceiling (+10%) | Actual |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 84,046 B | 92,450 B | 84,046 B |
+| package (`pico/` + launcher, 18 files) | 84,943 B | 93,437 B | 84,943 B |
 | packs (12 files) | 70,744 B | 77,818 B | 70,744 B |
-| console (one HTML file) | 69,998 B | 76,997 B | 69,998 B |
+| console (one HTML file) | 70,278 B | 77,305 B | 70,278 B |
 | rule-path latency | — | 5 ms | 0.45 ms read, 1.7 ms write empty |
 | idle heap | — | 15 MB | 0.1 MB |
 | dependencies | — | 0 | 0 |

@@ -207,7 +207,10 @@ def doctor(m):
     if q.exists():
         files = [p for p in q.iterdir() if p.is_file() and p.name != "index.json"]
         size = sum(p.stat().st_size for p in files)
-        rows.append(_line(OK, "quarantine", "%d file(s), %d B" % (len(files), size)))
+        level = WARN if size > 50 * 1024 * 1024 or len(files) > 100 else OK
+        rows.append(_line(level, "quarantine",
+                          "%d file(s), %d B — `quarantine sweep 30d` drops the old ones"
+                          % (len(files), size)))
     else:
         rows.append(_line(OK, "quarantine", "empty"))
 

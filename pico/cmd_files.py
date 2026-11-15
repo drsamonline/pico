@@ -52,13 +52,33 @@ def tidy_preview(m):
     return [f.name for f in d.iterdir() if f.is_file()]
 
 
+BACKUP_KEEP = 20           # backups kept before the oldest are dropped
+
+
+def _prune_backups(out):
+    """Backups are the tool's own artifacts, so a rolling window is safe.
+
+    User data is never dropped this way: everything here was produced by `backup`
+    from a source the user still has.
+    """
+    try:
+        made = sorted(out.glob("*.zip"))
+        extra = made[:-BACKUP_KEEP]
+        for z in extra:
+            z.unlink()
+        return len(extra)
+    except Exception:
+        return 0
+
+
 def backup(m):
     src = pathlib.Path(unquote(m["path"])).expanduser()
     if not src.exists():
         return "Path not found."
     out = E.home / "backups"
     out.mkdir(exist_ok=True)
-    z = out / (src.name + "_" + datetime.date.today().isoformat() + ".zip")
+    # microseconds: two backups in the same second must not overwrite each other
+    z = out / (src.name + "_" + datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S%f") + ".zip")
     with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as f:
         if src.is_file():
             f.write(src, src.name)
@@ -67,7 +87,9 @@ def backup(m):
                 if p.is_file() and out not in p.parents:
                     f.write(p, p.relative_to(src))
     E.set_inverse("file_rm", {"path": str(z)})
-    return "Backup: %s (%d KB)" % (z, z.stat().st_size // 1024)
+    dropped = _prune_backups(out)
+    tail = ("  (%d older backup(s) removed)" % dropped) if dropped else ""
+    return "Backup: %s (%d KB)%s" % (z, z.stat().st_size // 1024, tail)
 
 
 def find(m):
