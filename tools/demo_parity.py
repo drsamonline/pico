@@ -9,6 +9,7 @@ locally. This checks that claim instead of trusting it.
 """
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -102,17 +103,23 @@ DASHES = {"\u2014": "-", "\u2013": "-", "\u2018": "'", "\u2019": "'",
           "\u201c": '"', "\u201d": '"', "\u00a0": " "}
 
 
+STAMP = re.compile(r"\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?(\.\d+)?)?"
+                   r"|\b\d{2}:\d{2}\b")
+
+
 def _norm(value):
-    """Compare answers, not typography.
+    """Compare answers, not typography or the clock.
 
     A typographic dash is not a different answer, and Windows console encoding can
-    mangle one side of a comparison on the way to the log. Fold the punctuation
-    that carries no meaning, keep everything else exact.
+    mangle one side of a comparison on the way to the log. A timestamp is not an
+    answer either: the two engines run seconds apart, so `journal` can stamp the
+    same entry 12:44 here and 12:45 there and look divergent when both are right.
+    Fold the punctuation and the clock, keep everything else exact.
     """
     text = str(value).strip()
     for src, dst in DASHES.items():
         text = text.replace(src, dst)
-    return text
+    return STAMP.sub("<stamp>", text)
 
 
 def js_results(commands):

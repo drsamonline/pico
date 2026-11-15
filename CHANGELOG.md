@@ -34,6 +34,17 @@ T86's first version patched `sys.stdout` for the whole process and failed one ru
 `MemoryError` in the codec lookup. `utf8_console()` now takes the streams to configure, so the test
 passes its own writer and the process's stdout is left alone. Five consecutive clean runs after.
 
+### Tool
+
+- **The parity gate folds timestamps before comparing.** It failed on macOS because `journal` stamped
+  the same entry `12:44` for the engine and `12:45` for the demo — the two run seconds apart, and the
+  minute turned over between them. A timestamp is not an answer. Dates and times are now `<stamp>` on
+  both sides; everything else is still compared exactly.
+
+  This is the third flaky-gate fix in four releases, and the pattern is the same each time: a check
+  that compares something nondeterministic — a clock, a console encoding, a wall-clock duration —
+  reports the environment instead of the code.
+
 ## 1.26.1 — 2026-11-15
 
 ### Fixed
