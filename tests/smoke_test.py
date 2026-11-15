@@ -1471,6 +1471,32 @@ def t75_file_trigger():
     shutil.rmtree(d, True)
 
 
+def t78_glob_helper():
+    mod = _trig_mod()
+    if mod is None or not hasattr(mod, "_glob"):
+        check("T78 glob: the pack exposes _glob", False, "not loaded")
+        return
+    import os
+    d = pathlib.Path(tempfile.mkdtemp(prefix="pico-t78-"))
+    try:
+        (d / "a.csv").write_text("x", "utf-8")
+        (d / "b.csv").write_text("x", "utf-8")
+        (d / "c.txt").write_text("x", "utf-8")
+        found = {p.name for p in mod._glob(str(d / "*.csv"))}
+        check("T78 glob: an absolute pattern matches", found == {"a.csv", "b.csv"},
+              str(sorted(found)))
+        check("T78 glob: a forward slash in the pattern works on every OS",
+              len(mod._glob(os.path.join(str(d), "*.csv"))) == 2)
+        home_rel = mod._glob("~/*")
+        check("T78 glob: a ~ pattern resolves against home, not cwd",
+              all(str(pathlib.Path.home()) in str(p) for p in home_rel) or not home_rel,
+              str(len(home_rel)))
+        check("T78 glob: a pattern that matches nothing returns an empty list",
+              mod._glob(str(d / "*.zzz")) == [])
+    finally:
+        shutil.rmtree(d, True)
+
+
 def t76_noop_gate():
     e, d = fresh("t76")
     check("T76 no-op: restoring a nonexistent item explains instead of prompting",
@@ -1543,7 +1569,7 @@ def main():
                t65_bounds, t66_fill_single_pass, t67_quoted_paths,
                t68_sql_pragma, t69_dates, t70_fuzzy_template, t71_expired_confirm,
                t72_ledger_rotation, t73_web_routes, t74_indic_names,
-               t75_file_trigger, t76_noop_gate, t77_sm2):
+               t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

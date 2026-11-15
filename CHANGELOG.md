@@ -31,8 +31,13 @@ SM-2 is correct: repeated grade 5 gives intervals 1, 6, 16, 45, 127, 351 … wit
 
 ### Tests
 
-290 checks, up from 272. T74 the Indic names and categories, T75 the file trigger including
-once-per-file, T76 the no-op gate, T77 the SM-2 schedule.
+294 checks, up from 272. T74 the Indic names and categories, T75 the file trigger including
+once-per-file, T76 the no-op gate, T77 the SM-2 schedule, T78 the glob helper.
+
+A first attempt at the file-trigger fix anchored absolute patterns with `Path.glob`, which works on
+Linux and fails on Windows — `Path.glob` splits the pattern on `\\` only, so a pattern written with a
+`/` separator matches nothing. CI caught it on windows-latest. The helper now uses the stdlib `glob`
+module, which accepts both.
 
 ## 1.16.0 — 2026-11-14
 

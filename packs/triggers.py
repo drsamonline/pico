@@ -129,14 +129,16 @@ def _cond_true(cond):
 def _glob(pat):
     """Glob a pattern that may be absolute, ~-relative or home-relative.
 
-    `Path.home().glob("/tmp/x/*.csv")` returns nothing: glob does not accept an
-    absolute pattern. Absolute patterns must be globbed from their own anchor.
+    `Path.home().glob("/tmp/x/*.csv")` returns nothing, because Path.glob does not
+    accept an absolute pattern; and on Windows it splits the pattern on `\\` only,
+    so a pattern written with a `/` separator silently matches nothing. The stdlib
+    `glob` module handles both, so use it.
     """
+    import glob as _globmod
     pat = os.path.expanduser(str(pat))
-    p = pathlib.Path(pat)
-    if p.is_absolute():
-        return list(pathlib.Path(p.anchor).glob(str(p)[len(p.anchor):]))
-    return list(pathlib.Path.home().glob(pat))
+    if not os.path.isabs(pat):
+        pat = os.path.join(os.path.expanduser("~"), pat)
+    return [pathlib.Path(x) for x in _globmod.glob(pat, recursive=True)]
 
 
 def _clip():
