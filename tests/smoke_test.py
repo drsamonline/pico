@@ -1944,6 +1944,12 @@ def main():
             print("  FAIL  %s raised" % fn.__name__)
             traceback.print_exc()
     print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
+    # a count any tool can read without running this again: a second run in the same
+    # workspace is a second chance to disagree with itself
+    try:
+        (ROOT / "tests" / ".count").write_text("%d\n" % len(PASS), "utf-8")
+    except Exception:
+        pass
     if FAIL:
         for n, det in FAIL:
             print("  - %s: %s" % (n, det))

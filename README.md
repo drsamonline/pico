@@ -6,7 +6,7 @@
   <img alt="tests: 367 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.32.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.32.1" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**

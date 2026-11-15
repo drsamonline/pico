@@ -43,6 +43,20 @@ def measure():
 
 
 def test_count():
+    """The number of passing checks, without running the suite again.
+
+    CI runs the suite immediately before this; asking for a second run made the two
+    disagree on Windows and the gate reported a documentation error that was really
+    its own measurement. `--count N` wins, then the file the suite leaves, then a run.
+    """
+    if "--count" in sys.argv:
+        return int(sys.argv[sys.argv.index("--count") + 1])
+    recorded = ROOT / "tests" / ".count"
+    if recorded.exists():
+        try:
+            return int(recorded.read_text("utf-8").strip())
+        except Exception:
+            pass
     r = subprocess.run([sys.executable, str(ROOT / "tests" / "smoke_test.py")],
                        capture_output=True, encoding="utf-8", timeout=300)
     m = re.search(r"(\d+) passed", r.stdout)

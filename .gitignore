@@ -9,3 +9,4 @@ dist/
 venv/
 .DS_Store
 Thumbs.db
+tests/.count

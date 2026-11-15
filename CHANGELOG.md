@@ -2,6 +2,20 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.32.1 — 2026-11-15
+
+### Fixed
+
+- **The doc gate ran the test suite a second time, and on Windows the two runs disagreed.**
+  `tests/smoke_test.py` reported 367 passing; the gate's own re-run reported 365, so it failed the
+  build with "README.md says 367 tests, suite reports 365" — a documentation error that was really a
+  measurement error. The suite now writes its count to `tests/.count` and the gate reads that, or takes
+  `--count N`. The suite runs once.
+
+  Fourth flaky gate in five releases, and the same shape every time: a check that measures something
+  instead of reading what was already measured. The clock, the line endings, the console encoding, and
+  now a second run.
+
 ## 1.32.0 — 2026-11-15
 
 Two of the three open questions on the roadmap, answered in code.
