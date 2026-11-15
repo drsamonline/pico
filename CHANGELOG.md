@@ -2,6 +2,38 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.19.0 — 2026-11-15
+
+### Added
+
+- **`tools/demo_parity.py`** — runs the console's own engine headlessly through node, compares it with
+  the Python engine command by command, and fails the build when they disagree. CI runs it on every
+  push. The landing page claims the demo runs the resolver, the risk gate and all arithmetic locally;
+  this checks that claim instead of trusting it.
+
+### Fixed
+
+Six ways the demo answered differently from the engine, found by the new check:
+
+- **Numbers were grouped in lakhs** (`10,41,388`) while the engine groups in thousands (`1,041,388`).
+  The demo's `toLocaleString` used `en-IN`; it now matches `{:,.0f}`.
+- **`decide` picked a different option on the same day** — the demo used a hand-rolled rolling hash
+  where the engine uses `sha256("a|b|" + date)`. The demo now carries a real SHA-256, so both say
+  "same answer all day" and mean it.
+- **`decide a` ran a catalogue template** (`decide a|b|c`) in the demo while the engine refused it.
+  The placeholder guard now covers single letters, and the demo's catalogue entry is `decide A|B|C`
+  like the engine's.
+- **`on 13-45 bad` was accepted** by the demo; the date validation added to the engine in 1.17.0 had
+  never been ported.
+- **`undo` and `log` recorded `cmd: "?"`** because the demo's inverse helper never saw the command.
+- **`tasks` showed no `<due>` or `<recur>` marks**, and the demo's suggestions printed the
+  normalised text (`decide a|b|c`) instead of the catalogue string.
+
+### Tests
+
+The parity check is 61 commands: 44 identical, 2 that the demo refuses on purpose, 15 that differ only
+in wording, 0 divergent. It is a separate gate from the 298-check suite because it needs node.
+
 ## 1.18.1 — 2026-11-15
 
 ### Fixed

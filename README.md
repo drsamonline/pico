@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.18.1" src="docs/assets/badge-version.svg">
+  <img alt="version 1.19.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -98,8 +98,8 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
 | python source | 149,402 bytes across 29 files |
-| package / packs / console | 78,683 / 70,719 / 65,119 B |
-| console | 65,119 bytes, one HTML file, no external assets |
+| package / packs / console | 78,683 / 70,719 / 68,879 B |
+| console | 68,879 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
@@ -124,7 +124,7 @@ every change and a snapshot every 25 changes so `replay` has a starting point â€
 | --- | --- | --- | --- |
 | package (`pico/` + launcher, 18 files) | 96 KB | 78,683 B | 17.3 KB |
 | packs (12 files) | 96 KB | 70,719 B | 25.3 KB |
-| console (one HTML file) | 96 KB | 65,119 B | 31.2 KB |
+| console (one HTML file) | 96 KB | 68,879 B | 28.7 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |
 | dependencies | 0 | 0 | â€” |
