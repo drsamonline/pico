@@ -3,14 +3,14 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 307 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.23.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.24.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
-106 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, a trigger DSL,
+109 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, a trigger DSL,
 and an optional language model that is only ever allowed to *propose* a command. No account, no telemetry, no network.
 
 ```bash
@@ -72,7 +72,7 @@ rule → alias → typo → fuzzy → teach → [optional LLM] → teach
 A `write`-tier command **proposed by the model** is gated like a send. Typed by hand, it runs and
 stays undoable. That asymmetry is deliberate: you meant it, the model might not have.
 
-## Commands — 106 rules
+## Commands — 109 rules
 
 | Group | Commands |
 | --- | --- |
@@ -95,10 +95,10 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | Property | Value |
 | --- | --- |
 | dependencies | 0 — Python standard library only |
-| rules / catalogue / slot rules | 106 / 110 / 6 |
+| rules / catalogue / slot rules | 109 / 113 / 6 |
 | packs | 12 |
-| python source | 149,402 bytes across 29 files |
-| package / packs / console | 78,683 / 70,719 / 69,998 B |
+| python source | 150,584 bytes across 29 files |
+| package / packs / console | 79,840 / 70,744 / 69,998 B |
 | console | 69,998 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
@@ -122,7 +122,7 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 96 KB | 78,683 B | 17.3 KB |
+| package (`pico/` + launcher, 18 files) | 96 KB | 79,840 B | 16.2 KB |
 | packs (12 files) | 96 KB | 70,719 B | 25.3 KB |
 | console (one HTML file) | 96 KB | 69,998 B | 27.6 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |

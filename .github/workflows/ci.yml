@@ -35,6 +35,10 @@ jobs:
       - name: Acceptance tests
         run: python tests/smoke_test.py
 
+      - name: Docs quote the real numbers
+        shell: bash
+        run: python tools/doc_consistency.py
+
       - name: Console demo agrees with the engine
         shell: bash
         env:

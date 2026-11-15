@@ -2,6 +2,23 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.24.0 — 2026-11-15
+
+### Added
+
+- **`tools/doc_consistency.py`** — measures the tree and checks every number the docs quote against it:
+  version, package/packs/console bytes, python source size, file counts, rule count, catalogue size and
+  test count. CI runs it on every push.
+
+  It found **15 stale numbers on its first run**, including a README badge that had claimed 137 tests
+  since 1.8.0, three places still saying 106 rules, two meta descriptions saying 66, and a console size
+  from three releases ago. Every one of those was a number I had been correcting by hand each release
+  and missing.
+
+### Changed
+
+- The README's "read next" table now lists both tools.
+
 ## 1.23.0 — 2026-11-15
 
 ### Changed
