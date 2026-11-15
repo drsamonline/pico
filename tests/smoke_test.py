@@ -1573,6 +1573,41 @@ def t79_scale():
     shutil.rmtree(d, True)
 
 
+def t80_ledger_generations():
+    e, d = fresh("t80")
+    e.LEDGER_CAP = 20
+    for i in range(45):
+        e.handle("add x%d" % i)
+    live = e.ledger_file
+    prev = live.with_name("%s.1.jsonl" % live.stem)
+    check("T80 generations: rotation produced a previous generation", prev.exists())
+    lines = list(e.ledger_lines())
+    check("T80 generations: the reader spans both files",
+          len(lines) == 25, str(len(lines)))
+    tl = e.handle("timeline")
+    check("T80 generations: timeline includes the rotated history",
+          len(tl.splitlines()) == 25, str(len(tl.splitlines())))
+    check("T80 generations: timeline starts at the oldest kept command",
+          "add x20" in tl.splitlines()[0], tl.splitlines()[0][:50])
+    month = e.handle("report month")
+    check("T80 generations: the report counts both files",
+          "commands 25" in month, [l for l in month.splitlines() if "commands" in l])
+    shutil.rmtree(d, True)
+
+
+def t81_report_plural():
+    e, d = fresh("t81")
+    e.handle("add a")
+    out = e.handle("report weekly")
+    check("T81 plural: one command reads '1 command'", "(1 command)" in out,
+          [l for l in out.splitlines() if "command" in l])
+    e.handle("add b")
+    out = e.handle("report weekly")   # this command counts itself
+    check("T81 plural: more than one reads '3 commands'", "(3 commands)" in out,
+          [l for l in out.splitlines() if "command" in l])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1596,7 +1631,7 @@ def main():
                t68_sql_pragma, t69_dates, t70_fuzzy_template, t71_expired_confirm,
                t72_ledger_rotation, t73_web_routes, t74_indic_names,
                t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper,
-               t79_scale):
+               t79_scale, t80_ledger_generations, t81_report_plural):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

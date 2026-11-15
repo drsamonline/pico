@@ -109,11 +109,26 @@ class StoreMixin:
                 % (n, base_ts, target, len(s2.get("tasks", [])),
                    len(s2.get("spend", [])), len(s2.get("notes", {})), work))
 
+    def ledger_lines(self):
+        """Every ledger line, oldest generation first.
+
+        Rotation keeps `ledger.1.jsonl`, so reading only `ledger.jsonl` would make
+        the oldest history silently disappear from `timeline` and `report`.
+        """
+        files = [self.ledger_file.with_name("%s.1.jsonl" % self.ledger_file.stem),
+                 self.ledger_file]
+        for f in files:
+            if not f.exists():
+                continue
+            for line in f.read_text("utf-8").splitlines():
+                if line.strip():
+                    yield line
+
     def timeline(self, since=""):
         if not self.ledger_file.exists():
             return "Ledger empty."
         rows = []
-        for line in self.ledger_file.read_text("utf-8").splitlines():
+        for line in self.ledger_lines():
             try:
                 r = json.loads(line)
             except Exception:

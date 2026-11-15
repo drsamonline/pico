@@ -16,12 +16,10 @@ def setup(api):
 
 
 def _ledger(days):
-    f = E.home / "ledger.jsonl"
-    if not f.exists():
-        return []
     cut = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat()[:19]
     rows = []
-    for line in f.read_text("utf-8").splitlines():
+    # the rotated generation counts too, or a report silently loses half its history
+    for line in E.ledger_lines():
         try:
             r = json.loads(line)
         except Exception:
@@ -70,7 +68,7 @@ def _busiest(rows):
     if not days:
         return "-"
     d = max(days, key=days.get)
-    return "%s (%d commands)" % (d, days[d])
+    return "%s (%d command%s)" % (d, days[d], "" if days[d] == 1 else "s")
 
 
 def month(m):

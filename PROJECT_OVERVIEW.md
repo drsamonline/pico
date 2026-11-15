@@ -56,7 +56,7 @@ network call at runtime except the one you ask for.
 | read latency | 0.71 ms/call |
 | write latency | 4.03 ms/call |
 | engine heap | 0.1 MB |
-| tests | 298 passing |
+| tests | 305 passing |
 
 ## Shape of the repository
 

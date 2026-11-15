@@ -2,6 +2,23 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.22.0 — 2026-11-15
+
+### Fixed
+
+- **`timeline` and `report` read only the live ledger file**, so once rotation moved the older lines to
+  `ledger.1.jsonl` the history silently halved. Both now go through one reader, `engine.ledger_lines()`,
+  which spans the generations oldest-first.
+- **The busiest-day line said "1 commands".** Pluralised.
+
+### Tests
+
+305 checks, up from 298. T80 asserts that rotation produces a generation and that the reader, the
+timeline and the report all see it. T81 covers both plural forms.
+
+T81's first version expected "2 commands" after two adds; the report counts itself, so the answer is
+three. The test was wrong, not the code.
+
 ## 1.21.0 — 2026-11-15
 
 ### Changed
