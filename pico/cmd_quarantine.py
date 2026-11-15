@@ -14,6 +14,16 @@ def safe_delete(m):
     p = pathlib.Path(unquote(m["path"])).expanduser()
     if not p.exists():
         return "Path not found."
+    # moving a directory into a subdirectory of itself is an error shutil raises late,
+    # after the user has already confirmed. Refuse before asking.
+    try:
+        home = E.home.resolve()
+        target = p.resolve()
+        if target == home or home.is_relative_to(target):
+            return ("That is pico's own home, or contains it. Quarantining it would move "
+                    "the quarantine into itself. Delete it with your file manager.")
+    except Exception:
+        pass
     q = E.home / "quarantine"
     q.mkdir(exist_ok=True)
     dest = q / (datetime.datetime.now().strftime("%Y%m%d%H%M%S") + "_" + p.name)
@@ -27,6 +37,15 @@ def safe_delete(m):
 
 def safe_delete_preview(m):
     p = pathlib.Path(unquote(m["path"])).expanduser()
+    # an empty preview runs the handler straight through, which is how the refusal
+    # below reaches the user instead of a confirmation prompt for an impossible move
+    try:
+        home = E.home.resolve()
+        target = p.resolve()
+        if target == home or home.is_relative_to(target):
+            return []
+    except Exception:
+        pass
     if p.is_file():
         return [str(p)]
     if p.is_dir():

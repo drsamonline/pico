@@ -180,7 +180,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Writes rewrite the whole state file** | 9.5 ms at 5,000 tasks, 0.45 ms empty. The 5 ms figure was this project's own spec, not a measured complaint, and an append-only journal puts the write path — the one that holds the user's tasks — at risk | a journal that survives a kill -9 mid-write, with a test that proves it |
+| **Nothing** | the last item — the write path — was measured at 1k/5k/20k/50k tasks and closed on the numbers: 25 ms at 20,000 tasks, which is five a day for eleven years. See the curve in the README | — |
 
 
 ## Deliberately not built

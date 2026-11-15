@@ -3,10 +3,10 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 382 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 397 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.34.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.35.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,20 +97,37 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 110 / 116 / 6 |
 | packs | 12 |
-| python source | 161,252 bytes across 29 files |
-| package / packs / console | 88,601 / 72,651 / 70,278 B |
+| python source | 162,107 bytes across 29 files |
+| package / packs / console | 89,456 / 72,651 / 70,278 B |
 | console | 70,278 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 382 passing, stdlib `unittest`-free runner |
+| acceptance tests | 397 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
-more — and why state is only persisted when something actually changed. Both stay inside the 5 ms
-budget to roughly 2,000 tasks on the machine these numbers came from; at 5,000 the write reaches
-9.5 ms because the whole file is rewritten. An append-only journal is the fix, and it is on the
-roadmap. The suite prints its own timings rather than asserting them: a wall-clock bound in a test
-measures the CI runner, not the code.
+more — and why state is only persisted when something actually changed. The suite prints its own
+timings rather than asserting them: a wall-clock bound in a test measures the CI runner, not the code.
+
+The write path was measured to the top of its range rather than argued about. Median of 10–25 runs, one
+machine:
+
+| Tasks | state.json | read | write |
+| --- | --- | --- | --- |
+| 1,000 | 36 KB | 0.49 ms | 2.07 ms |
+| 5,000 | 168 KB | 1.10 ms | 6.48 ms |
+| 20,000 | 674 KB | 0.73 ms | 19.10 ms |
+| 50,000 | 1,700 KB | 0.37 ms | 44.89 ms |
+
+Reads are flat because the listing is capped. Writes are linear in state size, which is the whole file
+being serialised and replaced.
+
+The threshold this decides: **25 ms at 20,000 tasks**. Twenty thousand tasks is five a day for eleven
+years, so the realistic ceiling sits where a typed command still returns before the next keystroke. The
+append-only journal that would flatten this curve was **not built**: it puts the file holding the user's
+tasks at risk to fix a latency no user has felt, and the original 5 ms figure was this project's own
+spec rather than a complaint. The measurement is here so the decision can be revisited with numbers
+instead of opinion.
 
 `state.json` is compact JSON. It is still valid and still yours; `python3 -m json.tool ~/.pico/state.json`
 prints it indented when you want to read it. Indenting it on every write cost 34 ms at 5,000 tasks —
@@ -127,7 +144,7 @@ decision.
 
 | Part | Baseline | Ceiling (+10%) | Actual |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 88,601 B | 97,461 B | 88,601 B |
+| package (`pico/` + launcher, 18 files) | 89,456 B | 98,401 B | 89,456 B |
 | packs (12 files) | 72,651 B | 79,916 B | 72,651 B |
 | console (one HTML file) | 70,278 B | 77,305 B | 70,278 B |
 | rule-path latency | — | 5 ms | 0.45 ms read, 1.7 ms write empty |

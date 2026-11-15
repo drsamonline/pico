@@ -2,6 +2,44 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.35.0 — 2026-11-15
+
+### The write path, decided on measurements
+
+Asked for the curve instead of an opinion, so here it is — median of 10–25 runs, one machine:
+
+| Tasks | state.json | read | write |
+| --- | --- | --- | --- |
+| 1,000 | 36 KB | 0.49 ms | 2.07 ms |
+| 5,000 | 168 KB | 1.10 ms | 6.48 ms |
+| 20,000 | 674 KB | 0.73 ms | 19.10 ms |
+| 50,000 | 1,700 KB | 0.37 ms | 44.89 ms |
+
+Reads are flat because the listing is capped; writes are linear in state size. Twenty thousand tasks is
+five a day for eleven years, and 19 ms there is inside a keystroke. **The append-only journal is not
+being built**: it puts the file holding the user's tasks at risk to fix a latency no user has felt, and
+the original 5 ms figure was this project's own spec. The curve is in the README so the decision can be
+reopened with numbers. The roadmap now has no open items and nothing "worth the complexity".
+
+### Fixed — two defects from the next probe round
+
+- **`remember key` silently stored `k: v`.** The fuzzy tier takes a catalogue entry, strips its
+  description and runs what is left — and `remember k=v` is a template whose placeholders are single
+  lowercase letters. `PLACEHOLDER` caught `X`, `N` and all-caps words but not `k` or `v`, so a typo
+  wrote a note that looked like it had worked. It now matches single lowercase letters as well, and the
+  guard is applied to the command part of the entry rather than the whole line, so `doctor probe write`
+  stays correctable. The same hole existed in the console's guard; the parity gate keeps them in step.
+- **`safe delete ~/.pico` crashed after the user confirmed.** Moving a directory into a subdirectory of
+  itself is an error `shutil` raises late. `safe delete` now refuses a target that is pico's own home or
+  contains it, and the preview returns empty so the refusal is shown *before* the confirmation prompt
+  rather than after it.
+
+### Tests
+
+397 checks, up from 382. T96 the template guard in both directions — a template must not run, a real
+command must, a typo must still be corrected. T97 the home refusal, that nothing is moved, and that a
+real file still asks, confirms and undoes.
+
 ## 1.34.0 — 2026-11-15
 
 ### Decided

@@ -1956,6 +1956,48 @@ def t95_aliases_any_script():
     shutil.rmtree(d, True)
 
 
+def t96_placeholder_guard():
+    e, d = fresh("t96")
+    # a catalogue template must never run itself: `remember k=v` was storing k: v
+    for bad in ("remember key", "remember =value", "remember key="):
+        out = e.handle(bad)
+        check("T96 template: %r does not write a note" % bad,
+              e.S["notes"] == {} and "Remembered" not in out, "%r -> %r" % (bad, out[:40]))
+    check("T96 template: and it says why", "rule matched" in e.handle("remember key").lower()
+          or "teach" in e.handle("remember key").lower()
+          or "Did you mean" in e.handle("remember key"),
+          e.handle("remember key")[:60])
+
+    # real commands still resolve, and so do typos
+    for good in ("backup /tmp", "doctor probe write", "split 100 3", "due 1 2026-12-25"):
+        check("T96 template: %r still resolves by rule" % good,
+              e.resolve(good)["src"] == "rule", e.resolve(good)["src"])
+    check("T96 template: a typo is still corrected",
+          e.resolve("breif")["cmd"] == "brief", str(e.resolve("breif")))
+    shutil.rmtree(d, True)
+
+
+def t97_safe_delete_home():
+    e, d = fresh("t97")
+    e.handle("add a")
+    out = e.handle("safe delete %s" % d)
+    check("T97 safe delete: pico's own home is refused, not prompted",
+          "own home" in out, out[:70])
+    check("T97 safe delete: and nothing was moved", (d / "state.json").exists())
+    out = e.handle("safe delete %s" % d.parent)
+    check("T97 safe delete: a directory containing the home is refused too",
+          "own home" in out, out[:60])
+    real = d / "throwaway.txt"
+    real.write_text("x", "utf-8")
+    out = e.handle("safe delete %s" % real)
+    check("T97 safe delete: a real file still asks first",
+          out.startswith("[danger]") and "Affects: 1" in out, out[:60])
+    check("T97 safe delete: and confirms cleanly", "Quarantined" in e.handle("confirm"))
+    check("T97 safe delete: undo puts it back",
+          "Undone" in e.handle("undo") and real.exists())
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1985,7 +2027,8 @@ def main():
                t87_replay_dirs_are_pruned, t88_backups_window,
                t89_contrast_gate, t90_fill_output_dir, t91_job_errors,
                t92_probe_covers_fill, t93_alias_store, t94_job_switches_off,
-               t95_aliases_any_script):
+               t95_aliases_any_script, t96_placeholder_guard,
+               t97_safe_delete_home):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()
