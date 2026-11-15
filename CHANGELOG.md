@@ -34,6 +34,12 @@ Six ways the demo answered differently from the engine, found by the new check:
 The parity check is 61 commands: 44 identical, 2 that the demo refuses on purpose, 15 that differ only
 in wording, 0 divergent. It is a separate gate from the 298-check suite because it needs node.
 
+The gate earned its keep before it ever passed: on `windows-latest` it reported a divergence for
+`decide tea|coffee` where both sides had picked `coffee` with the same seed. The difference was an em
+dash mangled by the Windows console encoding on its way to the log. The tool now compares answers, not
+typography — it folds the dashes and quotes that carry no meaning and keeps everything else exact —
+and the CI step sets `PYTHONIOENCODING=utf-8` so its own output is not mangled.
+
 ## 1.18.1 — 2026-11-15
 
 ### Fixed

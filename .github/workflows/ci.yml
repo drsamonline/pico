@@ -37,6 +37,8 @@ jobs:
 
       - name: Console demo agrees with the engine
         shell: bash
+        env:
+          PYTHONIOENCODING: utf-8
         run: python tools/demo_parity.py
 
       - name: Zero third-party imports

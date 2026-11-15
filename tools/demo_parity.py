@@ -51,6 +51,23 @@ COMMANDS = [
 ]
 
 
+DASHES = {"\u2014": "-", "\u2013": "-", "\u2018": "'", "\u2019": "'",
+          "\u201c": '"', "\u201d": '"', "\u00a0": " "}
+
+
+def _norm(value):
+    """Compare answers, not typography.
+
+    A typographic dash is not a different answer, and Windows console encoding can
+    mangle one side of a comparison on the way to the log. Fold the punctuation
+    that carries no meaning, keep everything else exact.
+    """
+    text = str(value).strip()
+    for src, dst in DASHES.items():
+        text = text.replace(src, dst)
+    return text
+
+
 def js_results(commands):
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
         json.dump(commands, f)
@@ -77,8 +94,8 @@ def main():
         if "error" in got:
             broken.append((cmd, "demo raised: " + got["error"][:60]))
             continue
-        py = str(engine.handle(cmd)).strip()
-        jsout = str(got.get("out", "")).strip()
+        py = _norm(engine.handle(cmd))
+        jsout = _norm(got.get("out", ""))
         if py == jsout:
             same += 1
         elif cmd in PARTIAL and "local engine" in jsout:
@@ -88,7 +105,7 @@ def main():
             if verbose:
                 print("  cosmetic  %-24r py=%r js=%r" % (cmd, py[:60], jsout[:60]))
         else:
-            broken.append((cmd, "py=%r js=%r" % (py[:70], jsout[:70])))
+            broken.append((cmd, "py=%s js=%s" % (ascii(py[:70]), ascii(jsout[:70]))))
 
     total = len(COMMANDS)
     print("%d commands: %d identical, %d partial by design, %d cosmetic, %d divergent"
