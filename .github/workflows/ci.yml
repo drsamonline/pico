@@ -35,6 +35,9 @@ jobs:
       - name: Acceptance tests
         run: python tests/smoke_test.py
 
+      - name: Nothing newer than Python 3.8
+        run: python tools/py38.py
+
       - name: Console palette meets WCAG AA
         run: python tools/contrast.py
 

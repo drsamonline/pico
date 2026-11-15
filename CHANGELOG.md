@@ -2,6 +2,28 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.35.1 — 2026-11-15
+
+### Fixed
+
+- **The `safe delete` home guard did nothing on Python 3.8.** It used `Path.is_relative_to`,
+  which shipped in 3.9. On 3.8 the call raised `AttributeError` straight into a bare `except`, so
+  `safe delete /tmp` — a directory containing pico's home — still prompted and would have moved the
+  quarantine into itself. The guard now uses `parents`, which works everywhere, and the bare `except`
+  that hid it is gone. Only the 3.8 leg of the matrix caught this; every other leg was green.
+
+### Added
+
+- **`tools/py38.py`** — looks for post-3.8 names in call or attribute position across `pico/`, `packs/`,
+  `tools/`, `tests/` and the launcher, and fails the build. CI runs it. Proved by putting
+  `is_relative_to` back: the gate names the file, the line and the release.
+
+  A matrix leg is the slowest possible way to learn this. The gate is a second.
+
+### Tests
+
+399 checks, up from 397. T98 runs the gate.
+
 ## 1.35.0 — 2026-11-15
 
 ### The write path, decided on measurements

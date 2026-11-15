@@ -1998,6 +1998,14 @@ def t97_safe_delete_home():
     shutil.rmtree(d, True)
 
 
+def t98_py38_gate():
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "py38.py")],
+                       capture_output=True, encoding="utf-8", timeout=120)
+    check("T98 py38: no API newer than 3.8 is called", r.returncode == 0,
+          (r.stdout or r.stderr)[-140:])
+    check("T98 py38: it reports what it scanned", "paths" in r.stdout, r.stdout.strip()[:60])
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2028,7 +2036,7 @@ def main():
                t89_contrast_gate, t90_fill_output_dir, t91_job_errors,
                t92_probe_covers_fill, t93_alias_store, t94_job_switches_off,
                t95_aliases_any_script, t96_placeholder_guard,
-               t97_safe_delete_home):
+               t97_safe_delete_home, t98_py38_gate):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()
