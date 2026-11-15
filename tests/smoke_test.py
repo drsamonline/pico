@@ -1691,6 +1691,43 @@ def t85_replay_reconstructs():
     shutil.rmtree(d, True)
 
 
+def t86_console_encoding():
+    """A cp1252 console must not turn a Devanagari answer into a traceback."""
+    import io
+    from pico.base import utf8_console
+
+    buf = io.BytesIO()
+    narrow = io.TextIOWrapper(buf, encoding="cp1252", errors="strict", write_through=True)
+    try:
+        utf8_console([narrow])
+        narrow.write("खाना: 100")
+        narrow.flush()
+        raised = ""
+    except UnicodeEncodeError as ex:
+        raised = str(ex)
+    check("T86 console: a narrow stream does not raise", not raised, raised)
+    check("T86 console: the text survives as UTF-8",
+          buf.getvalue().decode("utf-8", "replace").strip() == "खाना: 100",
+          buf.getvalue()[:40])
+    narrow.detach()
+
+    # and through the real CLI, with a cp1252 environment
+    home = tempfile.mkdtemp(prefix="pico-t86-")
+    try:
+        env = dict(os.environ, PYTHONIOENCODING="cp1252")
+        subprocess.run([sys.executable, str(ROOT / "pico.py"), "--home", home,
+                        "spend", "100", "खाना"], capture_output=True, env=env,
+                       encoding="utf-8", timeout=120)
+        r = subprocess.run([sys.executable, str(ROOT / "pico.py"), "--home", home,
+                            "expenses"], capture_output=True, env=env,
+                           encoding="utf-8", timeout=120)
+        check("T86 console: the CLI prints a Devanagari category under cp1252",
+              "खाना" in r.stdout, (r.stdout or r.stderr)[:80])
+        check("T86 console: and exits cleanly", r.returncode == 0, str(r.returncode))
+    finally:
+        shutil.rmtree(home, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1716,7 +1753,7 @@ def main():
                t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper,
                t79_scale, t81_report_plural,
                t82_ledger_generations_dated, t83_retention_policy,
-               t84_budget_tool, t85_replay_reconstructs):
+               t84_budget_tool, t85_replay_reconstructs, t86_console_encoding):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

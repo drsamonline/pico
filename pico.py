@@ -14,6 +14,7 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+from pico.base import utf8_console  # noqa: E402
 from pico.engine import Engine, __version__  # noqa: E402
 
 
@@ -22,6 +23,7 @@ def build(args):
 
 
 def main(argv=None):
+    utf8_console()
     ap = argparse.ArgumentParser(prog="pico", add_help=False)
     ap.add_argument("command", nargs="*")
     ap.add_argument("--home", default=None)

@@ -2,6 +2,38 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.27.0 — 2026-11-15
+
+### Fixed
+
+- **A Devanagari answer crashed the CLI on a Windows console.** `pico expenses` printing a category
+  like `खाना` raised `UnicodeEncodeError` against cp1252 before a character reached the user — in a tool
+  whose whole point is that a name can be in any script. `utf8_console()` reconfigures stdout and stderr
+  to UTF-8 with `errors="replace"` at startup, so an unrepresentable character becomes `?` instead of a
+  traceback.
+
+### Portability audit
+
+Two Windows-only failures in a row (1.19.0 and 1.26.0) made the rest worth checking systematically
+rather than waiting for CI. What the sweep found:
+
+| Area | Verdict |
+| --- | --- |
+| `csv` reads | all three already pass `newline=""` |
+| `Path.rename` | only used for new names, and wrapped in `try` |
+| `fcntl` / `msvcrt` / `signal` / `fork` / `chmod` | none used |
+| subprocess decoding | already `encoding="utf-8"` since 1.19.0 |
+| stdout encoding | **broken** — fixed here |
+
+### Tests
+
+327 checks, up from 323. T86 writes through a cp1252 stream and runs the real CLI under
+`PYTHONIOENCODING=cp1252`.
+
+T86's first version patched `sys.stdout` for the whole process and failed one run in three with a
+`MemoryError` in the codec lookup. `utf8_console()` now takes the streams to configure, so the test
+passes its own writer and the process's stdout is left alone. Five consecutive clean runs after.
+
 ## 1.26.1 — 2026-11-15
 
 ### Fixed

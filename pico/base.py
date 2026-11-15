@@ -1,7 +1,7 @@
 """pico base — constants and pure helpers shared by every module."""
 import ast, operator, re, sys
 
-__version__ = "1.26.1"
+__version__ = "1.27.0"
 
 
 STATE_DEFAULT = {
@@ -26,6 +26,27 @@ SECRET_OUT = re.compile(r"^(recall|what is|journal|contacts|aliases|card|review)
 
 
 MASK_CMD = re.compile(r"^((?:remember|contact|site)\s+\w+\s*[:=]\s*)(\S+)", re.I)
+
+
+def utf8_console(streams=None):
+    """Make stdout and stderr survive any script.
+
+    A Windows console defaults to cp1252, and `expenses` on a Devanagari category
+    raises UnicodeEncodeError before a single character reaches the user. UTF-8
+    where the stream allows it, replacement characters where it does not — never a
+    traceback for a name the user typed.
+
+    `streams` exists so a test can hand in its own writer instead of patching the
+    process's stdout, which is a global every other test also uses.
+    """
+    for stream in (streams if streams is not None else (sys.stdout, sys.stderr)):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            try:
+                stream.errors = "replace"
+            except Exception:
+                pass
 
 
 def mask_cmd(cmd):
