@@ -2128,6 +2128,44 @@ def t103_undo_of_a_swept_file():
     shutil.rmtree(d, True)
 
 
+def t104_redaction_patterns():
+    e, d = fresh("t104")
+    cases = {
+        "mail bob@example.com": "<EMAIL>",
+        "card 4111111111111111": "<CARD>",
+        "card 4111 1111 1111 1111": "<CARD>",
+        "date 2026-11-15": "<DATE>",
+        "call +91 98765 43210": "<PHONE>",
+        "see https://example.com/x?a=1": "<URL>",
+    }
+    for text, want in cases.items():
+        src = d / "t.txt"
+        src.write_text(text + "\n", "utf-8")
+        e.handle("redact %s" % src)
+        got = (d / "t.txt.redacted.txt").read_text("utf-8").strip()
+        check("T104 redact: %r masks as %s" % (text, want), want in got, got)
+    check("T104 redact: a card is not also labelled a phone",
+          "<PHONE>" not in (d / "t.txt.redacted.txt").read_text("utf-8")
+          or "card" not in (d / "t.txt.redacted.txt").read_text("utf-8"))
+
+    src = d / "keep.txt"
+    src.write_text("card 4111111111111111 and 4111 1111 1111 1111\n", "utf-8")
+    e.handle("redact %s" % src)
+    out = (d / "keep.txt.redacted.txt").read_text("utf-8")
+    check("T104 redact: the word after a card survives",
+          " and " in out, out.strip())
+    check("T104 redact: both cards are masked", out.count("<CARD>") == 2, out.strip())
+
+    plain = d / "plain.txt"
+    plain.write_text("invoice 1,234.50\n", "utf-8")
+    e.handle("redact %s" % plain)
+    check("T104 redact: an amount is left alone",
+          "1,234.50" in (d / "plain.txt.redacted.txt").read_text("utf-8"))
+    check("T104 redact: the source file is untouched",
+          "4111111111111111" in (d / "keep.txt").read_text("utf-8"))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2161,7 +2199,8 @@ def main():
                t97_safe_delete_home, t98_py38_gate,
                t99_chain_budgets, t100_csv_arity_and_journal,
                t101_undo_of_a_chain,
-               t102_quarantine_keeps_every_copy, t103_undo_of_a_swept_file):
+               t102_quarantine_keeps_every_copy, t103_undo_of_a_swept_file,
+               t104_redaction_patterns):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

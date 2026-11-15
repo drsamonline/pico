@@ -12,6 +12,7 @@ E = None
 PATTERNS = {
     "emails": r"[\w.+-]+@[\w-]+\.[\w.]+",
     "urls": r"https?://[^\s<>\"')]+",
+    "cards": r"\b(?:\d[ -]?){12,18}\d\b",
     "phones": r"(?:\+?\d[\d\s-]{7,}\d)",
     "amounts": r"(?:Rs\.?|INR|₹|\$)\s?[\d,]+(?:\.\d+)?",
     "dates": r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b",
@@ -87,7 +88,11 @@ def redact(m):
     if err:
         return err
     n = 0
-    for tag, pat in (("EMAIL", PATTERNS["emails"]), ("PHONE", PATTERNS["phones"]),
+    # order matters: a 16-digit card also looks like a long phone number, so the
+    # narrower rule runs first and gets the credit
+    # dates first: a date looks like a phone number to the phone rule
+    for tag, pat in (("EMAIL", PATTERNS["emails"]), ("CARD", PATTERNS["cards"]),
+                     ("DATE", PATTERNS["dates"]), ("PHONE", PATTERNS["phones"]),
                      ("URL", PATTERNS["urls"])):
         text, k = re.subn(pat, "<%s>" % tag, text)
         n += k

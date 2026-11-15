@@ -2,6 +2,31 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.39.0 — 2026-11-15
+
+### Fixed
+
+- **`redact` labelled a credit-card number `<PHONE>` and ate the word after it.** The phone pattern
+  `\+?\d[\d\s-]{7,}\d` matched any long digit run, so `card 4111111111111111` became `<PHONE>` — the
+  right digits masked under the wrong label, which matters when the file is later read by someone
+  deciding what is sensitive. A card rule now runs first: `(?:\d[ -]?){12,18}\d`, which ends on a digit,
+  so `4111 1111 1111 1111 and` keeps its ` and` instead of swallowing it.
+- **A date was masked as a phone number.** `2026-11-15` matched the phone rule. `PATTERNS["dates"]`
+  existed and was never used; redact now applies DATE before PHONE, and both `2026-11-15` and
+  `15/11/2026` mask as `<DATE>`.
+
+### Verified, not changed
+
+`importcsv` sanitises table names (`"select"` → `_select_`, `t"x` → `t_x`), the ledger masks
+`remember pin=…` to `remember pin=<redacted>` and the reply to `<redacted: stored personal data>`, and
+`privacy never TAG` blocks a tag from reaching the model — which is what `docs/COMMANDS.md` promises,
+and all it promises.
+
+### Tests
+
+439 checks, up from 428. T104 each pattern: email, card in both spacings, both date forms, phone, URL,
+an amount left alone, the word after a card surviving, and the source file untouched.
+
 ## 1.38.0 — 2026-11-15
 
 ### Fixed — two ways the recovery path lied
