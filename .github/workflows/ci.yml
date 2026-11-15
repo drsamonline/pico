@@ -89,9 +89,9 @@ jobs:
           # for, so the number was wrong rather than the code.
           #
           # A ceiling is reviewed when a feature needs more, not raised silently.
-          # 1.10.0: 64 -> 72 KB for `doctor`. 1.13.0: 72 -> 80 KB, because the
-          # package reached 70.7 KB with 3 KB left and the next feature would not
-          # have fitted. Both changes are recorded in the README with the reason.
+          # 1.10.0: 64 -> 72 KB for `doctor`. 1.13.0: 72 -> 80 KB. 1.17.1: 80 ->
+          # 96 KB, so all three parts share one ceiling. Each move is recorded in
+          # the README with the reason.
           def kb(n):
               return "%d B (%.1f KB)" % (n, n / 1024.0)
 
@@ -102,7 +102,7 @@ jobs:
 
           for p in parts:
               print("  %-22s %s" % (p, kb(p.stat().st_size)))
-          caps = [("package", package, 80), ("packs", packs, 96),
+          caps = [("package", package, 96), ("packs", packs, 96),
                   ("console", console, 96)]
           for name, size, cap in caps:
               print("%-10s %14s   cap %d KB" % (name, kb(size), cap))

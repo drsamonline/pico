@@ -2,6 +2,16 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.17.1 — 2026-11-15
+
+### Changed
+
+- **The package ceiling moved 80 KB → 96 KB**, so the package, the packs and the console share one
+  ceiling instead of the package sitting 3.5 KB below its own. Headroom is now 17.6 KB. Recorded in
+  the README with the reason, alongside the two earlier moves, and the CI comment lists all three.
+
+No behaviour changed. 294 checks still pass.
+
 ## 1.17.0 — 2026-11-14
 
 A third hardening pass, aimed at the parts no test had touched.

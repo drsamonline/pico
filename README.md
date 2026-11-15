@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.17.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.17.1" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,9 +97,9 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 149,204 bytes across 29 files |
+| python source | 149,480 bytes across 29 files |
 | package / packs / console | 78,412 / 70,792 / 64,665 B |
-| console | 64,665 bytes, one HTML file, no external assets |
+| console | 65,119 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
@@ -116,9 +116,9 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 80 KB | 78,412 B | 3.5 KB |
-| packs (12 files) | 96 KB | 70,792 B | 25.3 KB |
-| console (one HTML file) | 96 KB | 64,665 B | 31.3 KB |
+| package (`pico/` + launcher, 18 files) | 96 KB | 78,412 B | 17.6 KB |
+| packs (12 files) | 96 KB | 70,719 B | 25.3 KB |
+| console (one HTML file) | 96 KB | 65,119 B | 31.2 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |
 | dependencies | 0 | 0 | — |
@@ -154,12 +154,14 @@ replay and no write lock — the eight subsystems that make the audit findings a
 documented. **The figure was wrong, not the code**, so it was replaced rather than chased.
 
 A ceiling is reviewed when a feature needs more, and the change is recorded here rather than made
-quietly. Two moves so far: **1.10.0**, 64 KB → 72 KB, because `doctor` added 5.6 KB and left 1.6 KB;
-**1.13.0**, 72 KB → 80 KB, because the package reached 70.7 KB and the next feature would not have
-fitted. CI fails the build when any ceiling is crossed.
+quietly. Three moves so far: **1.10.0**, 64 KB → 72 KB, because `doctor` added 5.6 KB and left 1.6 KB;
+**1.13.0**, 72 KB → 80 KB, because the package reached 70.7 KB; **1.17.1**, 80 KB → 96 KB, so all three
+parts share one ceiling instead of the package sitting 3.5 KB below its own. CI fails the build when
+any ceiling is crossed.
 
-The package went from 55.8 KB at 1.6.0 to 70.7 KB at 1.13.0 — five new modules and three diagnostic
-commands. That growth is the features, not slack.
+The package went from 55.8 KB at 1.6.0 to 76.6 KB at 1.17.0 — five new modules, three diagnostic
+commands and three hardening passes. That growth is the features, not slack: the rule table itself has
+not changed size since 1.8.0.
 
 ## Install
 

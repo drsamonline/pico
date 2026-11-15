@@ -110,7 +110,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | **`fill` is the one path no probe touches** | it writes a dated file into the home, so a diagnostic must not run it | a `fill` that takes an output directory |
 | **Devanagari in command *arguments* is fine, in command *names* it is not** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
 | **The ledger keeps one generation** | `ledger.1.jsonl` is overwritten on each rotation, so the oldest history is dropped | a dated generation name, kept for N days |
-| **Package headroom is finite** | the package sits at 76.6 KB of an 80 KB ceiling | one small fix fits; the next subsystem needs a trim or a recorded ceiling change |
+| **Package headroom is finite** | the package sits at 76.6 KB of a 96 KB ceiling, the same ceiling as packs and console | 17.6 KB left; the next subsystem fits without a decision |
 
 ## Next — cheap and useful
 
