@@ -1815,6 +1815,8 @@ def t91_job_errors():
         check("T91 jobs: the schedule pack is loaded", False, "not loaded")
         shutil.rmtree(d, True)
         return
+    os.environ["PICO_NO_THREADS"] = "1"
+    mod.setup(e.api)                     # rebind the pack to this engine's home
     mod.NOTIFY = lambda message: None
     for k in range(25):
         mod.record_failure({"cmd": "brief"}, ValueError("boom %d" % k), "09:00")
@@ -1849,6 +1851,62 @@ def t92_probe_covers_fill():
     shutil.rmtree(d, True)
 
 
+def t93_alias_store():
+    e, d = fresh("t93")
+    for i in range(5):
+        e.aliases["b%d" % i] = "tasks"
+    e.save()
+    check("T93 aliases: a small set stays in state.json",
+          len(json.loads((d / "state.json").read_text("utf-8"))["aliases"]) == 5)
+    check("T93 aliases: and writes no separate file", not (d / "aliases.json").exists())
+    check("T93 aliases: a small set reloads", len(Engine(home=d, quiet=True).aliases) == 5)
+
+    for i in range(55):
+        e.aliases["a%d" % i] = "tasks"
+    e.save()
+    e.save()
+    check("T93 aliases: a large set moves to its own file", (d / "aliases.json").exists())
+    check("T93 aliases: state.json is emptied of them",
+          json.loads((d / "state.json").read_text("utf-8"))["aliases"] == {})
+    back = Engine(home=d, quiet=True)
+    check("T93 aliases: the large set reloads whole", len(back.aliases) == 60,
+          str(len(back.aliases)))
+    check("T93 aliases: an entry still resolves", back.aliases.get("a0") == "tasks")
+
+    # a corrupt alias file must not lose the engine
+    (d / "aliases.json").write_text("{not json", "utf-8")
+    check("T93 aliases: a corrupt file degrades to empty, not a crash",
+          Engine(home=d, quiet=True).aliases == {})
+    shutil.rmtree(d, True)
+
+
+def t94_job_switches_off():
+    e, d = fresh("t94")
+    mod = next((m for n, m in sys.modules.items() if n.startswith("pico_pack_schedule")), None)
+    if mod is None:
+        check("T94 jobs: the schedule pack is loaded", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    os.environ["PICO_NO_THREADS"] = "1"
+    mod.setup(e.api)                     # rebind the pack to this engine's home
+    mod.NOTIFY = lambda message: None
+    e.handle("daily 09:00 brief")
+    job = mod.J[0]
+    for _ in range(mod.FAILURE_LIMIT):
+        mod.record_failure(job, ValueError("boom"), "09:00")
+    check("T94 jobs: repeated failure switches the job off", job.get("off") is True,
+          str(job))
+    check("T94 jobs: the listing says so", "off" in e.handle("jobs"), e.handle("jobs"))
+    at_nine = datetime.datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+    check("T94 jobs: a job that is off does not fire", mod.tick(at_nine) == [],
+          str(mod.tick(at_nine)))
+    check("T94 jobs: re-adding it re-arms rather than duplicating",
+          "Re-armed" in e.handle("daily 09:00 brief") and len(mod.J) == 1,
+          str(len(mod.J)))
+    check("T94 jobs: it fires again once re-armed", len(mod.tick(at_nine)) == 1)
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1877,7 +1935,7 @@ def main():
                t84_budget_tool, t85_replay_reconstructs, t86_console_encoding,
                t87_replay_dirs_are_pruned, t88_backups_window,
                t89_contrast_gate, t90_fill_output_dir, t91_job_errors,
-               t92_probe_covers_fill):
+               t92_probe_covers_fill, t93_alias_store, t94_job_switches_off):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

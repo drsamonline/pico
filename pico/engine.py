@@ -24,6 +24,42 @@ from .store import StoreMixin
 
 
 class Engine(StoreMixin, LadderMixin, LedgerMixin, DispatchMixin):
+    ALIAS_SPLIT = 50           # above this, aliases leave state.json
+
+    def _alias_file(self):
+        return self.home / "aliases.json"
+
+    def _load_aliases(self):
+        """Aliases live in state.json until there are enough of them to crowd it.
+
+        The file is additive: whatever is on disk wins over whatever the state
+        carried, so a downgrade keeps working and a half-migrated home still loads.
+        """
+        merged = dict(self.S.get("aliases") or {})
+        f = self._alias_file()
+        if f.exists():
+            try:
+                disk = json.loads(f.read_text("utf-8"))
+                if isinstance(disk, dict):
+                    merged.update(disk)
+            except Exception:
+                pass
+        # share the object with the state, so a small set keeps persisting in it
+        self.S["aliases"] = merged
+        return merged
+
+    def save_aliases(self):
+        """Write aliases out of state.json once they pass the threshold."""
+        if len(self.aliases) < self.ALIAS_SPLIT:
+            return
+        try:
+            self._alias_file().write_text(
+                json.dumps(self.aliases, ensure_ascii=False, indent=1, sort_keys=True),
+                "utf-8")
+            self.S["aliases"] = {}
+        except Exception:
+            pass
+
     def __init__(self, home=None, load_packs=True, quiet=False):
         self.home = pathlib.Path(home or os.environ.get("PICO_HOME")
                                  or (pathlib.Path.home() / ".pico")).expanduser()
@@ -35,7 +71,7 @@ class Engine(StoreMixin, LadderMixin, LedgerMixin, DispatchMixin):
         self.ledger_file = self.home / "ledger.jsonl"
         self.quiet = quiet
         self.S = self._load_state()
-        self.aliases = self.S.setdefault("aliases", {})
+        self.aliases = self._load_aliases()
         self.rules = []            # [(pattern, fn)]
         self.notifiers = []
         self.translators = []

@@ -173,7 +173,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | --- | --- | --- |
 | **Writes rewrite the whole state file** | 9.5 ms at 5,000 tasks, 0.45 ms empty. The 5 ms figure was this project's own spec, not a measured complaint, and an append-only journal puts the write path — the one that holds the user's tasks — at risk | a journal that survives a kill -9 mid-write, with a test that proves it |
 | **Devanagari in command *names* is not supported** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
-| **The alias store lives in `state.json`** | fine below a few hundred aliases, then it dominates the file | its own file past a threshold |
+
 
 ## Deliberately not built
 
@@ -190,9 +190,10 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 - **Should `write` be gated for typed commands?** It is gated for model-proposed ones. A typed `tidy`
   runs immediately and is undoable. That is a judgement call, not a settled one.
-- **How loud should a failing job be?** Since 1.31.0 a job that throws is recorded, notified and shown
-  by `doctor`. Whether it should also stop the loop is unsettled.
 - **How long should a reconstruction live?** `replay` keeps five. Nobody has asked for a sixth.
+
+Settled since: a failing job is recorded, notified, shown by `doctor`, and switches itself off after
+three consecutive failures (1.32.0); aliases move to their own file past fifty (1.32.0).
 
 ## Gates that hold the line
 

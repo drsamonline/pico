@@ -37,6 +37,7 @@ class StoreMixin:
             tmp = self.state_file.with_name(
                 "state.json.tmp.%d.%d" % (os.getpid(), threading.get_ident()))
             # compact on the hot path: 7x faster and 35% smaller than indent=1
+            self.save_aliases()
             tmp.write_text(json.dumps(self.S, ensure_ascii=False,
                                       separators=(",", ":")), "utf-8")
             os.replace(tmp, self.state_file)

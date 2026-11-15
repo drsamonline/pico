@@ -2,6 +2,32 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.32.0 — 2026-11-15
+
+Two of the three open questions on the roadmap, answered in code.
+
+### Changed
+
+- **Aliases leave `state.json` once there are fifty.** They are the one part of the state that can grow
+  without bound — a user who aliases everything ends up with a state file that is mostly aliases. Past
+  `ALIAS_SPLIT` they are written to `aliases.json` and cleared from the state; below it they stay put,
+  because a second file for five entries is worse than the five entries. The loader merges both, so a
+  half-migrated home still loads, a corrupt `aliases.json` degrades to empty rather than crashing, and
+  going back to an older build loses nothing.
+- **A job that fails three times switches itself off.** A reminder that errors every morning is noise,
+  and silence about it is worse. The count is per job, a successful run resets it, `jobs` shows
+  `<off: failed 3 times>`, and re-adding the same time and command re-arms it in place instead of
+  creating a duplicate.
+
+### Tests
+
+367 checks, up from 354. T93 the alias threshold in both directions plus a corrupt file, T94 the
+switch-off, the listing, that an off job does not fire, and that re-adding re-arms it.
+
+T93 and T94 rebind the schedule pack with `mod.setup(e.api)` first. The pack binds its globals once per
+process, so a later engine's test was reading the first engine's jobs — T91 had been passing on that
+luck rather than on the code.
+
 ## 1.31.0 — 2026-11-15
 
 Four small items, one release.
