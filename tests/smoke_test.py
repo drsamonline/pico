@@ -2080,6 +2080,54 @@ def t101_undo_of_a_chain():
     shutil.rmtree(d, True)
 
 
+def t102_quarantine_keeps_every_copy():
+    e, d = fresh("t102")
+    q = d / "quarantine"
+    for text in ("FIRST", "SECOND"):
+        (d / "a.txt").write_text(text, "utf-8")
+        e.handle("safe delete %s/a.txt" % d)
+        e.handle("confirm")
+    files = sorted(p for p in q.glob("*") if p.name != "index.json")
+    check("T102 quarantine: two deletes of the same name keep two copies",
+          len(files) == 2, str(len(files)))
+    check("T102 quarantine: the first copy still holds its content",
+          any(p.read_text("utf-8") == "FIRST" for p in files),
+          str([(p.name, p.read_text("utf-8")) for p in files]))
+    check("T102 quarantine: the second does too",
+          any(p.read_text("utf-8") == "SECOND" for p in files))
+    check("T102 quarantine: both are indexed",
+          len(json.loads((q / "index.json").read_text("utf-8"))) == 2)
+
+    # and a restore still works after the fix
+    e.handle("restore 1")
+    check("T102 quarantine: restore puts one back",
+          "Restored" in e.handle("confirm"), e.handle("confirm"))
+    shutil.rmtree(d, True)
+
+
+def t103_undo_of_a_swept_file():
+    e, d = fresh("t103")
+    (d / "a.txt").write_text("hello", "utf-8")
+    e.handle("safe delete %s/a.txt" % d)
+    e.handle("confirm")
+    e.handle("quarantine sweep 0d")
+    out = e.handle("undo")
+    check("T103 swept undo: it does not claim success",
+          "Undone: nothing" in out, out.replace("\n", " | ")[:80])
+    check("T103 swept undo: it says why",
+          "swept" in out and "Not invertible" in out, out.replace("\n", " | ")[:100])
+    check("T103 swept undo: the file is not there", not (d / "a.txt").exists())
+
+    # an undo that can work still works
+    (d / "b.txt").write_text("hi", "utf-8")
+    e.handle("safe delete %s/b.txt" % d)
+    e.handle("confirm")
+    check("T103 swept undo: a live copy still undoes",
+          e.handle("undo") == "Undone: safe delete %s/b.txt" % d)
+    check("T103 swept undo: and the file is back", (d / "b.txt").exists())
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2112,7 +2160,8 @@ def main():
                t95_aliases_any_script, t96_placeholder_guard,
                t97_safe_delete_home, t98_py38_gate,
                t99_chain_budgets, t100_csv_arity_and_journal,
-               t101_undo_of_a_chain):
+               t101_undo_of_a_chain,
+               t102_quarantine_keeps_every_copy, t103_undo_of_a_swept_file):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

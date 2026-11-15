@@ -3,10 +3,10 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 418 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 428 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.37.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.38.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,13 +97,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 110 / 116 / 6 |
 | packs | 12 |
-| python source | 164,794 bytes across 29 files |
-| package / packs / console | 90,277 / 74,517 / 70,278 B |
+| python source | 165,488 bytes across 29 files |
+| package / packs / console | 90,971 / 74,517 / 70,278 B |
 | console | 70,278 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 418 passing, stdlib `unittest`-free runner |
+| acceptance tests | 428 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 more — and why state is only persisted when something actually changed. The suite prints its own
@@ -144,7 +144,7 @@ decision.
 
 | Part | Baseline | Ceiling (+10%) | Actual |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 90,277 B | 99,304 B | 90,277 B |
+| package (`pico/` + launcher, 18 files) | 90,971 B | 100,068 B | 90,971 B |
 | packs (12 files) | 74,517 B | 81,968 B | 74,517 B |
 | console (one HTML file) | 70,278 B | 77,305 B | 70,278 B |
 | rule-path latency | — | 5 ms | 0.45 ms read, 1.7 ms write empty |

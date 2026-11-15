@@ -36,7 +36,14 @@ def safe_delete(m):
                 "the quarantine into itself. Delete it with your file manager.")
     q = E.home / "quarantine"
     q.mkdir(exist_ok=True)
-    dest = q / (datetime.datetime.now().strftime("%Y%m%d%H%M%S") + "_" + p.name)
+    # microseconds, then a counter: two deletes of the same name in the same second
+    # used to overwrite the first quarantined copy and lose it for good
+    stamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+    dest = q / (stamp + "_" + p.name)
+    n = 1
+    while dest.exists():
+        dest = q / ("%s-%d_%s" % (stamp, n, p.name))
+        n += 1
     shutil.move(str(p), str(dest))
     idx = _q_index()
     idx[dest.name] = str(p.resolve())

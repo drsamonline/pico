@@ -83,11 +83,16 @@ class LedgerMixin:
         elif kind == "dict_del":
             S[a["key"]].pop(a["k"], None)
         elif kind == "move_back":
+            # a quarantined copy can be swept before the undo runs. Saying "undone"
+            # while restoring nothing is worse than failing: this is the recovery path.
+            missing = [dst for src, dst in a["map"] if not pathlib.Path(dst).exists()]
+            if missing:
+                raise FileNotFoundError(
+                    "%s is gone from the quarantine — it was swept, so this cannot be "
+                    "undone" % pathlib.Path(missing[0]).name)
             for src, dst in a["map"]:
-                p = pathlib.Path(dst)
-                if p.exists():
-                    pathlib.Path(src).parent.mkdir(parents=True, exist_ok=True)
-                    p.rename(src)
+                pathlib.Path(src).parent.mkdir(parents=True, exist_ok=True)
+                pathlib.Path(dst).rename(src)
         elif kind == "file_rm":
             p = pathlib.Path(a["path"])
             if p.exists():

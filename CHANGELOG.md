@@ -2,6 +2,29 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.38.0 — 2026-11-15
+
+### Fixed — two ways the recovery path lied
+
+- **Two deletes of the same filename in the same second kept one copy, not two.** The quarantined name
+  was `<second>_<name>`, so deleting `a.txt` twice inside a second made the second copy overwrite the
+  first — the user's first file was gone, and the index had one entry where there should have been two.
+  Names now carry microseconds and a counter, and both copies survive. Proved by reverting the fix:
+  the old naming kept `SECOND` and lost `FIRST`.
+
+  This is the fourth time a one-second stamp has been used as an identifier, and the first time it
+  destroyed data. The other three: ledger generations (1.23.0), snapshots (1.26.1), backups (1.29.0).
+
+- **`undo` said "Undone" after the quarantined copy had been swept.** The `move_back` inverse checked
+  `if p.exists()` and did nothing when it did not, so the ledger reported success while restoring
+  nothing. On a recovery path that is the worst possible message. It now raises, and `undo` reports
+  `Not invertible: … is gone from the quarantine — it was swept, so this cannot be undone`.
+
+### Tests
+
+428 checks, up from 418. T102 two same-name quarantines keeping both contents, T103 the swept-copy undo
+refusing honestly while a live copy still undoes.
+
 ## 1.37.0 — 2026-11-15
 
 ### Fixed
