@@ -2,6 +2,40 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.33.0 — 2026-11-15
+
+### Added
+
+- **`alias P -> CMD` binds any phrase, in any script, to a command.** Aliases existed but only the
+  translator could create one; there was no way to say "when I type this, run that". Now:
+
+  ```
+  alias खर्च -> spend
+  खर्च 100 खाना        # Logged.
+  alias kaam -> tasks
+  kaam                  # Nothing pending.
+  ```
+
+  An alias bound to a verb takes arguments, so `खर्च 100 खाना` becomes `spend 100 खाना`. An alias
+  cannot shadow an existing command, and a target that matches no rule is refused rather than stored as
+  a dead end. `aliases` lists them, `unalias` removes one, and both are undoable.
+
+  This closes the roadmap item "Devanagari in command names". The answer is not a built-in language
+  pack — India has twenty-two scheduled languages and picking one as the default would contradict the
+  project's own stance. The user binds the words they use.
+
+### Fixed
+
+- **T86 was flaky, one run in three.** It built a real `TextIOWrapper` over a `BytesIO` and asked it to
+  reconfigure, which intermittently raised `MemoryError` inside the codec lookup. It now passes a
+  recording stub to `utf8_console` and proves the real path through the CLI under `PYTHONIOENCODING=cp1252`.
+  Four consecutive clean runs after.
+
+### Tests
+
+381 checks, up from 367. T95 covers binding, arguments, refusal to shadow, refusal of a dead target,
+rebinding, unalias, undo, and persistence across a restart.
+
 ## 1.32.1 — 2026-11-15
 
 ### Fixed

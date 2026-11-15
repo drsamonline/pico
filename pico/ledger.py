@@ -90,6 +90,8 @@ class LedgerMixin:
                 p.unlink()
         elif kind == "alias_del":
             self.aliases.pop(a["k"], None)
+        elif kind == "alias_restore":
+            self.aliases[a["k"]] = a["v"]
         else:
             raise ValueError("no inverse for " + str(kind))
 

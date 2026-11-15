@@ -1693,25 +1693,34 @@ def t85_replay_reconstructs():
 
 def t86_console_encoding():
     """A cp1252 console must not turn a Devanagari answer into a traceback."""
-    import io
     from pico.base import utf8_console
 
-    buf = io.BytesIO()
-    narrow = io.TextIOWrapper(buf, encoding="cp1252", errors="strict", write_through=True)
-    try:
-        utf8_console([narrow])
-        narrow.write("खाना: 100")
-        narrow.flush()
-        raised = ""
-    except UnicodeEncodeError as ex:
-        raised = str(ex)
-    check("T86 console: a narrow stream does not raise", not raised, raised)
-    check("T86 console: the text survives as UTF-8",
-          buf.getvalue().decode("utf-8", "replace").strip() == "खाना: 100",
-          buf.getvalue()[:40])
-    narrow.detach()
+    class Recorder:
+        def __init__(self):
+            self.calls = []
 
-    # and through the real CLI, with a cp1252 environment
+        def reconfigure(self, **kw):
+            self.calls.append(kw)
+
+    stub = Recorder()
+    utf8_console([stub])
+    check("T86 console: it asks the stream for UTF-8",
+          stub.calls and stub.calls[0].get("encoding") == "utf-8", str(stub.calls))
+    check("T86 console: and for replacement, never an exception",
+          stub.calls and stub.calls[0].get("errors") == "replace", str(stub.calls))
+
+    class Stubborn:
+        errors = "strict"
+
+        def reconfigure(self, **kw):
+            raise OSError("stream does not support it")
+
+    stubborn = Stubborn()
+    utf8_console([stubborn])
+    check("T86 console: a stream that refuses still gets errors=replace",
+          stubborn.errors == "replace", stubborn.errors)
+
+    # the real path: the CLI under a cp1252 environment
     home = tempfile.mkdtemp(prefix="pico-t86-")
     try:
         env = dict(os.environ, PYTHONIOENCODING="cp1252")
@@ -1907,6 +1916,37 @@ def t94_job_switches_off():
     shutil.rmtree(d, True)
 
 
+def t95_aliases_any_script():
+    e, d = fresh("t95")
+    check("T95 alias: a Devanagari phrase binds",
+          e.handle("alias खर्च -> spend") == "खर्च -> spend", e.handle("alias खर्च -> spend"))
+    check("T95 alias: it runs with arguments",
+          e.handle("खर्च 100 खाना") == "Logged.", e.handle("खर्च 100 खाना"))
+    check("T95 alias: the data lands where it should",
+          "खाना" in e.handle("expenses"), e.handle("expenses"))
+    check("T95 alias: a Hinglish phrase binds too",
+          e.handle("alias kaam -> tasks") == "kaam -> tasks")
+    check("T95 alias: and answers", e.handle("kaam") == "Nothing pending.")
+    check("T95 alias: the list shows both", "खर्च" in e.handle("aliases"),
+          e.handle("aliases"))
+    check("T95 alias: an existing command cannot be shadowed",
+          "already a command" in e.handle("alias tasks -> brief"),
+          e.handle("alias tasks -> brief"))
+    check("T95 alias: a target that matches nothing is refused",
+          "would do nothing" in e.handle("alias nope -> zzz"),
+          e.handle("alias nope -> zzz"))
+    check("T95 alias: rebinding is allowed", e.handle("alias खर्च -> expenses") == "खर्च -> expenses")
+    check("T95 alias: unalias removes it", "removed" in e.handle("unalias खर्च").lower())
+    check("T95 alias: undo puts it back", "Undone" in e.handle("undo"), e.handle("undo"))
+    # undo reverses the unalias, so the alias is back with its last target
+    check("T95 alias: the alias works again after undo",
+          "Total:" in e.handle("खर्च"), e.handle("खर्च"))
+    check("T95 alias: aliases persist across a restart",
+          len(Engine(home=d, quiet=True).aliases) >= 1,
+          str(Engine(home=d, quiet=True).aliases))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1935,7 +1975,8 @@ def main():
                t84_budget_tool, t85_replay_reconstructs, t86_console_encoding,
                t87_replay_dirs_are_pruned, t88_backups_window,
                t89_contrast_gate, t90_fill_output_dir, t91_job_errors,
-               t92_probe_covers_fill, t93_alias_store, t94_job_switches_off):
+               t92_probe_covers_fill, t93_alias_store, t94_job_switches_off,
+               t95_aliases_any_script):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

@@ -3,6 +3,15 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.33 — shipped
+
+`alias P -> CMD` binds any phrase in any script to a command, so the command names a user types are
+theirs. This closes the last item on the "worth the complexity" list except the journal. 381 checks.
+
+## 1.32 — shipped
+
+Aliases move to their own file past fifty; a job that fails three times switches itself off.
+
 ## 1.31 — shipped
 
 Four small items in one release: `fill` takes an output directory and is now covered by `doctor probe
@@ -172,7 +181,6 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | Item | Why | Exit test |
 | --- | --- | --- |
 | **Writes rewrite the whole state file** | 9.5 ms at 5,000 tasks, 0.45 ms empty. The 5 ms figure was this project's own spec, not a measured complaint, and an append-only journal puts the write path — the one that holds the user's tasks — at risk | a journal that survives a kill -9 mid-write, with a test that proves it |
-| **Devanagari in command *names* is not supported** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
 
 
 ## Deliberately not built

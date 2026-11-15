@@ -4,6 +4,7 @@ Handlers live in `cmd_*` modules by domain. This file is the registry: the patte
 table, the help text and the catalogue. `register()` wires them to an engine and
 records the modules so `Engine._bind_modules()` can rebind their `E` globals.
 """
+from .base import normalize
 from . import (cmd_doctor, cmd_files, cmd_money, cmd_quarantine, cmd_repair,
                cmd_tasks, cmd_time, cmd_web)
 from .cmd_doctor import doctor, probe, probe_write
@@ -34,6 +35,23 @@ def help_(m):
 def aliases(m):
     a = E.aliases
     return "\n".join("%s -> %s" % (k, v) for k, v in a.items()) or "None learned yet."
+
+
+def alias_set(m):
+    phrase, cmd = normalize(m["phrase"]), m["cmd"].strip()
+    if not phrase:
+        return "Give a phrase: alias karch -> spend"
+    if not E.match_rule(cmd)[0]:
+        return "No rule matches %r, so the alias would do nothing." % cmd
+    if E.match_rule(phrase)[0]:
+        return ("%r is already a command. Aliases only stand in for phrases that are not."
+                % phrase)
+    had = E.aliases.get(phrase)
+    E.aliases[phrase] = cmd
+    E.set_inverse("alias_del" if had is None else "alias_restore",
+                  {"k": phrase} if had is None else {"k": phrase, "v": had})
+    E.touch()
+    return "%s -> %s" % (phrase, cmd)
 
 
 def unalias(m):
@@ -112,6 +130,7 @@ def register(engine):
         (r"^doctor probe(?: (?P<mode>write))?$",
          lambda m: probe_write(m) if m["mode"] else probe(m)),
         (r"^doctor$", doctor),
+        (r"^alias\s+(?P<phrase>.+?)\s*->\s*(?P<cmd>.+)$", alias_set),
         (r"^aliases$", aliases),
         (r"^unalias\s+(?P<p>.+)$", unalias),
     ]
@@ -136,7 +155,8 @@ def register(engine):
         "doctor fix - repair what can be repaired",
         "doctor probe - run one command per pack",
         "doctor probe write - exercise the write paths in a scratch dir",
-        "aliases - learned phrasings", "unalias P - forget a phrasing",
+        "alias P -> CMD - bind a phrase, any script", "aliases - learned phrasings",
+        "unalias P - forget a phrasing",
         "recur daily X - repeating task", "due N YYYY-MM-DD - set a due date",
         "overdue - tasks past their date", "safe delete PATH - quarantine a file",
         "quarantine - list quarantined files", "restore N - put one back",

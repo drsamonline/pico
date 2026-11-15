@@ -39,6 +39,14 @@ class LadderMixin:
         a = self.aliases.get(normalize(t))
         if a and self.match_rule(a)[0]:
             return {"cmd": a, "src": "alias"}
+        # an alias bound to a verb takes arguments: `karch 100 food` -> `spend 100 food`
+        head, _, rest = t.partition(" ")
+        if rest:
+            verb = self.aliases.get(normalize(head))
+            if verb:
+                cand = verb + " " + rest
+                if self.match_rule(cand)[0]:
+                    return {"cmd": cand, "src": "alias"}
         verbs = sorted({c.split(" - ")[0].split()[0] for c in self.catalog} |
                        {"tasks", "add", "done", "brief", "time", "help", "habits",
                         "journal", "jobs", "llm", "undo", "log", "why"})

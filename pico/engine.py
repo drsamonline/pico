@@ -105,6 +105,10 @@ class Engine(StoreMixin, LadderMixin, LedgerMixin, DispatchMixin):
         if not self.quiet:
             print(msg, file=sys.stderr)
 
+    def touch(self):
+        """Mark the state dirty so the next command persists it."""
+        self._dirty = True
+
     def _build_api(self):
         return {
             "HOME": self.home, "S": self.S, "save": self.save,
@@ -115,7 +119,7 @@ class Engine(StoreMixin, LadderMixin, LedgerMixin, DispatchMixin):
             "add_rule": self.add_rule, "add_rules": self.add_rules,
             "inverse_handler": self.register_inverse,
             "privacy": self.privacy, "add_slots": self.add_slots,
-            "engine": self, "version": __version__,
+            "engine": self, "version": __version__, "touch": self.touch,
         }
 
     def notify(self, msg):

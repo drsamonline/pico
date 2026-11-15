@@ -175,6 +175,7 @@ A fresh home reports all `ok`: nothing written yet is correct, not broken.
 | `undo [N]` | reverses the last N actions that have an inverse; names the ones that do not |
 | `confirm` · `cancel` | resolve or discard a pending send/danger action (120 s TTL) |
 | `aliases` · `unalias P` | inspect or remove learned phrasings |
+| `alias P -> CMD` | bind any phrase, in any script, to a command |
 | `2key on` · `2key off` | danger actions then print a 6-hex code; `approve <code>` completes them |
 | `2key phone` | the code goes to the bound chat and `approve` is **refused at the terminal** |
 | `timeline [TS]` | the ledger as a readable list, optionally since an ISO timestamp |
