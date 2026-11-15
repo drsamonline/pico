@@ -1765,6 +1765,27 @@ def t88_backups_window():
     shutil.rmtree(d, True)
 
 
+def t89_contrast_gate():
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "contrast.py")],
+                       capture_output=True, encoding="utf-8", timeout=120)
+    check("T89 contrast: the console palette meets WCAG AA",
+          r.returncode == 0, (r.stdout or r.stderr)[-160:])
+    check("T89 contrast: it measured every pair",
+          "meet WCAG AA" in r.stdout, r.stdout.strip()[:60])
+
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("contrast", ROOT / "tools" / "contrast.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    check("T89 contrast: black on white is 21:1",
+          round(mod.ratio("#000000", "#ffffff"), 1) == 21.0,
+          str(mod.ratio("#000000", "#ffffff")))
+    check("T89 contrast: a colour against itself is 1:1",
+          round(mod.ratio("#123456", "#123456"), 2) == 1.0)
+    check("T89 contrast: the order of the pair does not matter",
+          round(mod.ratio("#ffffff", "#000000"), 4) == round(mod.ratio("#000000", "#ffffff"), 4))
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1791,7 +1812,8 @@ def main():
                t79_scale, t81_report_plural,
                t82_ledger_generations_dated, t83_retention_policy,
                t84_budget_tool, t85_replay_reconstructs, t86_console_encoding,
-               t87_replay_dirs_are_pruned, t88_backups_window):
+               t87_replay_dirs_are_pruned, t88_backups_window,
+               t89_contrast_gate):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

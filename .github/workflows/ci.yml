@@ -35,6 +35,9 @@ jobs:
       - name: Acceptance tests
         run: python tests/smoke_test.py
 
+      - name: Console palette meets WCAG AA
+        run: python tools/contrast.py
+
       - name: Docs quote the real numbers
         shell: bash
         run: python tools/doc_consistency.py

@@ -2,6 +2,28 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.30.0 — 2026-11-15
+
+### Added
+
+- **`tools/contrast.py`** — reads the console's custom properties out of `web/index.html`, computes the
+  WCAG contrast ratio for the eleven pairs that carry text, and fails below the target. CI runs it.
+
+  This follows a contrast fix committed directly to the console (`3297cc4`), which corrected
+  `button.mini` and the code block. That fix is kept and is measured now; the gate exists so the next
+  palette nudge cannot undo it silently.
+
+  It found one thing the hand fix did not: `--acc2` on the page background is 4.15:1. That turned out
+  not to be a failure — `--acc2` is only ever a border and a filled button, so the pair that matters is
+  the white label on it, at 4.63:1. The check was corrected to measure the colour where it is used,
+  which is the difference between a gate and a rule.
+
+### Tests
+
+340 checks, up from 335. T89 runs the gate and checks the ratio function itself against the two
+anchors that are true by definition: black on white is 21:1, a colour against itself is 1:1, and the
+order of a pair does not change the answer.
+
 ## 1.29.0 — 2026-11-15
 
 ### Fixed
