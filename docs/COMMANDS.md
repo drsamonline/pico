@@ -76,9 +76,9 @@ the seven arithmetic operators, with size caps on powers and results.
 | `quarantine` | safe | what is in quarantine, with sizes |
 | `restore N` | **danger** | puts item N back at its recorded original path |
 | `quarantine sweep Nd` | **danger** | deletes quarantined files older than N days. Not undoable |
-| `big files [N]` | safe | largest N files under Downloads, Documents, Desktop, Pictures |
-| `old files Nd` | safe | untouched for N days |
-| `dedupe files PATH` | safe | sha256 groups; reports only |
+| `big files [N] [PATH]` | safe | largest N files; defaults to Downloads, Documents, Desktop, Pictures |
+| `old files Nd [PATH]` | safe | untouched for N days |
+| `dedupe files PATH` | safe | sha256 groups inside PATH; reports only |
 | `dedupe files PATH apply` | write | quarantines the duplicates; reversible |
 
 ## Life
@@ -160,6 +160,7 @@ minutes, and the rest of the rule keeps running. `triggers` shows how many actio
 | --- | --- | --- |
 | `doctor` | safe | checks home, state, ledger, rules, packs, templates, quarantine, snapshots, triggers, the per-pack data files, sqlite, tokens, two-key, the background-thread heartbeats and the Python version. Prints `ok` / `warn` / `FAIL` per line and a count |
 | `doctor probe` | safe | runs one read-only command per pack **through the handler, not through `_run`**, so nothing is logged and nothing is saved. Catches a pack that loads but cannot answer |
+| `doctor probe write` | safe | exercises the eight write paths — `tidy`, `backup`, `redact`, `dedupe files`, `dedupe`, `safe delete`, `restore`, `quarantine sweep` — inside a scratch directory, then removes it. `fill` is excluded on purpose: it writes a dated file into your home and a diagnostic must not overwrite real output |
 | `doctor fix` | safe | repairs what can be repaired: creates missing directories, removes stray temp files, quarantines unreadable JSON (never deletes it), prunes old snapshots, prunes a stale quarantine index, regenerates an empty `web.token`. Lists each action |
 
 A fresh home reports all `ok`: nothing written yet is correct, not broken.

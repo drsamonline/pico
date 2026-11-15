@@ -2,6 +2,32 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.14.0 — 2026-11-14
+
+### Added
+
+- **`doctor probe write`** — exercises the eight write paths (`tidy`, `backup`, `redact`,
+  `dedupe files`, `dedupe`, `safe delete`, `restore`, `quarantine sweep`) inside a scratch directory,
+  then removes it, the backup zip and the quarantine entry. `fill` is excluded on purpose: it writes a
+  dated file into your home, and a diagnostic must not be able to overwrite real output.
+- **`big files [N] [PATH]`** and **`old files ND [PATH]`** take an optional folder.
+
+### Fixed
+
+- **`dedupe files PATH` ignored PATH.** It accepted a directory and then walked Downloads, Documents
+  and Desktop instead. Found while writing the write probe: the probe's two identical fixtures
+  reported "no duplicates".
+- **`dedupe files` was shadowed by the text pack's `dedupe`.** Packs load alphabetically and are
+  prepended, so `text` sat above `files` and `^dedupe (?P<path>.+)$` matched `dedupe files /tmp/x`
+  with `path="files /tmp/x"`. The text rule now refuses a first token of `files`.
+- The write probe reused one directory for every step, so `tidy` moved the fixtures the later steps
+  needed. Each probe now gets its own directory and its own fixtures.
+
+### Tests
+
+226 checks, up from 216. T61 covers the write probe and its cleanup, T62 the path arguments and the
+shadowing fix.
+
 ## 1.13.0 — 2026-11-14
 
 ### Added

@@ -63,6 +63,95 @@ def probe(m):
     return "\n".join([head, ""] + rows + ["", tail])
 
 
+# (label, command, fixtures that must exist for it) — each probe gets its own
+# directory, so a destructive one cannot starve the next
+WRITE_PROBES = [
+    ("tidy", "tidy {dir}", {"a.png": "x", "b.pdf": "x", "c.mp3": "x"}),
+    ("backup", "backup {dir}", {"a.png": "x", "b.pdf": "x"}),
+    ("redact", "redact {dir}/notes.txt",
+     {"notes.txt": "mail bob@example.com or 9876543210"}),
+    ("dedupe files", "dedupe files {dir}", {"one.txt": "same", "two.txt": "same"}),
+    ("dedupe", "dedupe {dir}/lines.txt", {"lines.txt": "a\na\nb\n"}),
+    ("safe delete", "safe delete {dir}/throwaway.txt", {"throwaway.txt": "x"}),
+    ("restore", "restore 1", {}),
+    ("sweep", "quarantine sweep 1d", {}),
+]
+
+
+def probe_write(m):
+    """Exercise the write paths inside a scratch directory, then clean up.
+
+    `fill` is deliberately absent: it writes a dated file into the user's home and a
+    diagnostic must not be able to overwrite real output.
+    """
+    import shutil as _sh
+    import tempfile
+    root = pathlib.Path(tempfile.mkdtemp(prefix="pico-probe-", dir=str(E.home)))
+    made = []
+    rows = []
+    try:
+        backups_before = {p.name for p in (E.home / "backups").glob("*.zip")} \
+            if (E.home / "backups").exists() else set()
+
+        for label, template, fixtures in WRITE_PROBES:
+            case = root / label.replace(" ", "-")
+            case.mkdir(parents=True, exist_ok=True)
+            for name, body in fixtures.items():
+                (case / name).write_text(body, "utf-8")
+            cmd = template.format(dir=case)
+            fn, match = E.match_rule(cmd)
+            if fn is None:
+                rows.append(_line(FAIL, label, "probe %r matches no rule" % cmd))
+                continue
+            try:
+                out = str(fn(match))
+            except Exception as ex:
+                rows.append(_line(FAIL, label, "%s: %s" % (type(ex).__name__, ex)))
+                continue
+            if out.startswith("Command failed"):
+                rows.append(_line(FAIL, label, out[:60]))
+            else:
+                rows.append(_line(OK, label, "%r -> %r" % (cmd, out.replace("\n", " ")[:44])))
+
+        # outputs written beside the fixtures
+        for pattern in ("*.redacted.txt", "*.deduped.txt"):
+            made.extend(root.rglob(pattern))
+        # the backup zip
+        backups_after = {p.name for p in (E.home / "backups").glob("*.zip")} \
+            if (E.home / "backups").exists() else set()
+        for name in backups_after - backups_before:
+            made.append(E.home / "backups" / name)
+    finally:
+        _sh.rmtree(root, ignore_errors=True)
+        for f in made:
+            try:
+                f.unlink()
+            except Exception:
+                pass
+        # anything the quarantine gained during the probe
+        q = E.home / "quarantine"
+        if q.exists():
+            idx_f = q / "index.json"
+            idx = {}
+            if idx_f.exists():
+                try:
+                    idx = json.loads(idx_f.read_text("utf-8"))
+                except Exception:
+                    idx = {}
+            live = {p.name for p in q.iterdir() if p.is_file() and p.name != "index.json"}
+            for name in list(idx):
+                if name not in live:
+                    idx.pop(name, None)
+            if idx_f.exists():
+                idx_f.write_text(json.dumps(idx, indent=1), "utf-8")
+
+    bad = [r for r in rows if r.startswith(FAIL)]
+    head = "pico %s — probe write" % __import__("pico.base", fromlist=["x"]).__version__
+    tail = "%d write path(s): %d ok, %d fail. Scratch removed." % (
+        len(rows), len(rows) - len(bad), len(bad))
+    return "\n".join([head, ""] + rows + ["", tail])
+
+
 def doctor(m):
     rows = []
     home = E.home

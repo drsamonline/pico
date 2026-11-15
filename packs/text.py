@@ -100,6 +100,6 @@ RULES = [
     (r"^count (?P<path>.+)$", count),
     (r"^extract (?P<kind>\w+) (?P<path>.+)$", extract),
     (r"^sortlines (?P<path>.+)$", sortlines),
-    (r"^dedupe (?P<path>.+)$", dedupe),
+    (r"^dedupe (?!files\b)(?P<path>.+)$", dedupe),
     (r"^redact (?P<path>.+)$", redact),
 ]

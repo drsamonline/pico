@@ -6,7 +6,7 @@ records the modules so `Engine._bind_modules()` can rebind their `E` globals.
 """
 from . import (cmd_doctor, cmd_files, cmd_money, cmd_quarantine, cmd_repair,
                cmd_tasks, cmd_time, cmd_web)
-from .cmd_doctor import doctor, probe
+from .cmd_doctor import doctor, probe, probe_write
 from .cmd_repair import fix
 from .cmd_files import backup, fill, find, tidy, tpl_list
 from .cmd_quarantine import quarantine, restore, safe_delete, sweep
@@ -109,7 +109,8 @@ def register(engine):
         (r"^search\s+(?P<q>.+)$", search),
         (r"^weather(?:\s+(?P<city>.+))?$", weather),
         (r"^doctor fix$", fix),
-        (r"^doctor probe$", probe),
+        (r"^doctor probe(?: (?P<mode>write))?$",
+         lambda m: probe_write(m) if m["mode"] else probe(m)),
         (r"^doctor$", doctor),
         (r"^aliases$", aliases),
         (r"^unalias\s+(?P<p>.+)$", unalias),
@@ -134,6 +135,7 @@ def register(engine):
         "doctor - self-check every subsystem",
         "doctor fix - repair what can be repaired",
         "doctor probe - run one command per pack",
+        "doctor probe write - exercise the write paths in a scratch dir",
         "aliases - learned phrasings", "unalias P - forget a phrasing",
         "recur daily X - repeating task", "due N YYYY-MM-DD - set a due date",
         "overdue - tasks past their date", "safe delete PATH - quarantine a file",

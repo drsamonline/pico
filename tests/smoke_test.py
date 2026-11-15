@@ -1188,6 +1188,48 @@ def t60_doctor_probe():
     shutil.rmtree(d, True)
 
 
+def t61_probe_write():
+    e, d = fresh("t61")
+    out = e.handle("doctor probe write")
+    check("T61 probe write: it runs", "probe write" in out and "write path(s)" in out, out[:60])
+    check("T61 probe write: every write path answers", "0 fail" in out, out.splitlines()[-1])
+    check("T61 probe write: it names the paths it exercised",
+          "tidy" in out and "safe delete" in out and "restore" in out)
+    check("T61 probe write: the scratch directory is gone",
+          not list(d.glob("pico-probe-*")))
+    check("T61 probe write: no backup zip is left behind",
+          not list((d / "backups").glob("*.zip")) if (d / "backups").exists() else True)
+    check("T61 probe write: nothing is left in quarantine",
+          not [p for p in (d / "quarantine").iterdir()
+               if p.is_file() and p.name != "index.json"]
+          if (d / "quarantine").exists() else True)
+    shutil.rmtree(d, True)
+
+
+def t62_path_arguments():
+    e, d = fresh("t62")
+    case = d / "case"
+    case.mkdir()
+    (case / "one.txt").write_text("same", "utf-8")
+    (case / "two.txt").write_text("same", "utf-8")
+    (case / "three.txt").write_text("different", "utf-8")
+
+    out = e.handle("dedupe files %s" % case)
+    check("T62 paths: dedupe files honours the given path",
+          "two.txt" in out and "one.txt" in out, out.replace("\n", " | ")[:90])
+    out = e.handle("big files 2 %s" % case)
+    listed = [ln for ln in out.splitlines() if ln.strip().endswith(".txt")]
+    check("T62 paths: big files honours the given path",
+          len(listed) == 2 and all("case" in ln for ln in listed),
+          out.replace("\n", " | ")[:90])
+    out = e.handle("old files 1d %s" % case)
+    check("T62 paths: old files honours the given path", "case" in out or "Nothing" in out,
+          out[:70])
+    check("T62 paths: `dedupe files` is not swallowed by the text pack",
+          "group(s)" in e.handle("dedupe files %s" % case))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1205,7 +1247,8 @@ def main():
                t49_dispatch_module, t50_filter_types, t51_update_prompt,
                t52_doctor, t53_pivot_types, t54_offline_chip, t55_doctor_fix,
                t56_join_types, t57_android_doc, t58_thread_health,
-               t59_repair_module, t60_doctor_probe):
+               t59_repair_module, t60_doctor_probe, t61_probe_write,
+               t62_path_arguments):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

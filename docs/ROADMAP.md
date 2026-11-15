@@ -3,6 +3,12 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.14 — shipped
+
+`doctor probe write` exercises the eight write paths in a scratch directory; `dedupe files`, `big
+files` and `old files` now honour the path they are given, and `dedupe files` is no longer swallowed
+by the text pack's `dedupe`. 226 acceptance tests.
+
 ## 1.13 — shipped
 
 `doctor probe` runs one read-only command per pack through the handler, so a pack that loads but
@@ -83,8 +89,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **Probe covers reads only** | write paths (`tidy`, `fill`, `backup`) are still only exercised by the test suite | a `doctor probe --write` against a scratch directory |
-| **Budget headroom is finite** | the package sits at 69.0 KB of an 80 KB ceiling | two more subsystems fit before a decision is needed |
+| **`fill` is the one path no probe touches** | it writes a dated file into the home, so a diagnostic must not run it | a `fill` that takes an output directory |
+| **Budget headroom is finite** | the package sits at 72.8 KB of an 80 KB ceiling | one more subsystem fits before a decision is needed |
 
 ## Next — cheap and useful
 

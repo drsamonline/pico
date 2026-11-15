@@ -6,7 +6,7 @@ import shutil
 
 CATALOG = ["dedupe files PATH - report identical files",
            "dedupe files PATH apply - quarantine duplicates",
-           "big files [N] - largest files", "old files ND - untouched for N days"]
+           "big files [N] [PATH] - largest files", "old files ND [PATH] - untouched for N days"]
 E = None
 
 
@@ -22,9 +22,14 @@ def _roots():
             yield d
 
 
-def _walk(limit=60000):
+def _walk(limit=60000, root=None):
+    """Walk the usual folders, or one given folder. `dedupe files PATH` was
+    accepting a path and then walking the defaults instead."""
     seen = 0
-    for root in _roots():
+    roots = [pathlib.Path(root).expanduser()] if root else list(_roots())
+    for root in roots:
+        if not root.exists():
+            continue
         for p in root.rglob("*"):
             if p.is_file():
                 yield p
@@ -47,7 +52,7 @@ def _sha(p, chunk=1 << 16):
 def big(m):
     n = int(m["n"]) if m["n"] else 15
     rows = []
-    for p in _walk():
+    for p in _walk(root=m["path"]):
         try:
             rows.append((p.stat().st_size, str(p)))
         except Exception:
@@ -65,7 +70,7 @@ def old(m):
     days = int(m["n"])
     cutoff = datetime.datetime.now().timestamp() - days * 86400
     rows = []
-    for p in _walk():
+    for p in _walk(root=m["path"]):
         try:
             st = p.stat()
         except Exception:
@@ -84,7 +89,7 @@ def old(m):
 def dedupe(m):
     apply_ = bool(m["apply"])
     by_size = {}
-    for p in _walk():
+    for p in _walk(root=m["path"]):
         try:
             sz = p.stat().st_size
         except Exception:
@@ -149,6 +154,6 @@ def _h(n):
 
 RULES = [
     (r"^dedupe files\s+(?P<path>\S+)(?:\s+(?P<apply>apply))?$", dedupe),
-    (r"^big files(?:\s+(?P<n>\d+))?$", big),
-    (r"^old files\s+(?P<n>\d+)d$", old),
+    (r"^big files(?:\s+(?P<n>\d+))?(?:\s+(?P<path>\S+))?$", big),
+    (r"^old files\s+(?P<n>\d+)d(?:\s+(?P<path>\S+))?$", old),
 ]
