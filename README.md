@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.19.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.20.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -98,8 +98,8 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
 | python source | 149,402 bytes across 29 files |
-| package / packs / console | 78,683 / 70,719 / 68,879 B |
-| console | 68,879 bytes, one HTML file, no external assets |
+| package / packs / console | 78,683 / 70,719 / 69,391 B |
+| console | 69,391 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
@@ -124,7 +124,7 @@ every change and a snapshot every 25 changes so `replay` has a starting point â€
 | --- | --- | --- | --- |
 | package (`pico/` + launcher, 18 files) | 96 KB | 78,683 B | 17.3 KB |
 | packs (12 files) | 96 KB | 70,719 B | 25.3 KB |
-| console (one HTML file) | 96 KB | 68,879 B | 28.7 KB |
+| console (one HTML file) | 96 KB | 69,391 B | 27.0 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |
 | dependencies | 0 | 0 | â€” |
@@ -230,6 +230,7 @@ Runtime data lives in `~/.pico/` (`PICO_HOME` overrides it): `state.json`, `ledg
 | [`docs/COMMANDS.md`](docs/COMMANDS.md) | every command, argument shapes, tiers, examples |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | what is next, with the exit test for each item |
 | [`docs/ANDROID.md`](docs/ANDROID.md) | why there is no APK, and the three routes that work |
+| [`tools/demo_parity.py`](tools/demo_parity.py) | checks the console demo against the engine, 145 commands |
 | [`PRIVACY.md`](PRIVACY.md) | exactly what is stored and what can leave the machine |
 | [`SECURITY.md`](SECURITY.md) | threat model, token handling, disclosure |
 | [`CHANGELOG.md`](CHANGELOG.md) | what each version changed |

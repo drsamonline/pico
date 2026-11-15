@@ -239,7 +239,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.19.0</small>
+      pico <small id="ver">v1.20.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -645,7 +645,7 @@ const H = {
   csvSort:()=>"CSV verbs need the local engine.",
   csvJoin:()=>"CSV verbs need the local engine.",
   debtSnowball:()=>"The payoff simulation needs the local engine.",
-  timeline:()=>(S.undo.length?S.undo.slice(-12).map(u=>`${u.op.padEnd(12)} ${u.cmd}`).join("\n"):"Ledger empty."),
+  timeline:()=>"The ledger lives in the local engine — run: python pico.py timeline",
   twoKey:()=>"Two-key needs the local engine — it prints an approval code from the running process.",
   safeDelete:()=>"Quarantine needs the local engine — run: python pico.py safe delete PATH",
   bigFiles:()=>"Disk scan needs the local engine — run: python pico.py big files",
@@ -925,8 +925,15 @@ async function run(text){
       }else{
         resolved=r.cmd;src=r.src;tier=riskOf(r.cmd);
         const hit=matchRule(r.cmd);
-        if((tier==="send"||tier==="danger")){
-          out=`[${tier}] About to run: ${r.cmd}\nType 'confirm' to approve.`;
+        /* a danger command with nothing to affect runs through, as the engine does */
+        /* the demo cannot stat the filesystem, so it cannot promise a no-op */
+        if(hit.name==="safeDelete"){ setStat("ready");
+          return {out:"Deleting a real file needs the local engine — it moves the file, the page cannot.",
+                  resolved:r.cmd, src:r.src, tier}; }
+        const PREVIEW={"restore":m=>+m.n<=S.undo.filter(u=>u.op==="safe_delete").length};
+        const pv=PREVIEW[hit.name];
+        if((tier==="send"||tier==="danger")&&(!pv||pv(hit.groups||{}))){
+          out=`[${tier}] About to run: ${r.cmd}\nType 'confirm' or 'cancel'.`;
           pendingConfirm=r.cmd;
         }else{
           CURRENT_CMD = hit.cmd || text;
@@ -1190,7 +1197,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.19.0";
+$("#ver").textContent="v1.20.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){

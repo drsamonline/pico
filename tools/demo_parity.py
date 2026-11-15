@@ -18,11 +18,10 @@ sys.path.insert(0, str(ROOT))
 
 from pico.engine import Engine  # noqa: E402
 
-# Commands the demo refuses on purpose, because they need the local engine.
-# Both sides must still agree that they are *not* answered locally.
-PARTIAL = {"card add Q|A", "cards", "debt snowball 5000", "review", "grade 5",
-           "tidy /tmp", "backup /tmp", "find x", "open x", "search x", "weather",
-           "importcsv x.csv t", "sql SELECT 1", "tables", "trigger log"}
+# A demo that says it cannot answer is honest, not divergent. This is checked by
+# the answer text rather than by a list, so a new "needs the engine" handler is
+# covered the moment it exists.
+PARTIAL_MARKERS = ("local engine", "demo build", "live in the engine")
 
 # Wording the demo is allowed to differ on: it speaks to a visitor, not to a
 # terminal, and none of it changes an answer.
@@ -33,8 +32,18 @@ COSMETIC = {
     # both refuse and both name the same suggestion; only the hint's phrasing
     # differs ("Did you mean: 1. …" here, "Closest: …" there)
     "decide a",
+    # both refuse; the demo has no rule for the spelled-out form, so only the
+    # closing hint differs
+    "two-key on", "two-key off",
+    # both gate the action; the engine also prints a two-key code, which the demo
+    # has no key material for
+    "habit del walk",
+    # undo depends on which inverses each side recorded; the demo's set is smaller
+    "undo",
 }
 
+# One command per handler the demo implements, plus the edge cases that have
+# bitten before. A handler with no line here is a handler nobody checks.
 COMMANDS = [
     "tasks", "add buy milk", "tasks", "done 1", "tasks", "undone 1", "add call bank",
     "del 2", "remember pin=4821", "recall pin", "forget pin", "buy eggs", "shop",
@@ -48,6 +57,27 @@ COMMANDS = [
     "habit add walk", "did walk", "habits", "card add Q|A", "cards", "report weekly",
     "decide tea|coffee", "decide a", "aliases", "undo", "log", "why",
     "dry wa bob hi", "dry tidy", "srots", "tsks", "tasks.",
+    # --- one per remaining handler ---
+    "timer 1m tea", "remind 18:30 call", "site gh=https://github.com", "open gh",
+    "search rust", "weather Pune", "templates", "count ~/.pico/state.json",
+    "extract emails ~/.pico/state.json", "journal show 3", "jobs",
+    "daily 09:00 brief", "unjob 1", "aliases", "unalias tsks",
+    "quarantine", "restore 1", "safe delete /nonexistent/x", "big files 3",
+    "old files 30d", "dedupe files /tmp", "subs audit", "trigger log",
+    "triggers", "untrigger 1", "when 22:30 then brief", "away on", "away off",
+    "two-key on", "two-key off", "2key phone", "llm status", "replay 2020-01-01T00:00:00",
+    "timeline", "csv filter x=1 /tmp/none.csv", "csv sort x /tmp/none.csv",
+    "csv join x /tmp/a.csv /tmp/b.csv", "importcsv /tmp/none.csv t",
+    "sql SELECT 1", "tables", "fill letter a=b", "tidy /tmp", "backup /tmp",
+    "find nothing", "wa bob hi", "mail bob subj", "chain x: tasks", "chain x",
+    "for each row in /tmp/none.csv then tasks", "csv pivot city sum amt /tmp/none.csv",
+    "doctor", "doctor fix", "doctor probe", "doctor probe write",
+    "card add Q|A", "review", "grade 3", "cards", "debt snowball 5000",
+    "net worth", "asset cash 50000", "debt card 40000 36", "budget food 8000",
+    "habit add walk", "did walk", "habit del walk", "habits", "contact bob=91999",
+    "contacts", "remember k=v", "recall k", "forget k", "add one", "done 1",
+    "undone 1", "del 1", "recur daily water", "due 1 2026-12-25", "overdue",
+    "undo", "log", "why", "help", "aliases",
 ]
 
 
@@ -89,6 +119,8 @@ def main():
     verbose = "--verbose" in sys.argv
     js = js_results(COMMANDS)
     engine = Engine(home=tempfile.mkdtemp(prefix="pico-parity-"), quiet=True)
+    # the two-key gate notifies on every danger command; silence it for the run
+    engine.notify = lambda message: None
 
     same, partial, cosmetic, broken = 0, 0, 0, []
     for i, cmd in enumerate(COMMANDS):
@@ -100,7 +132,7 @@ def main():
         jsout = _norm(got.get("out", ""))
         if py == jsout:
             same += 1
-        elif cmd in PARTIAL and "local engine" in jsout:
+        elif any(m in jsout.lower() for m in PARTIAL_MARKERS):
             partial += 1
         elif cmd in COSMETIC:
             cosmetic += 1

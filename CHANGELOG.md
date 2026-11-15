@@ -2,6 +2,34 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.20.0 — 2026-11-15
+
+### Changed
+
+- **The parity gate now covers the whole demo.** 61 commands became 145: one per handler the console
+  implements, plus every edge case that has bitten before. 73 identical, 48 partial by design, 24 that
+  differ only in wording, 0 divergent.
+- **"Needs the local engine" is detected from the answer, not from a list.** A handler that refuses
+  honestly is counted as partial the moment it exists, so a new one cannot slip past the gate.
+
+### Fixed
+
+Three more ways the demo answered differently from the engine:
+
+- **`timeline` showed the undo stack** and called it a ledger. The demo has no ledger; it now says so.
+- **`restore 999` and `safe delete /nonexistent`** prompted for confirmation of a no-op, three releases
+  after the engine stopped doing that. The empty-preview rule is ported; `safe delete` in the demo now
+  says plainly that deleting a real file needs the engine, because the page cannot stat the filesystem.
+- **The confirmation line** said `Type 'confirm' to approve.` where the engine offers `'confirm' or
+  'cancel'`. A visitor reading the demo learned a command that does not exist.
+
+### Verified
+
+The four remaining wording differences are recorded in the tool with a reason each: `two-key on|off`
+(both refuse, different closing hint), `habit del` (the engine also prints a two-key code the demo has
+no key material for), `undo` (each side's inverse set differs), and `decide a` (both refuse, both name
+the same suggestion).
+
 ## 1.19.0 — 2026-11-15
 
 ### Added
