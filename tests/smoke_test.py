@@ -1663,7 +1663,7 @@ def t85_replay_reconstructs():
     e._since_snap = 25
     for i in range(25, 31):
         e.handle("add t%d" % i)
-    snaps = sorted((d / "snapshots").glob("*.json"))
+    snaps = sorted(q for q in (d / "snapshots").glob("*.json") if q.name != "index.json")
     check("T85 replay: a snapshot exists", bool(snaps), str(len(snaps)))
     at_snapshot = len(json.loads(snaps[-1].read_text("utf-8"))["tasks"])
 
@@ -1682,6 +1682,12 @@ def t85_replay_reconstructs():
           len(got["tasks"]) > at_snapshot, "%d > %d" % (len(got["tasks"]), at_snapshot))
     check("T85 replay: spend is reconstructed too", got["spend"] == e.S["spend"])
     check("T85 replay: the live state is untouched", len(e.S["tasks"]) == live)
+    index = json.loads((d / "snapshots" / "index.json").read_text("utf-8"))
+    check("T85 replay: each snapshot records its ledger position",
+          all("lines" in v for v in index.values()) and len(index) >= 1, str(index)[:80])
+    check("T85 replay: a bare date is accepted",
+          "Replayed" in e.handle("replay " + datetime.date.today().isoformat()),
+          e.handle("replay " + datetime.date.today().isoformat())[:60])
     shutil.rmtree(d, True)
 
 

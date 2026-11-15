@@ -205,7 +205,8 @@ def doctor(m):
         rows.append(_line(OK, "quarantine", "empty"))
 
     # snapshots
-    snaps = sorted((home / "snapshots").glob("*.json")) if (home / "snapshots").exists() else []
+    snaps = sorted(q for q in (home / "snapshots").glob("*.json")
+                   if q.name != "index.json") if (home / "snapshots").exists() else []
     rows.append(_line(OK, "snapshots",
                       "%d kept, newest %s" % (len(snaps), snaps[-1].stem if snaps else "-")))
 

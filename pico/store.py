@@ -46,6 +46,30 @@ class StoreMixin:
         with self._lock:
             self._snapshot_locked()
 
+    def _snapshot_index(self):
+        f = self.snapshots / "index.json"
+        if not f.exists():
+            return {}
+        try:
+            d = json.loads(f.read_text("utf-8"))
+            return d if isinstance(d, dict) else {}
+        except Exception:
+            return {}
+
+    def _record_snapshot(self, name):
+        """Remember where the ledger had reached, so replay needs no clock.
+
+        Timestamps are not good enough: a Windows clock ticks in ~15 ms steps, so
+        several commands share a stamp with the snapshot and fall outside a
+        `base < ts <= target` window. A line ordinal cannot do that.
+        """
+        try:
+            idx = self._snapshot_index()
+            idx[name] = {"lines": sum(1 for _ in self.ledger_lines())}
+            (self.snapshots / "index.json").write_text(json.dumps(idx, indent=1), "utf-8")
+        except Exception:
+            pass
+
     def _snapshot_locked(self):
         self._since_snap += 1
         if self._since_snap < 25:
@@ -56,9 +80,16 @@ class StoreMixin:
             ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
             f = self.snapshots / (ts + ".json")
             f.write_text(json.dumps(self.S, ensure_ascii=False), "utf-8")
-            files = sorted(self.snapshots.glob("*.json"))
+            self._record_snapshot(f.name)
+            files = sorted(p for p in self.snapshots.glob("*.json") if p.name != "index.json")
             for old in files[:-12]:
                 old.unlink()
+                try:
+                    idx = self._snapshot_index()
+                    idx.pop(old.name, None)
+                    (self.snapshots / "index.json").write_text(json.dumps(idx, indent=1), "utf-8")
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -66,7 +97,11 @@ class StoreMixin:
         """Rebuild state as of an ISO timestamp, into a side directory. Live state untouched."""
         if not target:
             return "Usage: replay 2026-11-14T09:30"
-        snaps = sorted(self.snapshots.glob("*.json")) if self.snapshots.exists() else []
+        # a bare date means "as of the end of that day"
+        if len(target) == 10:
+            target = target + "T23:59:59.999999"
+        snaps = sorted(p for p in self.snapshots.glob("*.json")
+                       if p.name != "index.json") if self.snapshots.exists() else []
         base, base_ts = None, ""
         for f in snaps:
             try:
@@ -89,15 +124,22 @@ class StoreMixin:
             side = _Engine(home=work, load_packs=True, quiet=True)
         finally:
             _os.environ.pop("PICO_NO_THREADS", None)
+        # start from the ledger position the snapshot recorded; fall back to the
+        # timestamp only for snapshots written before the index existed
+        start = (self._snapshot_index().get(base.name) or {}).get("lines")
         n = 0
-        for line in self.ledger_file.read_text("utf-8").splitlines():
+        for i, line in enumerate(self.ledger_lines()):
             try:
                 r = json.loads(line)
             except Exception:
                 continue
-            ts = r.get("ts", "")
-            if not (base_ts < ts <= target):
-                continue
+            if start is not None:
+                if i < start:
+                    continue
+            else:
+                ts = r.get("ts", "")
+                if not (base_ts < ts <= target):
+                    continue
             if r.get("tier") in ("send", "danger"):
                 continue
             side.handle(r.get("cmd", ""))

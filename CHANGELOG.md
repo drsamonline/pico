@@ -2,6 +2,28 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.26.1 — 2026-11-15
+
+### Fixed
+
+- **Replay still under-reconstructed on Windows.** 1.26.0 gave the timestamps microseconds, which fixed
+  Linux and not Windows: the Windows clock ticks in ~15 ms steps, so several commands still shared a
+  stamp with the snapshot and fell outside the window. A probe on CI reconstructed 34 tasks where live
+  had 36.
+
+  The window no longer uses the clock at all. Each snapshot records how many ledger lines existed when
+  it was taken, in `snapshots/index.json`, and replay applies every line after that ordinal. A line
+  count cannot collide the way a timestamp can.
+
+- **`replay 2026-11-15` picked no snapshot.** A bare date compared as a string is shorter than any
+  timestamp, so nothing matched. It now means "as of the end of that day".
+- `doctor` counted `snapshots/index.json` as a snapshot; the listing skips it.
+
+### Tests
+
+323 checks. T85 now also asserts that each snapshot records its ledger position and that a bare date is
+accepted.
+
 ## 1.26.0 — 2026-11-15
 
 ### Fixed
