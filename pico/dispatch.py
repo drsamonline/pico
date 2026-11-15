@@ -160,7 +160,13 @@ class DispatchMixin:
             prev = getattr(fn, "preview", None)
             if prev:
                 try:
-                    preview = "\nAffects: %d item(s)" % len(prev(m))
+                    aff = prev(m)
+                    # nothing to affect: the handler's own refusal beats a prompt
+                    # asking the user to confirm a no-op
+                    if not aff:
+                        self.pending = {}
+                        return self._run(cmd, r["src"], original=t)
+                    preview = "\nAffects: %d item(s)" % len(aff)
                 except Exception:
                     pass
             tail = "approve <code>" if gate else "confirm"

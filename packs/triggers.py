@@ -120,10 +120,23 @@ def _cond_true(cond):
     if kind == "weekday":
         return datetime.date.today().weekday() < 5
     if kind == "file":
-        return any(pathlib.Path.home().glob(arg))
+        return bool(_glob(arg))
     if kind == "exists":
         return pathlib.Path(arg).expanduser().exists()
     return False
+
+
+def _glob(pat):
+    """Glob a pattern that may be absolute, ~-relative or home-relative.
+
+    `Path.home().glob("/tmp/x/*.csv")` returns nothing: glob does not accept an
+    absolute pattern. Absolute patterns must be globbed from their own anchor.
+    """
+    pat = os.path.expanduser(str(pat))
+    p = pathlib.Path(pat)
+    if p.is_absolute():
+        return list(pathlib.Path(p.anchor).glob(str(p)[len(p.anchor):]))
+    return list(pathlib.Path.home().glob(pat))
 
 
 def _clip():
@@ -173,7 +186,7 @@ def _due(job, now):
     elif kind == "file":
         now_seen = set()
         for pat in job["glob"]:
-            for p in pathlib.Path.home().glob(pat):
+            for p in _glob(pat):
                 now_seen.add(str(p))
         fresh = now_seen - set(job.get("seen", []))
         job["seen"] = sorted(now_seen)[-500:]

@@ -194,8 +194,8 @@ def subs(m):
 
 
 RULES = [
-    (r"^asset (?P<name>\w+) (?P<amt>[\d.]+)$", asset),
-    (r"^debt (?P<name>\w+) (?P<amt>[\d.]+) (?P<rate>[\d.]+)$", debt_add),
+    (r"^asset (?P<name>\S+) (?P<amt>[\d.]+)$", asset),
+    (r"^debt (?P<name>\S+) (?P<amt>[\d.]+) (?P<rate>[\d.]+)$", debt_add),
     (r"^net worth$", net_worth),
     (r"^debt snowball(?: (?P<extra>[\d.]+))?$", snowball),
     (r"^subs audit$", subs),
@@ -206,6 +206,6 @@ RULES = [
     (r"^gst (?P<a>[\d.]+) (?P<r>[\d.]+)$", gst),
     (r"^split (?P<a>[\d.]+) (?P<n>\d+)$", split),
     (r"^disc (?P<a>[\d.]+) (?P<r>[\d.]+)$", disc),
-    (r"^budget (?P<cat>\w+) (?P<amt>[\d.]+)$", budget_set),
+    (r"^budget (?P<cat>[^\s\d][^\s]*) (?P<amt>[\d.]+)$", budget_set),
     (r"^budget$", budget_show),
 ]

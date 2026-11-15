@@ -356,7 +356,7 @@ def _drop(args):
 
 
 RULES = [
-    (r"^importcsv\s+(?P<path>\S+)\s+(?P<table>\w+)$", importcsv),
+    (r"^importcsv\s+(?P<path>\S+)\s+(?P<table>\S+)$", importcsv),
     (r"^sql\s+(?P<q>.+)$", sql),
     (r"^tables$", tables),
     (r"^csv filter (?P<cond>.+?) (?P<path>\S+\.csv)$", csv_filter),

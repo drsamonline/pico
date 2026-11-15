@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.17 — shipped
+
+A third hardening pass, aimed at the parts no test had touched: file triggers, name arguments in
+Indic scripts, the confirmation gate on a no-op, and the SM-2 schedule. 290 acceptance tests.
+
 ## 1.16 — shipped
 
 A second hardening pass, aimed at the web surface and the long-running state: the SQL pragma
@@ -105,7 +110,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | **`fill` is the one path no probe touches** | it writes a dated file into the home, so a diagnostic must not run it | a `fill` that takes an output directory |
 | **Devanagari in command *arguments* is fine, in command *names* it is not** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
 | **The ledger keeps one generation** | `ledger.1.jsonl` is overwritten on each rotation, so the oldest history is dropped | a dated generation name, kept for N days |
-| **Package headroom is finite** | the package sits at 76.3 KB of an 80 KB ceiling | one small fix fits; the next subsystem needs a trim or a recorded ceiling change |
+| **Package headroom is finite** | the package sits at 76.6 KB of an 80 KB ceiling | one small fix fits; the next subsystem needs a trim or a recorded ceiling change |
 
 ## Next — cheap and useful
 

@@ -76,7 +76,7 @@ class StoreMixin:
             if stamp <= target:
                 base, base_ts = f, stamp
         if base is None:
-            return ("No snapshot at or before %s. Snapshots are kept for the last 20 "
+            return ("No snapshot at or before %s. Snapshots are kept for the last 12 "
                     "write bursts." % target)
         work = self.home / ("replay-" + target.replace(":", ""))
         work.mkdir(parents=True, exist_ok=True)

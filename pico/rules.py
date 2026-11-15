@@ -92,7 +92,7 @@ def register(engine):
         (r"^bought\s+(?P<n>\d+)$", bought),
         (r"^on\s+(?P<date>\d{4}-\d{2}-\d{2}|\d{2}-\d{2})\s+(?P<text>.+)$", event_add),
         (r"^(brief|today|agenda)$", brief),
-        (r"^spend\s+(?P<amt>\d+(?:\.\d+)?)\s*(?P<cat>\w+)?$", spend_add),
+        (r"^spend\s+(?P<amt>\d+(?:\.\d+)?)\s*(?P<cat>[^\s\d][^\s]*)?$", spend_add),
         (r"^(spend|expenses)$", spend_sum),
         (r"^calc\s+(?P<e>.+)$", calc),
         (r"^convert\s+(?P<v>-?\d+(?:\.\d+)?)\s*(?P<a>[a-zA-Z]+)\s+(?:to|in)\s+(?P<b>[a-zA-Z]+)$", convert_),

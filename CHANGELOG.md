@@ -2,6 +2,38 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.17.0 — 2026-11-14
+
+A third hardening pass, aimed at the parts no test had touched.
+
+### Fixed
+
+- **`when file /absolute/path/*.csv` never fired.** The trigger globbed from `Path.home()`, and
+  `Path.home().glob("/abs/pattern")` returns nothing because glob does not accept an absolute pattern.
+  A shared `_glob()` now anchors absolute patterns at their own root, so absolute, `~`-relative and
+  home-relative patterns all work. Both the trigger and the `unless file` condition were affected.
+- **Indic scripts still broke name and category arguments.** The previous pass widened the *key*
+  patterns; `spend 100 खाना`, `budget खाना 5000`, `asset सोना 50000`, `debt कार्ड 40000 36` and
+  `importcsv x.csv तालिका` all still failed, because `\w+` stops at a combining vowel sign. They now
+  take any non-space run.
+- **A danger command with nothing to affect asked for confirmation.** `restore 999` and
+  `safe delete /nope` produced "Affects: 0 item(s). Type confirm" — a prompt to confirm a no-op.
+  When a handler's preview is empty the command now runs straight through and the handler's own
+  refusal is shown instead.
+- The `replay` message still said snapshots were kept for "the last 20 write bursts" after the count
+  was reduced to 12.
+
+### Verified, not changed
+
+SM-2 is correct: repeated grade 5 gives intervals 1, 6, 16, 45, 127, 351 … with ease rising 2.5 →
+3.16, and a grade below 3 resets the interval and the repetition count. `brief` renders 300 events in
+1.1 ms. The `for each` cap refuses 300 rows with a message that says why.
+
+### Tests
+
+290 checks, up from 272. T74 the Indic names and categories, T75 the file trigger including
+once-per-file, T76 the no-op gate, T77 the SM-2 schedule.
+
 ## 1.16.0 — 2026-11-14
 
 A second hardening pass, this one aimed at the web surface and at long-running state. Again every fix

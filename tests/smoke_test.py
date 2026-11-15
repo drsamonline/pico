@@ -1428,6 +1428,99 @@ def t73_web_routes():
         shutil.rmtree(e.home, True)
 
 
+def t74_indic_names():
+    e, d = fresh("t74")
+    check("T74 names: a Devanagari spend category is accepted",
+          e.handle("spend 100 खाना") == "Logged.", e.handle("spend 100 खाना"))
+    check("T74 names: it is reported back", "खाना" in e.handle("expenses"))
+    check("T74 names: a Devanagari budget category works",
+          "खाना" in e.handle("budget खाना 5000"))
+    check("T74 names: a Devanagari asset works", "सोना" in e.handle("asset सोना 50000"))
+    check("T74 names: a Devanagari debt works", "कार्ड" in e.handle("debt कार्ड 40000 36"))
+    check("T74 names: a Devanagari habit works",
+          "streak" in e.handle("habit add ध्यान") + e.handle("did ध्यान"))
+    nw = e.handle("net worth")
+    check("T74 names: net worth subtracts the debt from the asset",
+          "10,000" in nw, nw.replace("\n", " | ")[:90])
+    shutil.rmtree(d, True)
+
+
+def t75_file_trigger():
+    e, d = fresh("t75")
+    watch = d / "watch"
+    watch.mkdir()
+    out = e.handle("when file %s/*.csv then count {file}" % watch)
+    check("T75 file trigger: an absolute glob is accepted",
+          out.startswith("Trigger 1 saved"), out[:60])
+    mod = _trig_mod()
+    if mod is None:
+        check("T75 file trigger: pack reachable", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    now = datetime.datetime.now()
+    (watch / "a.csv").write_text("x,y\n1,2\n", "utf-8")
+    first = mod.tick(now)
+    check("T75 file trigger: a new file fires it", len(first) == 1, str(len(first)))
+    again = mod.tick(now + datetime.timedelta(seconds=30))
+    check("T75 file trigger: the same file does not fire twice", len(again) == 0,
+          str(len(again)))
+    (watch / "b.csv").write_text("x,y\n3,4\n", "utf-8")
+    second = mod.tick(now + datetime.timedelta(seconds=60))
+    check("T75 file trigger: a second new file fires it", len(second) == 1,
+          str(len(second)))
+    shutil.rmtree(d, True)
+
+
+def t76_noop_gate():
+    e, d = fresh("t76")
+    check("T76 no-op: restoring a nonexistent item explains instead of prompting",
+          e.handle("restore 999") == "No such item. Run: quarantine",
+          e.handle("restore 999")[:60])
+    check("T76 no-op: safe delete of a missing path explains",
+          "not found" in e.handle("safe delete /nonexistent/x"))
+    real = d / "f.txt"
+    real.write_text("x", "utf-8")
+    out = e.handle("safe delete %s" % real)
+    check("T76 no-op: a real danger action still asks for confirmation",
+          out.startswith("[danger]") and "Affects: 1" in out, out[:60])
+    check("T76 no-op: the replay message names the real snapshot count",
+          "12 write bursts" in e.handle("replay notadate"))
+    shutil.rmtree(d, True)
+
+
+def t77_sm2():
+    e, d = fresh("t77")
+    e.handle("card add Q|A")
+    mod = next((m for n, m in sys.modules.items()
+                if n.startswith("pico_pack_learn")), None)
+    intervals = []
+    for g in (5, 5, 5):
+        if mod is not None:
+            for c in mod.D["cards"]:
+                c["due"] = "2000-01-01"
+            mod.save()
+        e.handle("review")
+        e.handle("grade %d" % g)
+        raw = json.loads((d / "cards.json").read_text("utf-8"))
+        intervals.append(raw["cards"][0]["interval"])
+    check("T77 sm2: the interval grows 1, 6, 16 on repeated grade 5",
+          intervals == [1, 6, 16], str(intervals))
+    raw = json.loads((d / "cards.json").read_text("utf-8"))
+    check("T77 sm2: ease rises above the 2.5 default", raw["cards"][0]["ef"] > 2.5,
+          str(raw["cards"][0]["ef"]))
+    if mod is not None:
+        for c in mod.D["cards"]:
+            c["due"] = "2000-01-01"
+        mod.save()
+    e.handle("review")
+    e.handle("grade 1")
+    raw = json.loads((d / "cards.json").read_text("utf-8"))
+    check("T77 sm2: a lapse resets the interval and the repetition count",
+          raw["cards"][0]["interval"] == 1 and raw["cards"][0]["n"] == 0,
+          str({k: raw["cards"][0][k] for k in ("interval", "n")}))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1449,7 +1542,8 @@ def main():
                t62_path_arguments, t63_indic_keys, t64_csv_edge_cases,
                t65_bounds, t66_fill_single_pass, t67_quoted_paths,
                t68_sql_pragma, t69_dates, t70_fuzzy_template, t71_expired_confirm,
-               t72_ledger_rotation, t73_web_routes):
+               t72_ledger_rotation, t73_web_routes, t74_indic_names,
+               t75_file_trigger, t76_noop_gate, t77_sm2):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()
