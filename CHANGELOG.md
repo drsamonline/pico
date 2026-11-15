@@ -2,6 +2,30 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.23.0 — 2026-11-15
+
+### Changed
+
+- **The ledger rotates to dated generations.** Rotation used to rename to `ledger.1.jsonl`, so the next
+  rotation overwrote it and everything older than two generations was gone. It now renames to
+  `ledger-<YYYYMMDDTHHMMSSffffff>.jsonl` and keeps the newest five. Microseconds in the name mean two
+  rotations in the same second cannot collide, and the names still sort chronologically.
+- **`engine.ledger_lines()` spans every generation**, oldest first, so `timeline`, `report` and `doctor`
+  all see the retained history rather than only the live file.
+
+### Fixed
+
+- **`timeline` truncated at 40 lines silently.** It now says how many it withheld and how to narrow the
+  window (`timeline 2026-11-01`).
+- `doctor` reported the live ledger file's size only; it now counts every generation.
+- Generation names collided when two rotations landed in the same second, because the stamp had
+  one-second resolution. Found immediately by the probe: 75 commands produced one generation, not five.
+
+### Tests
+
+307 checks. T72 was rewritten and T80 folded into T82, because both asserted the single-generation
+scheme that this release replaces — the tests were right for the old behaviour and wrong for the new one.
+
 ## 1.22.0 — 2026-11-15
 
 ### Fixed

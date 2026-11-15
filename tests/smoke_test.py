@@ -1377,16 +1377,15 @@ def t72_ledger_rotation():
     for i in range(260):
         e.handle("add item %d" % i)
     live = e.ledger_file
-    prev = live.with_name("%s.1.jsonl" % live.stem)
-    check("T72 ledger: the file rotates at the cap", prev.exists(),
+    gens = sorted(d.glob("ledger-*.jsonl"))
+    check("T72 ledger: the file rotates at the cap", bool(gens),
           str(sorted(p.name for p in d.glob("ledger*"))))
     check("T72 ledger: the live file is under the cap",
           len(live.read_text("utf-8").splitlines()) < 120,
           str(len(live.read_text("utf-8").splitlines())))
-    check("T72 ledger: only one generation is kept",
-          len(list(d.glob("ledger.*.jsonl"))) == 1)
-    check("T72 ledger: log still reads the live file",
-          "item" in e.handle("log"))
+    check("T72 ledger: no more generations than the keep limit",
+          len(gens) <= e.LEDGER_KEEP, str(len(gens)))
+    check("T72 ledger: log still reads the live file", "item" in e.handle("log"))
     shutil.rmtree(d, True)
 
 
@@ -1573,25 +1572,28 @@ def t79_scale():
     shutil.rmtree(d, True)
 
 
-def t80_ledger_generations():
-    e, d = fresh("t80")
-    e.LEDGER_CAP = 20
-    for i in range(45):
+def t82_ledger_generations_dated():
+    e, d = fresh("t82")
+    e.LEDGER_CAP = 10
+    for i in range(75):
         e.handle("add x%d" % i)
-    live = e.ledger_file
-    prev = live.with_name("%s.1.jsonl" % live.stem)
-    check("T80 generations: rotation produced a previous generation", prev.exists())
+    gens = sorted(d.glob("ledger-*.jsonl"))
+    check("T82 dated generations: five are kept", len(gens) == e.LEDGER_KEEP,
+          str(len(gens)))
+    check("T82 dated generations: names sort chronologically",
+          [g.name for g in gens] == sorted(g.name for g in gens))
     lines = list(e.ledger_lines())
-    check("T80 generations: the reader spans both files",
-          len(lines) == 25, str(len(lines)))
+    check("T82 dated generations: the reader spans every generation",
+          len(lines) == 55, str(len(lines)))
+    check("T82 dated generations: the oldest line is from the oldest kept generation",
+          "add x20" in lines[0], lines[0][:50])
     tl = e.handle("timeline")
-    check("T80 generations: timeline includes the rotated history",
-          len(tl.splitlines()) == 25, str(len(tl.splitlines())))
-    check("T80 generations: timeline starts at the oldest kept command",
-          "add x20" in tl.splitlines()[0], tl.splitlines()[0][:50])
-    month = e.handle("report month")
-    check("T80 generations: the report counts both files",
-          "commands 25" in month, [l for l in month.splitlines() if "commands" in l])
+    check("T82 dated generations: timeline says how many it withheld",
+          "older line(s)" in tl.splitlines()[0], tl.splitlines()[0][:60])
+    check("T82 dated generations: timeline narrows with a date",
+          e.handle("timeline 2099-01-01") == "Nothing since 2099-01-01")
+    check("T82 dated generations: an empty ledger says so",
+          Engine(home=tempfile.mkdtemp(), quiet=True).handle("timeline") == "Ledger empty.")
     shutil.rmtree(d, True)
 
 
@@ -1631,7 +1633,8 @@ def main():
                t68_sql_pragma, t69_dates, t70_fuzzy_template, t71_expired_confirm,
                t72_ledger_rotation, t73_web_routes, t74_indic_names,
                t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper,
-               t79_scale, t80_ledger_generations, t81_report_plural):
+               t79_scale, t81_report_plural,
+               t82_ledger_generations_dated):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

@@ -173,11 +173,14 @@ def doctor(m):
         rows.append(_line(WARN, "quarantined state",
                           "%d old file(s) kept" % len(corrupt)))
 
-    # ledger
+    # ledger, including the rotated generations
     lf = E.ledger_file
-    if lf.exists():
-        n = len(lf.read_text("utf-8").splitlines())
-        rows.append(_line(OK, "ledger", "%d line(s), %d B" % (n, lf.stat().st_size)))
+    gens = sorted(lf.parent.glob("%s-*.jsonl" % lf.stem))
+    if lf.exists() or gens:
+        n = len(list(E.ledger_lines()))
+        size = (lf.stat().st_size if lf.exists() else 0) + sum(g.stat().st_size for g in gens)
+        rows.append(_line(OK, "ledger", "%d line(s) over %d file(s), %d B"
+                          % (n, len(gens) + (1 if lf.exists() else 0), size)))
     else:
         rows.append(_line(OK, "ledger", "nothing run yet"))
 

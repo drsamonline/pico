@@ -115,9 +115,8 @@ class StoreMixin:
         Rotation keeps `ledger.1.jsonl`, so reading only `ledger.jsonl` would make
         the oldest history silently disappear from `timeline` and `report`.
         """
-        files = [self.ledger_file.with_name("%s.1.jsonl" % self.ledger_file.stem),
-                 self.ledger_file]
-        for f in files:
+        gens = sorted(self.ledger_file.parent.glob("%s-*.jsonl" % self.ledger_file.stem))
+        for f in gens + [self.ledger_file]:
             if not f.exists():
                 continue
             for line in f.read_text("utf-8").splitlines():
@@ -137,7 +136,14 @@ class StoreMixin:
                 continue
             rows.append("%s  %-7s %-6s %s" % (r.get("ts", "")[5:19], r.get("tier", ""),
                                               r.get("src", ""), r.get("cmd", "")))
-        return "\n".join(rows[-40:]) or "Nothing since " + since
+        if not rows:
+            return "Nothing since " + since if since else "Ledger empty."
+        shown = rows[-40:]
+        out = list(shown)
+        if len(rows) > len(shown):
+            out.insert(0, "... %d older line(s). Narrow with: timeline YYYY-MM-DD"
+                       % (len(rows) - len(shown)))
+        return "\n".join(out)
 
     def tail_log(self, n=8):
         if not self.ledger_file.exists():
