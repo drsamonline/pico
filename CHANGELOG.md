@@ -2,6 +2,41 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.37.0 — 2026-11-15
+
+### Fixed
+
+- **Every command that calls `handle()` internally recorded a duplicate inverse.** `_run` set
+  `self._inverse = None` before calling the handler, but a handler like `chain` calls `handle()` again —
+  and the inner call left *its* inverse in place. The outer frame then read that stale value and
+  appended it a second time under its own name. Running a three-step chain put four entries on the undo
+  stack:
+
+  ```
+  {"op":"list_rm","args":{"i":0},"cmd":"add a"}
+  {"op":"list_rm","args":{"i":1},"cmd":"add b"}
+  {"op":"list_rm","args":{"i":2},"cmd":"add c"}
+  {"op":"list_rm","args":{"i":2},"cmd":"chain three"}   <- the duplicate
+  ```
+
+  `undo 3` then undid the duplicate first, failed with `pop index out of range`, and left a task behind.
+  The inverse now remembers which frame set it and only that frame records it. Same fix covers trigger
+  actions, `for each`, and both `doctor probe` commands, which all re-enter `handle()`.
+
+- **`chain` did not say that one `undo` reverses one step.** It does now:
+  `(3 step(s). `undo 3` reverses all of them.)` — appended only when the chain has more than one step.
+
+### Note on the fix that did not survive
+
+The first attempt tagged each inverse with the chain's name so `undo` could report "step 2 of 3". It
+mis-assigned entries through the nested calls — the same stale-frame problem, one layer up — and made
+`undo` worse. It was reverted; the tag was solving a symptom of the bug above.
+
+### Tests
+
+418 checks, up from 411. T101 the exact stack contents after a chain, `undo 3` reversing all three,
+a plain command still recording one inverse, and a one-step chain staying quiet.
+
 ## 1.36.0 — 2026-11-15
 
 Another probe round, another three defects. The first one was the worst failure mode this project has

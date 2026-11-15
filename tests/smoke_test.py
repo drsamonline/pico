@@ -2053,6 +2053,33 @@ def t100_csv_arity_and_journal():
     shutil.rmtree(d, True)
 
 
+def t101_undo_of_a_chain():
+    e, d = fresh("t101")
+    e.handle("chain three: add a ; add b ; add c")
+    out = e.handle("chain three")
+    check("T101 chain undo: the chain says how to reverse itself",
+          "undo 3" in out, out.replace("\n", " | ")[-60:])
+    cmds = [o.get("cmd") for o in e.S["undo"]]
+    check("T101 chain undo: exactly the three steps are on the stack, no duplicate",
+          cmds == ["add a", "add b", "add c"], str(cmds))
+    check("T101 chain undo: undo 3 reverses all of them",
+          e.handle("undo 3") == "Undone: add a, add b, add c", e.handle("undo 3"))
+    check("T101 chain undo: nothing is left", e.S["tasks"] == [], str(e.S["tasks"]))
+
+    # a plain command still records exactly one inverse
+    e.handle("add solo")
+    check("T101 chain undo: a plain command records one inverse",
+          [o.get("cmd") for o in e.S["undo"]] == ["add solo"],
+          str([o.get("cmd") for o in e.S["undo"]]))
+    check("T101 chain undo: and undoes cleanly", e.handle("undo") == "Undone: add solo")
+
+    # a single-step chain does not clutter its output
+    e.handle("chain one: add z")
+    check("T101 chain undo: a one-step chain adds no hint",
+          "undo 1" not in e.handle("chain one"), e.handle("chain one"))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2084,7 +2111,8 @@ def main():
                t92_probe_covers_fill, t93_alias_store, t94_job_switches_off,
                t95_aliases_any_script, t96_placeholder_guard,
                t97_safe_delete_home, t98_py38_gate,
-               t99_chain_budgets, t100_csv_arity_and_journal):
+               t99_chain_budgets, t100_csv_arity_and_journal,
+               t101_undo_of_a_chain):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

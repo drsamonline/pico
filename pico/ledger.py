@@ -11,6 +11,10 @@ from .base import MASK_CMD, SECRET_OUT, mask_cmd, normalize
 class LedgerMixin:
     def set_inverse(self, op, args=None):
         self._inverse = {"op": op, "args": args or {}}
+        # remember which frame set it: a command that calls handle() internally — a
+        # chain, a trigger action — leaves the inner inverse in place, and the outer
+        # frame used to record it a second time under its own name
+        self._inverse_depth = getattr(self, "_depth", 0)
         self._dirty = True
 
     def register_inverse(self, name, fn):
@@ -100,12 +104,16 @@ class LedgerMixin:
         if fn is None:
             return "No rule matched: " + cmd
         self._bind_modules()
+        depth = getattr(self, "_depth", 0) + 1
+        self._depth = depth
         self._inverse = None
         self._dirty = False
         try:
             out = fn(m)
         except Exception as ex:
             return "Command failed: %s: %s" % (type(ex).__name__, ex)
+        finally:
+            self._depth = depth - 1
         if src in ("llm", "cache", "learned") and original:
             self.aliases[normalize(original)] = cmd
             self._dirty = True
@@ -115,7 +123,8 @@ class LedgerMixin:
                                         getattr(fn, "__name__", "?")),
                      "out": str(out)[:200],
                      "ts": datetime.datetime.now().isoformat(timespec="microseconds")}
-        if self._inverse:
+        mine = getattr(self, "_inverse_depth", -1) == depth
+        if self._inverse and mine:
             self.S.setdefault("undo", []).append(dict(self._inverse, cmd=cmd, ts=self.last["ts"]))
             del self.S["undo"][:-50]
         logged = dict(self.last)

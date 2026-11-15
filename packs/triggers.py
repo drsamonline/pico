@@ -47,7 +47,7 @@ CHAIN_DEPTH = 8            # nested saved sequences before the engine refuses
 CHAIN_STEPS = 500          # actions one top-level command may run in total
 
 
-def run_actions(actions, ctx=None, retry=True, job=None, now=None):
+def run_actions(actions, ctx=None, retry=True, job=None, now=None, label=None):
     """Run a saved sequence. Refuses anything that sends or deletes.
 
     With a `job`, a failing action backs off on its own: the other actions in the
@@ -66,12 +66,12 @@ def run_actions(actions, ctx=None, retry=True, job=None, now=None):
         return ["[refused: this command has already run %d actions]" % CHAIN_STEPS]
     E._chain_depth = depth
     try:
-        return _run_actions(actions, ctx, retry, job, now)
+        return _run_actions(actions, ctx, retry, job, now, label)
     finally:
         E._chain_depth = depth - 1
 
 
-def _run_actions(actions, ctx=None, retry=True, job=None, now=None):
+def _run_actions(actions, ctx=None, retry=True, job=None, now=None, label=None):
     now = now or datetime.datetime.now()
     ab = job.setdefault("ab", {}) if job is not None else {}
     out = []
@@ -438,6 +438,10 @@ def chain(m):
     if name not in C:
         return "No chain named %s. Define one: chain %s: a ; b" % (name, name)
     results = run_actions(C[name])
+    steps = len(C[name])
+    # one step of a chain is not the chain: say how to reverse the whole thing
+    if steps > 1 and len(results) > 1:
+        results.append("(%d step(s). `undo %d` reverses all of them.)" % (steps, steps))
     return "\n".join(results)
 
 
