@@ -471,7 +471,8 @@ def t25_replay():
     if not snaps:
         shutil.rmtree(d, True)
         return
-    stamp = datetime.datetime.strptime(snaps[0].stem, "%Y%m%dT%H%M%S").isoformat(timespec="seconds")
+    stamp = datetime.datetime.strptime(snaps[0].stem, "%Y%m%dT%H%M%S%f").isoformat(
+        timespec="microseconds")
     before = len(e.S["tasks"])
     out = e.handle("replay " + stamp)
     check("T25 replay: it reports a reconstruction", "Replayed" in out, out[:70])
@@ -1655,6 +1656,35 @@ def t84_budget_tool():
           r.stdout.count("ceiling") == 3, r.stdout[:100])
 
 
+def t85_replay_reconstructs():
+    e, d = fresh("t85")
+    for i in range(25):
+        e.handle("add t%d" % i)
+    e._since_snap = 25
+    for i in range(25, 31):
+        e.handle("add t%d" % i)
+    snaps = sorted((d / "snapshots").glob("*.json"))
+    check("T85 replay: a snapshot exists", bool(snaps), str(len(snaps)))
+    at_snapshot = len(json.loads(snaps[-1].read_text("utf-8"))["tasks"])
+
+    for i in range(31, 36):
+        e.handle("add t%d" % i)
+    e.handle("spend 42 food")
+    live = len(e.S["tasks"])
+
+    out = e.handle("replay " + datetime.datetime.now().isoformat(timespec="microseconds"))
+    written = sorted(d.glob("replay-*"))
+    check("T85 replay: it writes a reconstruction", bool(written), out[:60])
+    got = json.loads((written[-1] / "state.json").read_text("utf-8"))
+    check("T85 replay: the reconstruction matches the live state exactly",
+          len(got["tasks"]) == live, "%d vs %d" % (len(got["tasks"]), live))
+    check("T85 replay: it replayed every command after the snapshot",
+          len(got["tasks"]) > at_snapshot, "%d > %d" % (len(got["tasks"]), at_snapshot))
+    check("T85 replay: spend is reconstructed too", got["spend"] == e.S["spend"])
+    check("T85 replay: the live state is untouched", len(e.S["tasks"]) == live)
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1680,7 +1710,7 @@ def main():
                t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper,
                t79_scale, t81_report_plural,
                t82_ledger_generations_dated, t83_retention_policy,
-               t84_budget_tool):
+               t84_budget_tool, t85_replay_reconstructs):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

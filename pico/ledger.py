@@ -112,7 +112,7 @@ class LedgerMixin:
                      "rule": "%s.%s" % (getattr(fn, "__module__", "?").split(".")[-1],
                                         getattr(fn, "__name__", "?")),
                      "out": str(out)[:200],
-                     "ts": datetime.datetime.now().isoformat(timespec="seconds")}
+                     "ts": datetime.datetime.now().isoformat(timespec="microseconds")}
         if self._inverse:
             self.S.setdefault("undo", []).append(dict(self._inverse, cmd=cmd, ts=self.last["ts"]))
             del self.S["undo"][:-50]

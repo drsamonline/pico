@@ -2,6 +2,25 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.26.0 — 2026-11-15
+
+### Fixed
+
+- **`replay` silently dropped every command that shared a second with the snapshot.** Ledger entries and
+  snapshot names both carried one-second timestamps, so a replay window was `base < ts <= target` at
+  second resolution — anything written in the snapshot's own second fell outside it. A probe that ran
+  25 commands, forced a snapshot, then 11 more, replayed 6 of them and reconstructed 31 tasks where the
+  live state had 36. Both now carry microseconds, and the same probe reconstructs all 36 exactly.
+
+  This is the recovery path, so a silent under-reconstruction is worse than a failure: it produces a
+  plausible state that is not the real one.
+
+### Tests
+
+321 checks, up from 315. T85 builds a state, forces a snapshot, adds more, then asserts the
+reconstruction matches live exactly — task count, every task, and the expense log — and that the live
+state is untouched.
+
 ## 1.25.0 — 2026-11-15
 
 ### Changed

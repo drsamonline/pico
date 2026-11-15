@@ -53,7 +53,7 @@ class StoreMixin:
         self._since_snap = 0
         try:
             self.snapshots.mkdir(exist_ok=True)
-            ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+            ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
             f = self.snapshots / (ts + ".json")
             f.write_text(json.dumps(self.S, ensure_ascii=False), "utf-8")
             files = sorted(self.snapshots.glob("*.json"))
@@ -70,8 +70,8 @@ class StoreMixin:
         base, base_ts = None, ""
         for f in snaps:
             try:
-                stamp = datetime.datetime.strptime(f.stem, "%Y%m%dT%H%M%S").isoformat(
-                    timespec="seconds")
+                stamp = datetime.datetime.strptime(f.stem, "%Y%m%dT%H%M%S%f").isoformat(
+                    timespec="microseconds")
             except Exception:
                 continue
             if stamp <= target:
