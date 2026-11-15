@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.18.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.18.1" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -100,15 +100,17 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | python source | 149,402 bytes across 29 files |
 | package / packs / console | 78,683 / 70,719 / 65,119 B |
 | console | 65,119 bytes, one HTML file, no external assets |
-| rule-path latency (read) | 0.45 ms/call empty, 1.45 ms at 5,000 tasks |
-| rule-path latency (write) | 1.7 ms empty, 9.5 ms at 5,000 tasks |
+| rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
+| rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 300 passing, stdlib `unittest`-free runner |
+| acceptance tests | 298 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 more — and why state is only persisted when something actually changed. Both stay inside the 5 ms
-budget up to roughly 2,000 tasks; at 5,000 the write reaches 9.5 ms, because the whole file is
-rewritten. An append-only journal is the fix, and it is on the roadmap.
+budget to roughly 2,000 tasks on the machine these numbers came from; at 5,000 the write reaches
+9.5 ms because the whole file is rewritten. An append-only journal is the fix, and it is on the
+roadmap. The suite prints its own timings rather than asserting them: a wall-clock bound in a test
+measures the CI runner, not the code.
 
 `state.json` is compact JSON. It is still valid and still yours; `python3 -m json.tool ~/.pico/state.json`
 prints it indented when you want to read it. Indenting it on every write cost 34 ms at 5,000 tasks —

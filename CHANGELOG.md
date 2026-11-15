@@ -2,6 +2,19 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.18.1 — 2026-11-15
+
+### Fixed
+
+- **T79 asserted wall-clock time**, and failed on macOS CI at 16.31 ms where the same code measured
+  2.3 ms locally. A timing bound in a test suite measures the runner, not the code. The two latency
+  assertions are now printed rather than asserted; the structural checks — the 40-line cap, the
+  withheld count, compact JSON, that it parses — still fail the build when they break.
+- The README now says which machine the latency numbers came from, and that the suite reports timings
+  instead of asserting them.
+
+298 checks. Two fewer than 1.18.0 because two assertions became measurements.
+
 ## 1.18.0 — 2026-11-15
 
 A performance pass, aimed at what happens after a year of use.
