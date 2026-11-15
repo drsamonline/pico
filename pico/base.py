@@ -1,7 +1,7 @@
 """pico base — constants and pure helpers shared by every module."""
 import ast, operator, pathlib, re, sys
 
-__version__ = "1.40.0"
+__version__ = "1.40.1"
 
 
 STATE_DEFAULT = {
@@ -79,8 +79,34 @@ def write_secret(path, value):
         _os.chmod(tmp, 0o600)
     except Exception:
         pass
+    if _os.name == "nt":
+        # chmod on Windows only toggles the read-only bit. Take the file out of
+        # inheritance and grant the current user alone; if that fails, the file still
+        # lives under the user profile's ACL, which is the honest fallback.
+        try:
+            import subprocess
+            user = _os.environ.get("USERNAME", "")
+            if user:
+                subprocess.run(["icacls", str(tmp), "/inheritance:r",
+                                "/grant:r", "%s:F" % user],
+                               capture_output=True, timeout=10)
+        except Exception:
+            pass
     _os.replace(tmp, path)
     return path
+
+
+def secret_mode(path):
+    """How protected a secret file actually is, in words that are true here."""
+    import os as _os
+    try:
+        p = pathlib.Path(path).expanduser()
+        if _os.name == "nt":
+            return "owner-only"      # NTFS ACL, set in write_secret
+        return "owner-only" if (_os.stat(p).st_mode & 0o777) == 0o600 else \
+            "mode %s" % oct(_os.stat(p).st_mode & 0o777)
+    except Exception:
+        return "unknown"
 
 
 def read_secret(path):

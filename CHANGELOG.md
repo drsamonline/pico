@@ -30,6 +30,11 @@ rather than an environment variable.
 
 - `write_secret` in `base.py` used `pathlib` without importing it, and the telegram pack had no engine
   handle; both found the moment the command was first run.
+- **The "owner-only" claim was false on Windows.** `os.chmod` there only toggles the read-only bit, so
+  the file came back `0o666` and T105 failed on all three Windows legs. `write_secret` now takes the file
+  out of ACL inheritance and grants the current user with `icacls` when it can, and `secret_mode()`
+  reports what is actually true on each platform rather than what POSIX would have said. The test asks
+  the platform which claim to check.
 
 ### Tests
 

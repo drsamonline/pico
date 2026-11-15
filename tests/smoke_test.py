@@ -2179,9 +2179,15 @@ def t105_secrets_are_entered_not_built():
     out = e.handle("telegram token 123456:ABCdef")
     tok = d / "telegram.token"
     check("T105 secrets: the token is written", tok.exists(), out[:60])
-    check("T105 secrets: and is owner-only",
-          _stat.S_IMODE(tok.stat().st_mode) == 0o600,
-          oct(_stat.S_IMODE(tok.stat().st_mode)))
+    from pico.base import secret_mode
+    if os.name == "nt":
+        # chmod on Windows only toggles the read-only bit; protection is the NTFS ACL
+        check("T105 secrets: the file exists under the user profile",
+              tok.exists() and secret_mode(tok) == "owner-only", secret_mode(tok))
+    else:
+        check("T105 secrets: and is owner-only",
+              _stat.S_IMODE(tok.stat().st_mode) == 0o600,
+              oct(_stat.S_IMODE(tok.stat().st_mode)))
     check("T105 secrets: the value is never echoed", "ABCdef" not in out, out[:60])
     check("T105 secrets: status reports presence, not the value",
           "ABCdef" not in e.handle("telegram token status")
@@ -2197,8 +2203,13 @@ def t105_secrets_are_entered_not_built():
     out = e.handle("llm key sk-abcdefghijklmnopqrst")
     key = d / "llm.key"
     check("T105 secrets: the key is written", key.exists(), out[:60])
-    check("T105 secrets: and is owner-only",
-          _stat.S_IMODE(key.stat().st_mode) == 0o600)
+    if os.name == "nt":
+        check("T105 secrets: the key file is under the user profile",
+              secret_mode(key) == "owner-only", secret_mode(key))
+    else:
+        check("T105 secrets: and is owner-only",
+              _stat.S_IMODE(key.stat().st_mode) == 0o600,
+              oct(_stat.S_IMODE(key.stat().st_mode)))
     check("T105 secrets: it is wired as api_key_file",
           json.loads((d / "llm.json").read_text("utf-8")).get("api_key_file") == str(key),
           json.loads((d / "llm.json").read_text("utf-8")).get("api_key_file"))

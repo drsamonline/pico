@@ -175,18 +175,19 @@ def doctor(m):
                           "%d old file(s) kept" % len(corrupt)))
 
     # secrets: presence only, never the value
+    from .base import secret_mode
     for label, name in (("telegram token", "telegram.token"), ("llm key", "llm.key")):
         f = home / name
         if f.exists():
             try:
                 n = len(f.read_text("utf-8").strip())
-                mode = oct(f.stat().st_mode & 0o777)
             except Exception:
-                n, mode = 0, "?"
-            rows.append(_line(OK if mode == "0o600" else WARN, label,
-                              "set (%d chars), %s" % (n, "owner-only" if mode == "0o600"
-                                                      else "mode %s — run: chmod 600 %s"
-                                                      % (mode, f))))
+                n = 0
+            how = secret_mode(f)
+            ok = how == "owner-only"
+            rows.append(_line(OK if ok else WARN, label,
+                              "set (%d chars), %s" % (n, how if ok else
+                                                      "%s — run: chmod 600 %s" % (how, f))))
 
     # scheduled jobs that threw
     errs = E.S.get("job_errors") or []
