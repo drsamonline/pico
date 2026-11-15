@@ -209,6 +209,8 @@ Six partial commands ask one question rather than printing a syntax lesson:
 | `llm set K V` | any key from the config: `provider`, `endpoint`, `model`, `timeout`, `max_calls_day`, `redact`, … |
 | `llm test SENTENCE` | translates without running |
 | `llm forget` | clears the translation cache |
+| `telegram token [status\|forget]` · `telegram token <TOKEN>` | store the bot token at `~/.pico/telegram.token`, owner-only, never logged |
+| `llm key [status\|forget]` · `llm key <KEY>` | store the provider key at `~/.pico/llm.key` and set it as `api_key_file` |
 | `privacy never TAG` | blocks any sentence containing TAG from ever reaching the model |
 
 Deleting `packs/llm.py` removes this block entirely and changes nothing else.

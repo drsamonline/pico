@@ -3,14 +3,14 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 439 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 457 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.39.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.40.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
-110 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, a trigger DSL,
+114 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, a trigger DSL,
 and an optional language model that is only ever allowed to *propose* a command. No account, no telemetry, no network.
 
 ```bash
@@ -72,7 +72,7 @@ rule → alias → typo → fuzzy → teach → [optional LLM] → teach
 A `write`-tier command **proposed by the model** is gated like a send. Typed by hand, it runs and
 stays undoable. That asymmetry is deliberate: you meant it, the model might not have.
 
-## Commands — 110 rules
+## Commands — 114 rules
 
 | Group | Commands |
 | --- | --- |
@@ -95,15 +95,15 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | Property | Value |
 | --- | --- |
 | dependencies | 0 — Python standard library only |
-| rules / catalogue / slot rules | 110 / 116 / 6 |
+| rules / catalogue / slot rules | 114 / 122 / 6 |
 | packs | 12 |
-| python source | 165,811 bytes across 29 files |
-| package / packs / console | 90,971 / 74,840 / 70,278 B |
+| python source | 170,224 bytes across 29 files |
+| package / packs / console | 92,564 / 77,660 / 70,278 B |
 | console | 70,278 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 439 passing, stdlib `unittest`-free runner |
+| acceptance tests | 457 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 more — and why state is only persisted when something actually changed. The suite prints its own
@@ -144,8 +144,8 @@ decision.
 
 | Part | Baseline | Ceiling (+10%) | Actual |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 90,971 B | 100,068 B | 90,971 B |
-| packs (12 files) | 74,840 B | 82,324 B | 74,840 B |
+| package (`pico/` + launcher, 18 files) | 92,564 B | 101,820 B | 92,564 B |
+| packs (12 files) | 77,660 B | 85,426 B | 77,660 B |
 | console (one HTML file) | 70,278 B | 77,305 B | 70,278 B |
 | rule-path latency | — | 5 ms | 0.45 ms read, 1.7 ms write empty |
 | idle heap | — | 15 MB | 0.1 MB |
@@ -235,6 +235,7 @@ Runtime data lives in `~/.pico/` (`PICO_HOME` overrides it): `state.json`, `ledg
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | how the engine, ladder, gate and inverses fit together |
 | [`docs/COMMANDS.md`](docs/COMMANDS.md) | every command, argument shapes, tiers, examples |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | what is next, with the exit test for each item |
+| [`docs/SETUP.md`](docs/SETUP.md) | what you have to do — install, Telegram, model, phone |
 | [`docs/ANDROID.md`](docs/ANDROID.md) | why there is no APK, and the three routes that work |
 | [`tools/demo_parity.py`](tools/demo_parity.py) | checks the console demo against the engine, 145 commands |
 | [`PRIVACY.md`](PRIVACY.md) | exactly what is stored and what can leave the machine |

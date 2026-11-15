@@ -41,8 +41,9 @@ SYSTEM = ("You translate a user's sentence into ONE command from this catalog. "
 
 
 def setup(api):
-    global CFG, C, API
+    global CFG, C, API, E
     API = api
+    E = api["engine"]
     CFG = api["HOME"] / "llm.json"
     C = json.loads(json.dumps(DEF))
     if CFG.exists():
@@ -238,7 +239,38 @@ def privacy(m):
     return "'%s' blocked: any sentence containing that word is not sent to the model." % t
 
 
+def key_cmd(m):
+    import pathlib
+    from pico.base import write_secret, read_secret
+    kf = E.home / "llm.key"
+    action = (m.groupdict().get("act") or "").strip().lower()
+    if action in ("forget", "clear", "remove"):
+        if kf.exists():
+            kf.unlink()
+            return "Key removed. A cloud provider will refuse until you set a new one."
+        return "No key stored."
+    if action in ("status", "show"):
+        have = read_secret(kf)
+        if not have:
+            return "No key. Set one with: llm key <API_KEY>"
+        return ("Key set (%d characters) at %s, configured as api_key_file. "
+                "The value is never shown." % (len(have), kf))
+    value = (m.groupdict().get("value") or "").strip()
+    if not value:
+        return ("Set one with: llm key <API_KEY>\n"
+                "Stored at ~/.pico/llm.key, readable only by you, never logged.")
+    if len(value) < 16:
+        return "That is too short to be an API key. Nothing was written."
+    path = write_secret(kf, value)
+    C["api_key_file"] = str(path)
+    CFG.write_text(json.dumps(C, indent=2), "utf-8")
+    return ("Key stored at %s (owner-only) and set as api_key_file. "
+            "Turn the model on with: llm cloud" % path)
+
+
 RULES = [
+    (r"^llm key(?:\s+(?P<act>status|show|forget|clear|remove))?$", key_cmd),
+    (r"^llm key\s+(?P<value>\S+)$", key_cmd),
     (r"^llm (?P<v>off|local|cloud|auto)$", mode),
     (r"^llm status$", status),
     (r"^llm set (?P<k>\w+) (?P<v>.+)$", set_),

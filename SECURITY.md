@@ -1,5 +1,35 @@
 # Security
 
+## Secrets are entered, never built in
+
+There is no token or key anywhere in this repository, in the released binaries, or in the source that
+builds them. Both are typed at the prompt and written to your home directory:
+
+| Secret | Command | Stored at | Mode |
+| --- | --- | --- | --- |
+| Telegram bot token | `telegram token <TOKEN>` | `~/.pico/telegram.token` | `0600` |
+| Provider API key | `llm key <KEY>` | `~/.pico/llm.key` | `0600` |
+
+Both commands:
+
+- write the file owner-read-only, atomically, through a temporary file and `os.replace`;
+- never echo the value back, and never write it to the ledger — the ledger records
+  `telegram token <redacted>` and `llm key <redacted>`;
+- answer `status` with the character count only, so you can tell a token is set without seeing it;
+- refuse an obvious non-secret (`telegram token nope`, `llm key short`) instead of storing it.
+
+`doctor` reports whether each is set and whether the file mode is still `0600`, and warns with the exact
+`chmod` when it is not. It never prints a value.
+
+Removal is one command each: `telegram token forget`, `llm key forget`.
+
+### Why a file and not the environment
+
+An environment variable leaks into every child process, into `ps e`, and into crash dumps. A file with
+mode `0600` leaks into nothing. `llm set api_key_file PATH` still works if you keep the key somewhere
+else — the file is a default, not a requirement.
+
+
 ## Threat model
 
 pico runs as you, on your machine, with your permissions. It is not a sandbox and does not pretend to

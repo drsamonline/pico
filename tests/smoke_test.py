@@ -2166,6 +2166,87 @@ def t104_redaction_patterns():
     shutil.rmtree(d, True)
 
 
+def t105_secrets_are_entered_not_built():
+    import stat as _stat
+    e, d = fresh("t105")
+
+    check("T105 secrets: nothing is stored before it is typed",
+          not (d / "telegram.token").exists() and not (d / "llm.key").exists())
+    check("T105 secrets: telegram status says how to set one",
+          "telegram token" in e.handle("telegram token status"),
+          e.handle("telegram token status")[:60])
+
+    out = e.handle("telegram token 123456:ABCdef")
+    tok = d / "telegram.token"
+    check("T105 secrets: the token is written", tok.exists(), out[:60])
+    check("T105 secrets: and is owner-only",
+          _stat.S_IMODE(tok.stat().st_mode) == 0o600,
+          oct(_stat.S_IMODE(tok.stat().st_mode)))
+    check("T105 secrets: the value is never echoed", "ABCdef" not in out, out[:60])
+    check("T105 secrets: status reports presence, not the value",
+          "ABCdef" not in e.handle("telegram token status")
+          and "Token set" in e.handle("telegram token status"),
+          e.handle("telegram token status")[:60])
+    if (d / "telegram.token").exists():
+        (d / "telegram.token").unlink()
+    check("T105 secrets: a malformed token writes nothing",
+          "does not look like" in e.handle("telegram token nope")
+          and not (d / "telegram.token").exists(),
+          e.handle("telegram token nope")[:60])
+
+    out = e.handle("llm key sk-abcdefghijklmnopqrst")
+    key = d / "llm.key"
+    check("T105 secrets: the key is written", key.exists(), out[:60])
+    check("T105 secrets: and is owner-only",
+          _stat.S_IMODE(key.stat().st_mode) == 0o600)
+    check("T105 secrets: it is wired as api_key_file",
+          json.loads((d / "llm.json").read_text("utf-8")).get("api_key_file") == str(key),
+          json.loads((d / "llm.json").read_text("utf-8")).get("api_key_file"))
+    check("T105 secrets: a short key is refused",
+          "too short" in e.handle("llm key short"))
+
+    ledger = (d / "ledger.jsonl").read_text("utf-8")
+    check("T105 secrets: neither value reaches the ledger",
+          "ABCdef" not in ledger and "sk-abcdefghijklmnopqrst" not in ledger,
+          [l for l in ledger.splitlines() if "token" in l or "llm key" in l][:1])
+    check("T105 secrets: the ledger shows them redacted",
+          "telegram token <redacted>" in ledger and "llm key <redacted>" in ledger)
+
+    e.handle("telegram token 123456:ABCdef")     # put one back for the doctor check
+    doc = e.handle("doctor")
+    check("T105 secrets: doctor shows presence, not value",
+          "ABCdef" not in doc and "sk-abcdefghijklmnopqrst" not in doc
+          and "telegram token" in doc and "llm key" in doc)
+
+    check("T105 secrets: forget removes the key", "removed" in e.handle("llm key forget").lower())
+    check("T105 secrets: and the file is gone", not key.exists())
+    shutil.rmtree(d, True)
+
+
+def t106_no_secret_in_the_build():
+    repo = ROOT
+    suspects = []
+    for pat in ("*.py", "*.spec", "*.yml", "*.yaml", "*.html", "*.json", "*.sh", "*.ps1"):
+        for f in repo.rglob(pat):
+            if any(x in f.parts for x in (".git", "__pycache__", "tests")):
+                continue
+            try:
+                text = f.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            # a real token looks like <digits>:<letters>; the endpoint URL is not a secret
+            if re.search(r"\b\d{8,12}:[A-Za-z0-9_-]{30,}", text):
+                suspects.append("%s looks like a bot token" % f.relative_to(repo))
+            for needle in ("sk-live-", "sk-proj-", "AKIA"):
+                if needle in text:
+                    suspects.append("%s contains %r" % (f.relative_to(repo), needle))
+    check("T106 build: no token or key is baked into the source",
+          not suspects, "; ".join(suspects[:3]))
+    spec = (repo / "pico.spec").read_text("utf-8") if (repo / "pico.spec").exists() else ""
+    check("T106 build: the spec bundles no secret file",
+          "token" not in spec.lower() and ".key" not in spec.lower(), spec[:60])
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2200,7 +2281,8 @@ def main():
                t99_chain_budgets, t100_csv_arity_and_journal,
                t101_undo_of_a_chain,
                t102_quarantine_keeps_every_copy, t103_undo_of_a_swept_file,
-               t104_redaction_patterns):
+               t104_redaction_patterns, t105_secrets_are_entered_not_built,
+               t106_no_secret_in_the_build):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

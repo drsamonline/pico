@@ -1,7 +1,7 @@
 """pico base — constants and pure helpers shared by every module."""
-import ast, operator, re, sys
+import ast, operator, pathlib, re, sys
 
-__version__ = "1.39.0"
+__version__ = "1.40.0"
 
 
 STATE_DEFAULT = {
@@ -25,7 +25,8 @@ DENY_LLM = re.compile(
 SECRET_OUT = re.compile(r"^(recall|what is|journal|contacts|aliases|card|review)\b", re.I)
 
 
-MASK_CMD = re.compile(r"^((?:remember|contact|site)\s+\w+\s*[:=]\s*)(\S+)", re.I)
+MASK_CMD = re.compile(r"^((?:remember|contact|site)\s+\w+\s*[:=]\s*)(\S+)"
+                     r"|^((?:telegram|llm)\s+(?:token|key)\s+)(\S+)", re.I)
 
 
 def utf8_console(streams=None):
@@ -51,13 +52,43 @@ def utf8_console(streams=None):
 
 def mask_cmd(cmd):
     m = MASK_CMD.match(cmd)
-    return (m.group(1) + "<redacted>") if m else cmd
+    if not m:
+        return cmd
+    head = m.group(1) or m.group(3) or ""
+    return head + "<redacted>"
 
 
 PENDING_TTL = 120  # seconds
 
 # a catalogue entry containing one of these is a template, not a command
 PLACEHOLDER = re.compile(r"[A-Z]{2,}|\bX\b|\bN\b|\b[A-Z]\b|\b[a-z]\b")
+
+
+def write_secret(path, value):
+    """Write a secret file that only the owner can read.
+
+    The token never enters the build, the repo or the ledger: it is typed at the
+    prompt, written 0600, and read at use. Returns the path.
+    """
+    import os as _os
+    path = pathlib.Path(path).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(value.strip() + "\n", "utf-8")
+    try:
+        _os.chmod(tmp, 0o600)
+    except Exception:
+        pass
+    _os.replace(tmp, path)
+    return path
+
+
+def read_secret(path):
+    """The stored secret, or '' when there is none."""
+    try:
+        return pathlib.Path(path).expanduser().read_text("utf-8").strip()
+    except Exception:
+        return ""
 
 
 def unquote(p):

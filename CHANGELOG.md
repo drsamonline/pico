@@ -2,6 +2,41 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.40.0 — 2026-11-15
+
+### Added — secrets are entered at the prompt, never built in
+
+There was no token or key anywhere in the repo or the binaries, but there was also no way to *enter*
+one: you had to know that `~/.pico/telegram.token` had to exist, and the model wanted a path in a config
+key. Two commands close that.
+
+| Command | Effect |
+| --- | --- |
+| `telegram token <TOKEN>` | writes `~/.pico/telegram.token`, mode `0600`, atomically |
+| `llm key <KEY>` | writes `~/.pico/llm.key`, mode `0600`, and sets it as `api_key_file` |
+| `… status` | says whether one is set and how long it is — never the value |
+| `… forget` | removes it |
+
+Both refuse an obvious non-secret (`telegram token nope` wants `digits:letters`; `llm key short` is under
+16 characters), never echo the value, and never reach the ledger — it records
+`telegram token <redacted>` and `llm key <redacted>`. `doctor` reports presence and file mode, and warns
+with the exact `chmod` when the mode has drifted.
+
+`docs/SETUP.md` is new: install per platform, then the three optional paths (Telegram, model, phone),
+then what is already done and what nobody has done yet. `SECURITY.md` gained the reasoning for a file
+rather than an environment variable.
+
+### Fixed
+
+- `write_secret` in `base.py` used `pathlib` without importing it, and the telegram pack had no engine
+  handle; both found the moment the command was first run.
+
+### Tests
+
+457 checks, up from 439. T105 the whole secret lifecycle — refused inputs, `0600`, no echo, no value in
+the ledger, `doctor` showing presence only, removal. T106 scans the source for anything shaped like a
+bot token or an API key, and asserts the spec bundles no secret file.
+
 ## 1.39.0 — 2026-11-15
 
 ### Fixed

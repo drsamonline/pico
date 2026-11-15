@@ -13,11 +13,13 @@ import urllib.request
 
 CATALOG = []
 TOKEN = CHAT = REPLY = P = BIND = ENG = None
+E = None
 LAST = 0.0   # heartbeat, read by `doctor`
 
 
 def setup(api):
-    global TOKEN, CHAT, REPLY, P, BIND, ENG
+    global TOKEN, CHAT, REPLY, P, BIND, ENG, E
+    E = api["engine"]
     tf = api["HOME"] / "telegram.token"
     if not tf.exists():
         return
@@ -84,4 +86,34 @@ def poll():
             time.sleep(5)
 
 
-RULES = []
+def token_cmd(m):
+    import pathlib
+    from pico.base import write_secret, read_secret
+    action = (m.groupdict().get("act") or "").strip().lower()
+    tf = E.home / "telegram.token"
+    if action in ("forget", "clear", "remove"):
+        if tf.exists():
+            tf.unlink()
+            return "Token removed. The bridge is off until you set a new one."
+        return "No token stored."
+    if action in ("status", "show"):
+        have = read_secret(tf)
+        return ("Token set (%d characters), stored at %s\nThe value is never shown. "
+                "Remove it with: telegram token forget" % (len(have), tf)) if have \
+            else "No token. Set one with: telegram token <BOT_TOKEN>"
+    value = (m.groupdict().get("value") or "").strip()
+    if not value:
+        return ("Set one with: telegram token <BOT_TOKEN>  (get it from @BotFather)\n"
+                "Stored at ~/.pico/telegram.token, readable only by you, never logged.")
+    if ":" not in value:
+        return ("That does not look like a bot token — BotFather gives you "
+                "<digits>:<letters>. Nothing was written.")
+    path = write_secret(tf, value)
+    return ("Token stored at %s (owner-only). Start the bridge with: pico --serve"
+            % path)
+
+
+RULES = [
+    (r"^telegram token(?:\s+(?P<act>status|show|forget|clear|remove))?$", token_cmd),
+    (r"^telegram token\s+(?P<value>\S+)$", token_cmd),
+]
