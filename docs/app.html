@@ -239,7 +239,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.20.0</small>
+      pico <small id="ver">v1.21.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -494,13 +494,21 @@ function validDate(text){
 
 let CURRENT_CMD = "";
 function inv(o,a){ S.undo.push(Object.assign({op:o,args:a||{}},{cmd:CURRENT_CMD||"?"})); if(S.undo.length>50)S.undo.shift(); }
+const ARITH = "Arithmetic only: numbers and + - * / // % ** .";
 function safeCalc(e){
-  if(!/^[\d+\-*/%(). ]+$/.test(e))throw new Error("bad");
-  if(e.length>120)throw new Error("long");
+  if(e.length>120)throw new Error(ARITH);
+  if(!/^[\d+\-*/%(). ]+$/.test(e))throw new Error(ARITH);
+  /* a literal integer of any length is a number, not an error — but JS loses
+     precision past 2^53, and printing 1e+40 for an exact integer would be a lie */
+  if(/^\d+$/.test(e)){
+    if(e.replace(/^0+/, "").length > 15)
+      throw new Error("Numbers past 15 digits need the local engine — it keeps them exact.");
+    return Number(e);
+  }
   // eslint-disable-next-line no-new-func
   const v = Function('"use strict";return ('+e+")")();
-  if(typeof v!=="number"||!isFinite(v))throw new Error("bad");
-  if(Math.abs(v)>1e18)throw new Error("big");
+  if(typeof v!=="number"||!isFinite(v))throw new Error(ARITH);
+  if(Math.abs(v)>1e18)throw new Error(ARITH);
   return v;
 }
 const UNITS={mm:["len",.001],cm:["len",.01],m:["len",1],km:["len",1000],in:["len",.0254],
@@ -547,7 +555,7 @@ const H = {
     S.spend.filter(r=>r.d.startsWith(mon)).forEach(r=>tot[r.cat]=(tot[r.cat]||0)+r.amt);
     const k=Object.keys(tot); if(!k.length)return "No expenses this month.";
     return k.sort().map(c=>`${c}: ${money(tot[c])}`).join("\n")+"\nTotal: "+money(k.reduce((a,c)=>a+tot[c],0));},
-  calc:m=>{try{const v=safeCalc(m.e);return String(Number.isInteger(v)?v:v);}catch(e){return "Arithmetic only: numbers and + - * / % .";}},
+  calc:m=>{try{const v=safeCalc(m.e);return String(Number.isInteger(v)?v:v);}catch(e){return e.message;}},
   convert:m=>{try{return `${m.v} ${m.a} = ${(+conv(+m.v,m.a,m.b).toPrecision(6))} ${m.b}`;}catch(e){return "Unknown or incompatible units.";}},
   time:()=>new Date().toLocaleString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),
   timer:m=>"Timer armed for "+m.n+(m.u||"")+" in the local engine. (Demo has no background clock.)",
@@ -593,8 +601,10 @@ const H = {
     return r.length?r.map(([i,x])=>`${i+1}. ${x.text}  (due ${x.due})`).join("\n"):"Nothing overdue.";},
   recur:m=>{const i=S.tasks.length;S.tasks.push({text:m.text.trim(),done:false,recur:m.every.toLowerCase()});
     inv("list_rm",{key:"tasks",i});return `Recurring ${m.every.toLowerCase()}: ${m.text.trim()}`;},
-  due:m=>{const i=+m.n-1;if(!(i>=0&&i<S.tasks.length))return "No such task.";
-    S.tasks[i].due=m.date;return `Due ${m.date}: ${S.tasks[i].text}`;},
+  due:m=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(m.date)||!validDate(m.date))
+      return "That is not a date. Use due N 2026-12-25";
+    const i=+m.n-1;if(!(i>=0&&i<S.tasks.length))return "No such task.";
+    inv("task_due",{i,date:S.tasks[i].due});S.tasks[i].due=m.date;save();return `Due ${m.date}: ${S.tasks[i].text}`;},
   decide:m=>{const o=m.options.split("|").map(x=>x.trim()).filter(Boolean);
     if(o.length<2)return "Give at least two options: decide tea|coffee";
     /* sha256("a|b|" + today) exactly as packs/report.py computes it */
@@ -624,7 +634,7 @@ const H = {
   chart:m=>{const v=m.values.split(",").map(x=>parseFloat(x.trim())).filter(x=>!isNaN(x));
     if(!v.length)return "chart takes numbers: chart 3,7,12,9";
     const top=Math.max(...v.map(Math.abs))||1;
-    return v.map(x=>`${String(money(x)).padStart(9)} ${"#".repeat(Math.round(Math.abs(x)/top*40))}`).join("\n")
+    return v.map(x=>`${String(money(x)).padStart(9)} ${(x<0?"-":"#").repeat(Math.round(Math.abs(x)/top*40))}`).join("\n")
       +`\nmax ${money(Math.max(...v))} over ${v.length} value(s)`;},
   when:()=>"Saved triggers need the local engine — they run on a clock, not on a page.",
   triggers:()=>"Saved triggers need the local engine.",
@@ -709,15 +719,15 @@ const RULES = [
   [/^done\s+(?<n>\d+)$/i,"done"],
   [/^undone\s+(?<n>\d+)$/i,"undone"],
   [/^del\s+(?<n>\d+)$/i,"del"],
-  [/^remember\s+(?<key>\w+)\s*[:=]\s*(?<val>.+)$/i,"remember"],
-  [/^(recall|what is)\s+(?<key>\w+)$/i,"recall"],
-  [/^forget\s+(?<key>\w+)$/i,"forget"],
+  [/^remember\s+(?<key>[^\s=:]+)\s*[:=]\s*(?<val>.+)$/i,"remember"],
+  [/^(recall|what is)\s+(?<key>[^\s=:]+)$/i,"recall"],
+  [/^forget\s+(?<key>[^\s=:]+)$/i,"forget"],
   [/^buy\s+(?<item>.+)$/i,"buy"],
   [/^shop$/i,"shop"],
   [/^bought\s+(?<n>\d+)$/i,"bought"],
   [/^on\s+(?<date>\d{4}-\d{2}-\d{2}|\d{2}-\d{2})\s+(?<text>.+)$/i,"on"],
   [/^(brief|today|agenda)$/i,"brief"],
-  [/^spend\s+(?<amt>\d+(?:\.\d+)?)\s*(?<cat>\w+)?$/i,"spend"],
+  [/^spend\s+(?<amt>\d+(?:\.\d+)?)\s*(?<cat>[^\s\d][^\s]*)?$/i,"spend"],
   [/^(spend|expenses)$/i,"expenses"],
   [/^calc\s+(?<e>.+)$/i,"calc"],
   [/^convert\s+(?<v>-?\d+(?:\.\d+)?)\s*(?<a>[a-z]+)\s+(?:to|in)\s+(?<b>[a-z]+)$/i,"convert"],
@@ -731,7 +741,7 @@ const RULES = [
   [/^gst\s+(?<a>[\d.]+)\s+(?<r>[\d.]+)$/i,"gst"],
   [/^split\s+(?<a>[\d.]+)\s+(?<n>\d+)$/i,"split"],
   [/^disc\s+(?<a>[\d.]+)\s+(?<r>[\d.]+)$/i,"disc"],
-  [/^budget\s+(?<cat>\w+)\s+(?<amt>[\d.]+)$/i,"budgetSet"],
+  [/^budget\s+(?<cat>[^\s\d][^\s]*) (?<amt>[\d.]+)$/i,"budgetSet"],
   [/^budget$/i,"budget"],
   [/^habit\s+add\s+(?<name>.+)$/i,"habitAdd"],
   [/^(did|habit done)\s+(?<name>.+)$/i,"did"],
@@ -740,7 +750,7 @@ const RULES = [
   [/^journal\s+show(?:\s+(?<n>\d+))?$/i,"journalShow"],
   [/^journal$/i,"journal"],
   [/^journal\s+(?<t>.+)$/i,"journalAdd"],
-  [/^contact\s+(?<name>\w+)=(?<num>\S+)$/i,"contact"],
+  [/^contact\s+(?<name>[^\s=]+)=(?<num>\S+)$/i,"contact"],
   [/^contacts$/i,"contacts"],
   [/^wa\s+(?<name>[\w+]+)(?:\s+(?<msg>.+))?$/i,"wa"],
   [/^mail\s+(?<name>\S+)(?:\s+(?<sub>.+))?$/i,"mail"],
@@ -754,7 +764,7 @@ const RULES = [
   [/^find\s+(?<q>.+)$/i,"find"],
   [/^tidy(?:\s+(?<path>.+))?$/i,"tidy"],
   [/^backup\s+(?<path>.+)$/i,"backup"],
-  [/^site\s+(?<name>\w+)\s*=\s*(?<url>\S+)$/i,"site"],
+  [/^site\s+(?<name>[^\s=]+)\s*=\s*(?<url>\S+)$/i,"site"],
   [/^open\s+(?<t>.+)$/i,"open"],
   [/^search\s+(?<q>.+)$/i,"search"],
   [/^weather(?:\s+(?<city>.+))?$/i,"weather"],
@@ -779,8 +789,8 @@ const RULES = [
   [/^quarantine$/i,"quarantine"],
   [/^restore\s+(?<n>\d+)$/i,"restore"],
   [/^quarantine sweep\s+(?<n>\d+)d$/i,"quarantine"],
-  [/^asset (?<name>\w+) (?<amt>[\d.]+)$/i,"assetAdd"],
-  [/^debt (?<name>\w+) (?<amt>[\d.]+) (?<rate>[\d.]+)$/i,"debtAdd"],
+  [/^asset (?<name>\S+) (?<amt>[\d.]+)$/i,"assetAdd"],
+  [/^debt (?<name>\S+) (?<amt>[\d.]+) (?<rate>[\d.]+)$/i,"debtAdd"],
   [/^net worth$/i,"netWorth"],
   [/^debt snowball(?: (?<extra>[\d.]+))?$/i,"debtSnowball"],
   [/^subs audit$/i,"subsAudit"],
@@ -798,8 +808,8 @@ const RULES = [
   [/^doctor probe$/i,"doctorProbe"],
   [/^doctor$/i,"doctor"],
   [/^untrigger (?<n>\d+)$/i,"untrigger"],
-  [/^chain (?<name>\w+)\s*:\s*(?<body>.+)$/i,"chain"],
-  [/^chain (?<name>\w+)$/i,"chain"],
+  [/^chain (?<name>[^\s:]+)\s*:\s*(?<body>.+)$/i,"chain"],
+  [/^chain (?<name>[^\s:]+)$/i,"chain"],
   [/^for each row in (?<path>\S+) then (?<cmd>.+)$/i,"loopCsv"],
   [/^csv pivot (?<key>\w+) (?<op>sum|count|avg|min|max) (?<col>\w+) (?<path>\S+\.csv)$/i,"csvPivot"],
   [/^2key\s+(?<v>on|off|phone)$/i,"twoKeyPhone"],
@@ -1197,7 +1207,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.20.0";
+$("#ver").textContent="v1.21.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){

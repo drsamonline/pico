@@ -38,6 +38,8 @@ COSMETIC = {
     # both gate the action; the engine also prints a two-key code, which the demo
     # has no key material for
     "habit del walk",
+    # both refuse; only the closing hint differs
+    "spend -50 food", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     # undo depends on which inverses each side recorded; the demo's set is smaller
     "undo",
 }
@@ -77,7 +79,22 @@ COMMANDS = [
     "habit add walk", "did walk", "habit del walk", "habits", "contact bob=91999",
     "contacts", "remember k=v", "recall k", "forget k", "add one", "done 1",
     "undone 1", "del 1", "recur daily water", "due 1 2026-12-25", "overdue",
-    "undo", "log", "why", "help", "aliases",
+    "log", "why", "help", "aliases",
+    # --- hostile and awkward input: the resolver must agree on what it refuses ---
+    "remember नाम=Sohil", "recall नाम", "spend 100 खाना", "expenses",
+    "habit add ध्यान", "did ध्यान", "habits", "contact रवि=91999", "contacts",
+    "add कल दूध लाना", "tasks", "journal café ☕", "journal",
+    "calc 2**1000", "calc " + "9" * 40, "convert 10 km to km", "convert -5 c to f",
+    "on 2026-02-29 nope", "on 02-29 leap", "due 1 2026-13-45", "on 13-45 bad",
+    "timer 25h no", "remind 25:99 x", "split 1000 0", "emi 100 5 0",
+    "disc 999 150", "emi 0.01 99 1", "gst 0 18", "spend -50 food",
+    "done 0", "done 999", "undone 0", "del 999", "budget खाना 5000", "budget",
+    "decide tea|coffee|water", "chart -5,0,5", "chart 1",
+    "tasks", "tsks", "TASKS", "TaSkS", "tasks.", "   ", "a" * 60,
+    "remember k=v", "recall k", "recall nosuchkey",
+    # last on purpose: `undo` pops each side's own inverse stack, so every command
+    # after it would compare two different histories
+    "undo",
 ]
 
 
@@ -124,6 +141,8 @@ def main():
 
     same, partial, cosmetic, broken = 0, 0, 0, []
     for i, cmd in enumerate(COMMANDS):
+        if not cmd.strip():
+            continue
         got = js.get(str(i), {})
         if "error" in got:
             broken.append((cmd, "demo raised: " + got["error"][:60]))

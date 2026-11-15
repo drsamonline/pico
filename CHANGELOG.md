@@ -2,6 +2,34 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.21.0 — 2026-11-15
+
+### Changed
+
+- **The parity gate takes hostile input.** 145 commands became 193: Devanagari keys and categories,
+  impossible dates, a 40-digit integer, `2**1000`, `split 1000 0`, negative chart values, 60-character
+  nonsense, case variants. 115 identical, 51 partial by design, 26 wording, 0 divergent.
+
+### Fixed
+
+The Unicode bug, for the third time — this time in the demo:
+
+- **`remember नाम=Sohil`, `recall नाम`, `spend 100 खाना`, `contact रवि=91999`, `budget खाना 5000`** and
+  seven more patterns used `\w+` in the console, which stops at a combining vowel sign. The engine was
+  widened in 1.15.0 and 1.17.0; the demo never was. Eleven patterns now take any non-space run.
+- **`due 1 2026-13-45` was accepted** by the demo — `on` got validation in 1.19.0, `due` did not.
+- **`calc` printed `1e+40` for a 40-digit integer.** JavaScript has no exact integer past 2^53, so the
+  demo now refuses with "Numbers past 15 digits need the local engine — it keeps them exact" instead of
+  showing a wrong number. Its `2**1000` guard also said `big`; it says what the engine says.
+- **`chart -5,0,5`** drew negatives with `#` where the engine draws `-`.
+
+### Tool
+
+- `undo` moved to the end of the parity list. It pops each side's own inverse stack, so every command
+  after it compares two different histories — the run was reporting five `tasks` divergences caused by
+  one `undo`.
+- Blank commands are skipped: `run()` returns early for them, so the harness read `undefined`.
+
 ## 1.20.0 — 2026-11-15
 
 ### Changed
