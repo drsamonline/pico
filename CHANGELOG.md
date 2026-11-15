@@ -2,6 +2,30 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.25.0 — 2026-11-15
+
+### Changed
+
+- **The size budget is a recorded baseline, not a hard cap.** `budget.json` holds the current size of
+  each part; `tools/budget.py` fails the build when anything grows past it by more than 10%. A feature
+  that needs room runs `python tools/budget.py --update` in the same commit, so the decision is in the
+  diff instead of in a ceiling someone has to remember to raise. The three hand-raised caps (64 → 72 →
+  80 → 96 KB across 1.10.0, 1.13.0 and 1.17.1) were the symptom; this removes the cause.
+- **Ledger retention is by age as well as count.** Five generations are always kept, and anything
+  younger than 30 days is kept too — so a quiet week no longer erases history, and a chatty day still
+  cannot fill the disk.
+
+### Fixed
+
+- The CI workflow had two size-budget steps after the 1.24.0 edit: the new tool call and the old inline
+  heredoc. The duplicate is gone and the workflow parses.
+
+### Tests
+
+315 checks, up from 307. T83 covers the retention policy in both directions — a young generation
+survives past the file count, an aged one is dropped. T84 asserts the baseline records all three parts,
+that the tree is inside it, and that the tool reports a ceiling per part.
+
 ## 1.24.1 — 2026-11-15
 
 ### Fixed

@@ -17,7 +17,8 @@ class LedgerMixin:
         self.inverse_handlers[name] = fn
 
     LEDGER_CAP = 5000          # lines before the file is rotated
-    LEDGER_KEEP = 5            # dated generations kept beside it
+    LEDGER_KEEP = 5            # generations kept regardless of age
+    LEDGER_DAYS = 30           # ...and any older than this may go, but never the five
 
     def _append_ledger(self, line):
         """Append one line, rotating at the cap so the file cannot grow forever.
@@ -40,10 +41,17 @@ class LedgerMixin:
             # and the names still sort chronologically
             stamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
             f.rename(f.with_name("%s-%s.jsonl" % (f.stem, stamp)))
-            # keep the newest LEDGER_KEEP generations; the names sort chronologically
+            # keep the newest LEDGER_KEEP generations, and anything younger than
+            # LEDGER_DAYS — whichever keeps more, so a quiet week is not erased
             gens = sorted(f.parent.glob("%s-*.jsonl" % f.stem))
+            cut = (datetime.datetime.now()
+                   - datetime.timedelta(days=self.LEDGER_DAYS)).timestamp()
             for extra in gens[:-self.LEDGER_KEEP]:
-                extra.unlink()
+                try:
+                    if extra.stat().st_mtime < cut:
+                        extra.unlink()
+                except Exception:
+                    pass
         except Exception:
             pass
 

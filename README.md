@@ -3,10 +3,10 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 307 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 315 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.24.1" src="docs/assets/badge-version.svg">
+  <img alt="version 1.25.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,13 +97,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 109 / 113 / 6 |
 | packs | 12 |
-| python source | 150,584 bytes across 29 files |
-| package / packs / console | 79,840 / 70,744 / 69,998 B |
+| python source | 151,009 bytes across 29 files |
+| package / packs / console | 80,265 / 70,744 / 69,998 B |
 | console | 69,998 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 307 passing, stdlib `unittest`-free runner |
+| acceptance tests | 315 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 more — and why state is only persisted when something actually changed. Both stay inside the 5 ms
@@ -120,30 +120,33 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 ## Budgets
 
-| Part | Ceiling | Actual | Headroom |
-| --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 96 KB | 79,840 B | 16.2 KB |
-| packs (12 files) | 96 KB | 70,719 B | 25.3 KB |
-| console (one HTML file) | 96 KB | 69,998 B | 27.6 KB |
-| rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
-| idle heap | 15 MB | 0.1 MB | 14.9 MB |
-| dependencies | 0 | 0 | — |
+Growth is allowed; silent growth is not. `budget.json` records the current size of each part, and
+`tools/budget.py` fails the build when anything grows past that baseline by more than 10%. A feature
+that needs room runs `python tools/budget.py --update` in the same commit, so the diff shows the
+decision.
 
-All six are checked by CI on every push; any breach fails the build and names the part.
+| Part | Baseline | Ceiling (+10%) | Actual |
+| --- | --- | --- | --- |
+| package (`pico/` + launcher, 18 files) | 80,265 B | 88,291 B | 80,265 B |
+| packs (12 files) | 70,744 B | 77,818 B | 70,744 B |
+| console (one HTML file) | 69,998 B | 76,997 B | 69,998 B |
+| rule-path latency | — | 5 ms | 0.45 ms read, 1.7 ms write empty |
+| idle heap | — | 15 MB | 0.1 MB |
+| dependencies | — | 0 | 0 |
 
 The package is split by responsibility, so no single file has to be small:
 
 | File | Bytes | Owns |
 | --- | --- | --- |
-| `pico/dispatch.py` | 7,071 | `handle()`, the single entry point |
 | `pico/engine.py` | 6,004 | composition, plugin loading, notifier bus |
 | `pico/cmd_doctor.py` | 8,071 | the self-check and both probes |
-| `pico/cmd_repair.py` | 4,159 | `doctor fix` |
+| `pico/dispatch.py` | 7,071 | `handle()`, the single entry point |
 | `pico/cmd_files.py` | 3,981 | sort, archive, find, fill |
+| `pico/cmd_quarantine.py` | 3,570 | delete safety: quarantine, restore, sweep |
+| `pico/cmd_repair.py` | 4,159 | `doctor fix` |
 | `pico/rules.py` | 5,830 | the pattern table, help, catalogue |
 | `pico/store.py` | 5,101 | state, atomic writes, snapshots, replay |
 | `pico/ui.py` | 4,502 | the local web server |
-| `pico/cmd_quarantine.py` | 3,570 | delete safety: quarantine, restore, sweep |
 | `pico/cmd_tasks.py` | 4,427 | tasks, notes, shopping, events, brief |
 | `pico/ledger.py` | 4,081 | execution, inverses, undo |
 | `pico/base.py` | 3,883 | constants and pure helpers |
@@ -154,20 +157,6 @@ The package is split by responsibility, so no single file has to be small:
 | `pico/cmd_money.py` | 868 | the expense log |
 | `pico/__init__.py` | 129 | exports |
 
-The original spec asked for a 20 KB core. That number was written for a bundle with no undo engine,
-no inverse registry, no translator firewall, no privacy gate, no slot dialogue, no snapshots, no
-replay and no write lock — the eight subsystems that make the audit findings above fixed rather than
-documented. **The figure was wrong, not the code**, so it was replaced rather than chased.
-
-A ceiling is reviewed when a feature needs more, and the change is recorded here rather than made
-quietly. Three moves so far: **1.10.0**, 64 KB → 72 KB, because `doctor` added 5.6 KB and left 1.6 KB;
-**1.13.0**, 72 KB → 80 KB, because the package reached 70.7 KB; **1.17.1**, 80 KB → 96 KB, so all three
-parts share one ceiling instead of the package sitting 3.5 KB below its own. CI fails the build when
-any ceiling is crossed.
-
-The package went from 55.8 KB at 1.6.0 to 76.6 KB at 1.17.0 — five new modules, three diagnostic
-commands and three hardening passes. That growth is the features, not slack: the rule table itself has
-not changed size since 1.8.0.
 
 ## Install
 

@@ -9,6 +9,7 @@ import re
 import os
 import pathlib
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -1572,31 +1573,6 @@ def t79_scale():
     shutil.rmtree(d, True)
 
 
-def t82_ledger_generations_dated():
-    e, d = fresh("t82")
-    e.LEDGER_CAP = 10
-    for i in range(75):
-        e.handle("add x%d" % i)
-    gens = sorted(d.glob("ledger-*.jsonl"))
-    check("T82 dated generations: five are kept", len(gens) == e.LEDGER_KEEP,
-          str(len(gens)))
-    check("T82 dated generations: names sort chronologically",
-          [g.name for g in gens] == sorted(g.name for g in gens))
-    lines = list(e.ledger_lines())
-    check("T82 dated generations: the reader spans every generation",
-          len(lines) == 55, str(len(lines)))
-    check("T82 dated generations: the oldest line is from the oldest kept generation",
-          "add x20" in lines[0], lines[0][:50])
-    tl = e.handle("timeline")
-    check("T82 dated generations: timeline says how many it withheld",
-          "older line(s)" in tl.splitlines()[0], tl.splitlines()[0][:60])
-    check("T82 dated generations: timeline narrows with a date",
-          e.handle("timeline 2099-01-01") == "Nothing since 2099-01-01")
-    check("T82 dated generations: an empty ledger says so",
-          Engine(home=tempfile.mkdtemp(), quiet=True).handle("timeline") == "Ledger empty.")
-    shutil.rmtree(d, True)
-
-
 def t81_report_plural():
     e, d = fresh("t81")
     e.handle("add a")
@@ -1608,6 +1584,75 @@ def t81_report_plural():
     check("T81 plural: more than one reads '3 commands'", "(3 commands)" in out,
           [l for l in out.splitlines() if "command" in l])
     shutil.rmtree(d, True)
+
+
+def t82_ledger_generations_dated():
+    e, d = fresh("t82")
+    e.LEDGER_CAP = 10
+    for i in range(75):
+        e.handle("add x%d" % i)
+    gens = sorted(d.glob("ledger-*.jsonl"))
+    check("T82 dated generations: every rotation leaves a generation",
+          len(gens) >= e.LEDGER_KEEP, str(len(gens)))
+    check("T82 dated generations: names sort chronologically",
+          [g.name for g in gens] == sorted(g.name for g in gens))
+    check("T82 dated generations: no two names collide",
+          len({g.name for g in gens}) == len(gens))
+
+    lines = list(e.ledger_lines())
+    check("T82 dated generations: the reader spans every generation",
+          len(lines) == 75, str(len(lines)))
+    check("T82 dated generations: the oldest line is the first command",
+          "add x0" in lines[0], lines[0][:50])
+
+    tl = e.handle("timeline")
+    check("T82 dated generations: timeline says how many it withheld",
+          "older line(s)" in tl.splitlines()[0], tl.splitlines()[0][:60])
+    check("T82 dated generations: timeline narrows with a date",
+          e.handle("timeline 2099-01-01") == "Nothing since 2099-01-01")
+    check("T82 dated generations: an empty ledger says so",
+          Engine(home=tempfile.mkdtemp(), quiet=True).handle("timeline") == "Ledger empty.")
+    shutil.rmtree(d, True)
+
+
+def t83_retention_policy():
+    e, d = fresh("t83")
+    e.LEDGER_CAP = 5
+    e.LEDGER_KEEP = 2
+    e.LEDGER_DAYS = 30
+    for i in range(25):
+        e.handle("add x%d" % i)
+    gens = sorted(d.glob("ledger-*.jsonl"))
+    check("T83 retention: young generations survive past the file count",
+          len(gens) == 5, str(len(gens)))
+
+    oldest = gens[0]
+    past = time.time() - 40 * 86400
+    os.utime(oldest, (past, past))
+    for i in range(25, 30):
+        e.handle("add y%d" % i)
+    after = [g.name for g in sorted(d.glob("ledger-*.jsonl"))]
+    check("T83 retention: a generation older than the window is dropped",
+          oldest.name not in after, str(after))
+    check("T83 retention: the file-count floor still holds",
+          len(after) >= e.LEDGER_KEEP, str(len(after)))
+    shutil.rmtree(d, True)
+
+
+def t84_budget_tool():
+    import json as _json
+    tool = ROOT / "tools" / "budget.py"
+    check("T84 budget: the tool and its baseline exist",
+          tool.exists() and (ROOT / "budget.json").exists())
+    base = _json.loads((ROOT / "budget.json").read_text(encoding="utf-8"))
+    check("T84 budget: the baseline records all three parts",
+          set(base) == {"package", "packs", "console"}, str(sorted(base)))
+    r = subprocess.run([sys.executable, str(tool)], capture_output=True,
+                       encoding="utf-8", timeout=120)
+    check("T84 budget: the tree is inside its recorded baseline",
+          r.returncode == 0, (r.stdout or r.stderr)[-120:])
+    check("T84 budget: it prints a ceiling per part",
+          r.stdout.count("ceiling") == 3, r.stdout[:100])
 
 
 def main():
@@ -1634,7 +1679,8 @@ def main():
                t72_ledger_rotation, t73_web_routes, t74_indic_names,
                t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper,
                t79_scale, t81_report_plural,
-               t82_ledger_generations_dated):
+               t82_ledger_generations_dated, t83_retention_policy,
+               t84_budget_tool):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

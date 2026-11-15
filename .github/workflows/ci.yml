@@ -89,56 +89,58 @@ jobs:
 
       - name: Size budget
         shell: bash
-        run: |
-          python - <<'PY'
-          import pathlib, sys
-          # Budgets are this project's, not the original spec's. The spec asked for a
-          # 20 KB core; the core now carries an undo engine, an inverse registry, a
-          # translator firewall, a privacy gate, slot dialogue, snapshots, replay and
-          # a write lock. That is eight subsystems the 20 KB figure never accounted
-          # for, so the number was wrong rather than the code.
-          #
-          # A ceiling is reviewed when a feature needs more, not raised silently.
-          # 1.10.0: 64 -> 72 KB for `doctor`. 1.13.0: 72 -> 80 KB. 1.17.1: 80 ->
-          # 96 KB, so all three parts share one ceiling. Each move is recorded in
-          # the README with the reason.
-          def kb(n):
-              return "%d B (%.1f KB)" % (n, n / 1024.0)
+        run: python tools/budget.py
 
-          parts = sorted(pathlib.Path("pico").glob("*.py")) + [pathlib.Path("pico.py")]
-          package = sum(p.stat().st_size for p in parts)
-          packs = sum(p.stat().st_size for p in pathlib.Path("packs").rglob("*.py"))
-          console = pathlib.Path("web/index.html").stat().st_size
+      - name: Docs quote the real numbers
+        shell: bash
+        run: python tools/doc_consistency.py
 
-          for p in parts:
-              print("  %-22s %s" % (p, kb(p.stat().st_size)))
-          caps = [("package", package, 96), ("packs", packs, 96),
-                  ("console", console, 96)]
-          for name, size, cap in caps:
-              print("%-10s %14s   cap %d KB" % (name, kb(size), cap))
-          over = [(n, s, c) for n, s, c in caps if s > c * 1024]
-          if over:
-              sys.exit("over budget: " + ", ".join("%s %d B" % (n, s) for n, s, _ in over))
-          PY
+      - name: Console demo agrees with the engine
+        shell: bash
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python tools/demo_parity.py
 
-      - name: Console is one self-contained file
+      - name: Zero third-party imports
         shell: bash
         run: |
           python - <<'PY'
-          import pathlib, re, sys
-          html = pathlib.Path("web/index.html").read_text(encoding="utf-8")
-          # only markup counts: strip the script and style blocks first, because
-          # "src=\"rule\"" is a JS variable, not an asset reference
-          markup = re.sub(r"<script>.*?</script>", "", html, flags=re.S)
-          markup = re.sub(r"<style>.*?</style>", "", markup, flags=re.S)
-          allowed = ("manifest.webmanifest", "icon-192.png", "icon-512.png")
-          refs = re.findall(r'(?:src|href)="([^"]+)"', markup)
-          bad = [r for r in refs
-                 if not r.startswith(("#", "data:", "https://drsamonline"))
-                 and r not in allowed]
+          import ast, importlib.util, pathlib, sys, sysconfig
+          stdlib_dir = pathlib.Path(sysconfig.get_paths()["stdlib"]).resolve()
+
+          def is_stdlib(name):
+              if hasattr(sys, "stdlib_module_names"):      # 3.10+
+                  return name in sys.stdlib_module_names
+              if name in sys.builtin_module_names or name == "__future__":
+                  return True
+              try:
+                  spec = importlib.util.find_spec(name)
+              except Exception:
+                  return False
+              if not spec or not spec.origin or spec.origin in ("built-in", "frozen"):
+                  return name in sys.builtin_module_names
+              try:
+                  return stdlib_dir in pathlib.Path(spec.origin).resolve().parents
+              except Exception:
+                  return False
+
+          bad = []
+          for p in pathlib.Path(".").rglob("*.py"):
+              if "tests" in p.parts:
+                  continue
+              for node in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
+                  mods = []
+                  if isinstance(node, ast.Import):
+                      mods = [a.name.split(".")[0] for a in node.names]
+                  elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                      mods = [node.module.split(".")[0]]
+                  for m in mods:
+                      if m in ("pico", "packs") or is_stdlib(m):
+                          continue
+                      bad.append("%s: %s" % (p, m))
           if bad:
-              sys.exit("external asset references: %s" % bad[:3])
-          print("console is self-contained, %d bytes" % len(html.encode()))
+              print("\n".join(sorted(set(bad)))); sys.exit(1)
+          print("no third-party imports (python %s)" % sys.version.split()[0])
           PY
 
       - name: Console demo matches the served console
