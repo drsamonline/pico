@@ -2,6 +2,16 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.24.1 — 2026-11-15
+
+### Fixed
+
+- **`.gitattributes` forces LF for text files.** The doc-consistency gate compares byte counts against
+  the docs, and those were measured on Linux. Windows runners default to `core.autocrlf=true`, so every
+  text file arrived with CRLF and ten numbers disagreed — the docs were right and the checkout was
+  different. LF everywhere makes the tree byte-identical on every platform, which also means the console
+  demo hashes the same.
+
 ## 1.24.0 — 2026-11-15
 
 ### Added
