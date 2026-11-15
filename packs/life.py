@@ -70,7 +70,7 @@ def mail(m):
 RULES = [
     (r"^journal(?: show(?: (?P<n>\d+))?)?$", jshow),
     (r"^journal (?P<t>.+)$", jadd),
-    (r"^contact (?P<name>\w+)=(?P<num>\S+)$", cadd),
+    (r"^contact (?P<name>[^\s=]+)=(?P<num>\S+)$", cadd),
     (r"^contacts$", cshow),
     (r"^wa (?P<name>[\w+]+)(?: (?P<msg>.+))?$", wa),
     (r"^mail (?P<name>\S+)(?: (?P<sub>.+))?$", mail),

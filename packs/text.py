@@ -5,6 +5,8 @@ import re
 CATALOG = ["count PATH - lines, words, chars", "extract TYPE PATH - emails, urls, phones, amounts",
            "sortlines PATH - sorted unique-safe output", "dedupe PATH - drop duplicate lines",
            "redact PATH - mask PII into a new file"]
+from pico.base import unquote
+
 E = None
 
 PATTERNS = {
@@ -22,7 +24,7 @@ def setup(api):
 
 
 def _read(m):
-    p = pathlib.Path(m["path"]).expanduser()
+    p = pathlib.Path(unquote(m["path"])).expanduser()
     if not p.exists() or not p.is_file():
         return None, "File not found: " + str(p)
     try:

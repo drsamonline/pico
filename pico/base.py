@@ -1,7 +1,7 @@
 """pico base — constants and pure helpers shared by every module."""
 import ast, operator, re, sys
 
-__version__ = "1.14.0"
+__version__ = "1.15.0"
 
 
 STATE_DEFAULT = {
@@ -34,6 +34,14 @@ def mask_cmd(cmd):
 
 
 PENDING_TTL = 120  # seconds
+
+
+def unquote(p):
+    """`count "/a/b c.txt"` should not look for a file called `"/a/b c.txt"`."""
+    p = (p or "").strip()
+    if len(p) >= 2 and p[0] == p[-1] and p[0] in "\"'":
+        return p[1:-1]
+    return p
 
 
 def normalize(t):

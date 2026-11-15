@@ -2,6 +2,42 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.15.0 — 2026-11-14
+
+A hardening release. Every fix below came from an adversarial probe — quoted commas, CRLF, a BOM, a
+Devanagari key, `remind 25:99`, `timer 999999h`, a quoted path — not from a feature list.
+
+### Fixed
+
+- **Devanagari, and every Indic script, broke key arguments.** `\w` matches a base letter but stops at
+  a combining vowel sign, so `remember नाम=Sohil` matched only `न` and the whole rule failed. Keys in
+  `remember`, `recall`, `forget`, `site`, `contact` and `chain` now accept any run of non-space,
+  non-separator characters. Values were already fine.
+- **A UTF-8 BOM in a CSV header broke every column lookup.** Excel writes one by default; `\ufeffid`
+  is not `id`. Files are now opened with `utf-8-sig`, and a stray BOM is stripped from the first cell
+  as well.
+- **Duplicate CSV headers were fatal.** `importcsv` raised `OperationalError: duplicate column name`.
+  Repeated names are now suffixed `_2`, `_3` in both `importcsv` and the read verbs.
+- **`remind 25:99` raised `ValueError`.** Now refused with "That is not a clock time".
+- **`timer 999999h` armed a 114-year thread.** Anything over 24 hours is refused, with `remind`
+  suggested instead.
+- **`fill` substituted twice.** A value containing `{{body}}` was re-expanded by the next key, so
+  `name={{body}}` produced the body text. Substitution is now a single pass: a value is data.
+- **Quoted paths were not understood.** `count "/a/b c.txt"` looked for a file called `"/a/b c.txt"`.
+  Path arguments in `count`, `extract`, `sortlines`, `dedupe`, `redact`, `tidy`, `backup`, `find`,
+  `big files`, `old files`, `dedupe files`, `safe delete` and `importcsv` now strip one layer of
+  matching quotes.
+
+### Changed
+
+- `pico/cmd_files.py` and three packs import `unquote` from `pico.base`. Packs load as top-level
+  modules, so the import has to be absolute — a relative one fails silently under `quiet=True`.
+
+### Tests
+
+246 checks, up from 226. T63 the Indic keys, T64 the three CSV edge cases, T65 the bounds, T66 the
+single-pass fill, T67 the quoted paths.
+
 ## 1.14.0 — 2026-11-14
 
 ### Added

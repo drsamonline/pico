@@ -6,10 +6,12 @@ command in the pack.
 """
 import datetime, json, pathlib, shutil
 
+from .base import unquote
+
 E = None  # engine, rebound by Engine._bind_modules()
 
 def safe_delete(m):
-    p = pathlib.Path(m["path"]).expanduser()
+    p = pathlib.Path(unquote(m["path"])).expanduser()
     if not p.exists():
         return "Path not found."
     q = E.home / "quarantine"
@@ -24,7 +26,7 @@ def safe_delete(m):
 
 
 def safe_delete_preview(m):
-    p = pathlib.Path(m["path"]).expanduser()
+    p = pathlib.Path(unquote(m["path"])).expanduser()
     if p.is_file():
         return [str(p)]
     if p.is_dir():

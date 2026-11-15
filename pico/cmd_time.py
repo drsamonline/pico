@@ -20,14 +20,19 @@ def _later(secs, msg):
 def timer(m):
     unit = m["u"][0].lower()
     secs = int(m["n"]) * {"s": 1, "m": 60, "h": 3600}[unit]
+    if secs > 86400:
+        return "A timer longer than 24 hours is not useful. Use remind for a time of day."
     msg = (m["msg"] or "Timer done").strip()
     _later(secs, msg)
     return "Timer: %s%s - %s" % (m["n"], m["u"], msg)
 
 
 def remind(m):
+    h, mi = int(m["h"]), int(m["mi"])
+    if not (0 <= h <= 23 and 0 <= mi <= 59):
+        return "That is not a clock time. Use remind 18:30 MSG"
     now = datetime.datetime.now()
-    t = now.replace(hour=int(m["h"]), minute=int(m["mi"]), second=0, microsecond=0)
+    t = now.replace(hour=h, minute=mi, second=0, microsecond=0)
     if t <= now:
         t += datetime.timedelta(days=1)
     msg = (m["msg"] or "Reminder").strip()

@@ -4,6 +4,8 @@ import hashlib
 import pathlib
 import shutil
 
+from pico.base import unquote
+
 CATALOG = ["dedupe files PATH - report identical files",
            "dedupe files PATH apply - quarantine duplicates",
            "big files [N] [PATH] - largest files", "old files ND [PATH] - untouched for N days"]
@@ -26,7 +28,7 @@ def _walk(limit=60000, root=None):
     """Walk the usual folders, or one given folder. `dedupe files PATH` was
     accepting a path and then walking the defaults instead."""
     seen = 0
-    roots = [pathlib.Path(root).expanduser()] if root else list(_roots())
+    roots = [pathlib.Path(unquote(root)).expanduser()] if root else list(_roots())
     for root in roots:
         if not root.exists():
             continue

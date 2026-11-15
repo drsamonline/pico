@@ -1230,6 +1230,87 @@ def t62_path_arguments():
     shutil.rmtree(d, True)
 
 
+def t63_indic_keys():
+    e, d = fresh("t63")
+    check("T63 unicode: a Devanagari note key is accepted",
+          e.handle("remember नाम=Sohil") == "Remembered नाम.", e.handle("remember नाम=Sohil"))
+    check("T63 unicode: it reads back", e.handle("recall नाम") == "Sohil")
+    check("T63 unicode: a Devanagari contact is accepted",
+          "रवि" in e.handle("contact रवि=919999999999") + e.handle("contacts"))
+    check("T63 unicode: a Devanagari site shortcut is accepted",
+          "saved" in e.handle("site घर=https://example.com"))
+    check("T63 unicode: a Devanagari chain name is accepted",
+          e.handle("chain सुबह: tasks").startswith("Chain सुबह"))
+    check("T63 unicode: the text of a task survives intact",
+          "कल दूध" in (e.handle("add कल दूध लाना") + e.handle("tasks")))
+    shutil.rmtree(d, True)
+
+
+def t64_csv_edge_cases():
+    e, d = fresh("t64")
+    bom = d / "bom.csv"
+    bom.write_bytes(b"\xef\xbb\xbfid,city\n1,Pune\n2,Surat\n")
+    out = e.handle("csv pivot city count id %s" % bom)
+    check("T64 csv: a BOM in the header is stripped",
+          "No column" not in out and "city" in out, out.replace("\n", " | ")[:80])
+
+    crlf = d / "crlf.csv"
+    crlf.write_bytes(b"a,b\r\n1,2\r\n3,4\r\n")
+    out = e.handle("csv pivot a sum b %s" % crlf)
+    check("T64 csv: CRLF line endings parse", "4" in out and "2" in out, out[:60])
+
+    dup = d / "dup.csv"
+    dup.write_text("id,id\n1,2\n", "utf-8")
+    out = e.handle("importcsv %s dup" % dup)
+    check("T64 csv: duplicate headers are renamed, not fatal",
+          "id_2" in out and "Command failed" not in out, out[:70])
+    shutil.rmtree(d, True)
+
+
+def t65_bounds():
+    e, d = fresh("t65")
+    check("T65 bounds: an impossible clock time is refused",
+          "not a clock time" in e.handle("remind 25:99 x"))
+    check("T65 bounds: a valid clock time still works",
+          "Reminder at 18:30" in e.handle("remind 18:30 ok"))
+    check("T65 bounds: an absurd timer is refused",
+          "longer than 24 hours" in e.handle("timer 999999h x"))
+    check("T65 bounds: a normal timer still arms", "Timer: 2h" in e.handle("timer 2h ok"))
+    check("T65 bounds: a huge exponent is refused", "Arithmetic" in e.handle("calc 2**1000"))
+    shutil.rmtree(d, True)
+
+
+def t66_fill_single_pass():
+    e, d = fresh("t66")
+    e.handle("fill letter name={{body}} subject=S body=Hello sender=Me")
+    out = d / ("letter_%s.txt" % datetime.date.today())
+    text = out.read_text("utf-8") if out.exists() else ""
+    check("T66 fill: a value containing a placeholder is data, not a template",
+          "To: {{body}}" in text and "Dear {{body}}" in text, text[:80])
+    check("T66 fill: the real body was still substituted", "Hello" in text)
+    shutil.rmtree(d, True)
+
+
+def t67_quoted_paths():
+    e, d = fresh("t67")
+    spaced = d / "with space"
+    spaced.mkdir()
+    (spaced / "f.txt").write_text("hello world", "utf-8")
+    check("T67 quotes: count accepts a quoted path",
+          "words 2" in e.handle('count "%s"' % (spaced / "f.txt")),
+          e.handle('count "%s"' % (spaced / "f.txt"))[:60])
+    check("T67 quotes: tidy accepts a quoted path",
+          "Sorted" in e.handle('tidy "%s"' % spaced))
+    check("T67 quotes: backup accepts a quoted path",
+          "Backup" in e.handle('backup "%s"' % spaced))
+    # tidy above moved the fixture into a category folder; make a fresh one
+    (spaced / "g.txt").write_text("hello again", "utf-8")
+    check("T67 quotes: single quotes work too",
+          "words 2" in e.handle("count '%s'" % (spaced / "g.txt")),
+          e.handle("count '%s'" % (spaced / "g.txt"))[:60])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1248,7 +1329,8 @@ def main():
                t52_doctor, t53_pivot_types, t54_offline_chip, t55_doctor_fix,
                t56_join_types, t57_android_doc, t58_thread_health,
                t59_repair_module, t60_doctor_probe, t61_probe_write,
-               t62_path_arguments):
+               t62_path_arguments, t63_indic_keys, t64_csv_edge_cases,
+               t65_bounds, t66_fill_single_pass, t67_quoted_paths):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

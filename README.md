@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.14.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.15.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,13 +97,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 143,657 bytes across 29 files |
-| package / packs / console | 74,573 / 68,463 / 64,665 B |
+| python source | 144,933 bytes across 29 files |
+| package / packs / console | 75,284 / 69,649 / 64,665 B |
 | console | 64,665 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.71 ms/call, 4,000 calls |
 | rule-path latency (write) | 4.03 ms/call, 300 calls |
 | engine heap | 0.1 MB |
-| acceptance tests | 226 passing, stdlib `unittest`-free runner |
+| acceptance tests | 246 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
 roughly six times more — and why state is only persisted when something actually changed.
@@ -116,8 +116,8 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 80 KB | 74,573 B | 7.3 KB |
-| packs (12 files) | 96 KB | 68,463 B | 27.6 KB |
+| package (`pico/` + launcher, 18 files) | 80 KB | 75,284 B | 6.6 KB |
+| packs (12 files) | 96 KB | 69,649 B | 26.4 KB |
 | console (one HTML file) | 96 KB | 64,665 B | 31.3 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |
 | idle heap | 15 MB | 0.1 MB | 14.9 MB |

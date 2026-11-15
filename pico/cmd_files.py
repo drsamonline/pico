@@ -1,6 +1,8 @@
 """pico files — sort, archive, find and fill. Deletion lives in cmd_quarantine."""
 import datetime, json, pathlib, re, shutil, zipfile
 
+from .base import unquote
+
 E = None  # engine, rebound by Engine._bind_modules()
 
 CATS = {
@@ -24,7 +26,7 @@ def _dl():
 
 
 def tidy(m):
-    d = pathlib.Path(m["path"] or _dl()).expanduser()
+    d = pathlib.Path(unquote(m["path"]) or _dl()).expanduser()
     if not d.exists():
         return "Path not found: " + str(d)
     moved = []
@@ -44,14 +46,14 @@ def tidy(m):
 
 
 def tidy_preview(m):
-    d = pathlib.Path(m["path"] or _dl()).expanduser()
+    d = pathlib.Path(unquote(m["path"]) or _dl()).expanduser()
     if not d.exists():
         return []
     return [f.name for f in d.iterdir() if f.is_file()]
 
 
 def backup(m):
-    src = pathlib.Path(m["path"]).expanduser()
+    src = pathlib.Path(unquote(m["path"])).expanduser()
     if not src.exists():
         return "Path not found."
     out = E.home / "backups"
@@ -116,8 +118,10 @@ def fill(m):
     if src is None:
         return "No template named %s." % m["tpl"]
     text = src.read_text("utf-8")
-    for k, v in re.findall(r"(\w+)=(.*?)(?=\s+\w+=|$)", m["args"]):
-        text = text.replace("{{" + k + "}}", v.strip())
+    pairs = dict(re.findall(r"(\w+)=(.*?)(?=\s+\w+=|$)", m["args"]))
+    # one pass: a value that contains {{something}} is data, not a template
+    text = re.sub(r"\{\{(\w+)\}\}",
+                  lambda mo: pairs.get(mo.group(1), mo.group(0)).strip(), text)
     out = E.home / ("%s_%s.txt" % (m["tpl"], datetime.date.today()))
     out.write_text(text, "utf-8")
     E.set_inverse("file_rm", {"path": str(out)})

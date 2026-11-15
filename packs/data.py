@@ -4,6 +4,8 @@ import pathlib
 import re
 import sqlite3
 
+from pico.base import unquote
+
 CATALOG = ["importcsv PATH TABLE - load a CSV into the local db",
            "sql SELECT … - query it", "tables - what is loaded",
            "csv filter COL[:number|:text]OP VAL PATH - rows matching", "csv sort COL[:number|:text] [desc] PATH - ordered rows",
@@ -27,20 +29,20 @@ def _conn():
 
 
 def importcsv(m):
-    p = pathlib.Path(m["path"]).expanduser()
+    p = pathlib.Path(unquote(m["path"])).expanduser()
     if not p.exists():
         return "File not found: " + str(p)
     table = re.sub(r"\W", "_", m["table"])
     try:
-        with p.open(newline="", encoding="utf-8", errors="replace") as f:
+        with p.open(newline="", encoding="utf-8-sig", errors="replace") as f:
             rdr = csv.reader(f)
             rows = list(rdr)
     except Exception as ex:
         return "Cannot read: %s" % ex
     if len(rows) < 2:
         return "Needs a header row and at least one data row."
-    header = [re.sub(r"\W", "_", h.strip().lower()) or ("c%d" % i)
-              for i, h in enumerate(rows[0])]
+    header = _unique([re.sub(r"\W", "_", h.strip().lstrip("\ufeff").lower()) or ("c%d" % i)
+                      for i, h in enumerate(rows[0])])
     with _conn() as c:
         c.execute('DROP TABLE IF EXISTS "%s"' % table)
         c.execute('CREATE TABLE "%s" (%s)' % (
@@ -78,16 +80,30 @@ def sql(m):
 
 
 def _load(path):
-    p = pathlib.Path(path).expanduser()
+    p = pathlib.Path(unquote(path)).expanduser()
     if not p.exists():
         return None, None, "File not found: " + str(p)
-    with p.open(newline="", encoding="utf-8", errors="replace") as f:
+    with p.open(newline="", encoding="utf-8-sig", errors="replace") as f:
         rows = list(csv.reader(f))
     if not rows:
         return None, None, "Empty file."
-    header = [h.strip() for h in rows[0]]
+    header = _unique([h.strip().lstrip("\ufeff") for h in rows[0]])
     body = [dict(zip(header, r + [""] * (len(header) - len(r)))) for r in rows[1:]]
     return header, body, None
+
+
+def _unique(names):
+    """Excel exports repeat column names; a dict of rows cannot."""
+    seen, out = {}, []
+    for name in names:
+        name = name or "col"
+        if name in seen:
+            seen[name] += 1
+            out.append("%s_%d" % (name, seen[name]))
+        else:
+            seen[name] = 1
+            out.append(name)
+    return out
 
 
 def _num(v):

@@ -3,6 +3,12 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.15 — shipped
+
+A hardening release, driven by an adversarial probe rather than a feature list: Indic scripts in keys,
+BOM and duplicate headers in CSV, clock and timer bounds, single-pass template substitution, quoted
+paths. 246 acceptance tests.
+
 ## 1.14 — shipped
 
 `doctor probe write` exercises the eight write paths in a scratch directory; `dedupe files`, `big
@@ -90,6 +96,7 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | Item | Why | Exit test |
 | --- | --- | --- |
 | **`fill` is the one path no probe touches** | it writes a dated file into the home, so a diagnostic must not run it | a `fill` that takes an output directory |
+| **Devanagari in command *arguments* is fine, in command *names* it is not** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
 | **Budget headroom is finite** | the package sits at 72.8 KB of an 80 KB ceiling | one more subsystem fits before a decision is needed |
 
 ## Next — cheap and useful
