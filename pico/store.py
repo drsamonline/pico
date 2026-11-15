@@ -46,6 +46,24 @@ class StoreMixin:
         with self._lock:
             self._snapshot_locked()
 
+    REPLAY_KEEP = 5            # reconstructions kept beside the state
+
+    def replay_dirs(self):
+        return sorted(p for p in self.home.glob("replay-*") if p.is_dir())
+
+    def _prune_replays(self):
+        """Every replay writes a directory and nothing used to remove them.
+
+        A user who explores replay a dozen times ends up with a dozen full state
+        copies and no idea why. Keep the newest few, like snapshots.
+        """
+        try:
+            for extra in self.replay_dirs()[:-self.REPLAY_KEEP]:
+                import shutil as _shutil
+                _shutil.rmtree(extra, ignore_errors=True)
+        except Exception:
+            pass
+
     def _snapshot_index(self):
         f = self.snapshots / "index.json"
         if not f.exists():
@@ -145,6 +163,7 @@ class StoreMixin:
             side.handle(r.get("cmd", ""))
             n += 1
         s2 = side.S
+        self._prune_replays()
         return ("Replayed %d command(s) after the %s snapshot.\n"
                 "State at %s: %d task(s), %d expense(s), %d note(s).\n"
                 "Written to %s (live state untouched)."

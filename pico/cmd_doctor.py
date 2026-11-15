@@ -173,6 +173,13 @@ def doctor(m):
         rows.append(_line(WARN, "quarantined state",
                           "%d old file(s) kept" % len(corrupt)))
 
+    # reconstructions left by `replay`
+    reps = E.replay_dirs() if hasattr(E, "replay_dirs") else []
+    if reps:
+        size = sum(f.stat().st_size for d in reps for f in d.rglob("*") if f.is_file())
+        rows.append(_line(OK, "replays", "%d kept, %d B (newest %s)"
+                          % (len(reps), size, reps[-1].name)))
+
     # ledger, including the rotated generations
     lf = E.ledger_file
     gens = sorted(lf.parent.glob("%s-*.jsonl" % lf.stem))

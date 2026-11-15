@@ -2,6 +2,22 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.28.0 — 2026-11-15
+
+### Fixed
+
+- **Every `replay` left a directory behind and nothing removed them.** A reconstruction writes a full
+  state copy into `replay-<stamp>/`, so a user who explores replay a dozen times ends up with a dozen
+  state copies and no idea why. Nine replays produced nine directories. The newest five are now kept,
+  like snapshots, and the rest are removed after each replay.
+- **`doctor` did not mention them.** It now reports how many reconstructions are kept and how much they
+  cost: `replays  5 kept, 24125 B (newest replay-2026-11-15T125304.826709)`.
+
+### Tests
+
+331 checks, up from 327. T87 runs nine replays and asserts the keep limit holds, that the newest
+reconstruction is intact, and that `doctor` reports them.
+
 ## 1.27.0 — 2026-11-15
 
 ### Fixed

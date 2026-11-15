@@ -1728,6 +1728,27 @@ def t86_console_encoding():
         shutil.rmtree(home, True)
 
 
+def t87_replay_dirs_are_pruned():
+    e, d = fresh("t87")
+    for i in range(30):
+        e.handle("add t%d" % i)
+    e._since_snap = 25
+    for i in range(30, 40):
+        e.handle("u%d" % i)
+    check("T87 replays: none exist before a replay", e.replay_dirs() == [])
+    for _ in range(9):
+        e.handle("replay " + datetime.datetime.now().isoformat(timespec="microseconds"))
+    dirs = e.replay_dirs()
+    check("T87 replays: only the keep limit survives", len(dirs) == e.REPLAY_KEEP,
+          str(len(dirs)))
+    check("T87 replays: the newest reconstruction is intact",
+          (dirs[-1] / "state.json").exists())
+    check("T87 replays: doctor reports them",
+          any("replay" in l for l in e.handle("doctor").splitlines()),
+          e.handle("doctor")[:60])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1753,7 +1774,8 @@ def main():
                t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper,
                t79_scale, t81_report_plural,
                t82_ledger_generations_dated, t83_retention_policy,
-               t84_budget_tool, t85_replay_reconstructs, t86_console_encoding):
+               t84_budget_tool, t85_replay_reconstructs, t86_console_encoding,
+               t87_replay_dirs_are_pruned):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()
