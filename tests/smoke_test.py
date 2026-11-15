@@ -1748,8 +1748,17 @@ def t87_replay_dirs_are_pruned():
     for _ in range(9):
         e.handle("replay " + datetime.datetime.now().isoformat(timespec="microseconds"))
     dirs = e.replay_dirs()
-    check("T87 replays: only the keep limit survives", len(dirs) == e.REPLAY_KEEP,
-          str(len(dirs)))
+    check("T87 replays: nothing is lost inside the floor or the window",
+          len(dirs) >= e.REPLAY_KEEP, str(len(dirs)))
+
+    # an aged reconstruction beyond the floor goes on the next replay
+    past = time.time() - (e.REPLAY_DAYS + 1) * 86400
+    oldest = dirs[0]
+    os.utime(oldest, (past, past))
+    e.handle("replay " + datetime.datetime.now().isoformat(timespec="microseconds"))
+    left = [p.name for p in e.replay_dirs()]
+    check("T87 replays: an aged one past the floor is dropped",
+          oldest.name not in left, str(len(left)))
     check("T87 replays: the newest reconstruction is intact",
           (dirs[-1] / "state.json").exists())
     check("T87 replays: doctor reports them",

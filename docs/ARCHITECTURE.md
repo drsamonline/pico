@@ -77,6 +77,20 @@ not the typed text, which is why `dry wa bob hi` reports `send` even though the 
 Consent lives in `self.pending`, expires by timestamp, and is cleared by `cancel` or by any new
 command. `confirm` re-resolves nothing — it runs the exact string that was held.
 
+### Why a typed `write` is not gated
+
+This was an open question for several releases. The answer is no, and the reasoning is worth recording.
+
+The gate exists to stop a command the user did not ask for. A model-proposed `tidy` is a guess about
+intent; a typed `tidy` *is* the intent. Putting a confirmation in front of the user's own sentence buys
+no safety and costs a keystroke every time — and the pressure it creates is to type `confirm`
+reflexively, which is exactly the habit that makes the `danger` gate worthless when it matters.
+
+What a typed write does get instead: an inverse in the ledger, so `undo` reverses it, and a quarantine
+for anything it deletes, so a mistake is recoverable after the fact rather than blocked beforehand. The
+`safe`/`write` distinction still earns its place — it is what tells a model-proposed command apart from
+a typed one.
+
 ## Ledger and inverses
 
 Every executed command appends one JSON line:

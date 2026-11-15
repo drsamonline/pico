@@ -47,7 +47,8 @@ class StoreMixin:
         with self._lock:
             self._snapshot_locked()
 
-    REPLAY_KEEP = 5            # reconstructions kept beside the state
+    REPLAY_KEEP = 5            # reconstructions kept regardless of age
+    REPLAY_DAYS = 7            # ...and any younger than this, whichever keeps more
 
     def replay_dirs(self):
         return sorted(p for p in self.home.glob("replay-*") if p.is_dir())
@@ -59,9 +60,15 @@ class StoreMixin:
         copies and no idea why. Keep the newest few, like snapshots.
         """
         try:
+            import shutil as _shutil
+            cut = (datetime.datetime.now()
+                   - datetime.timedelta(days=self.REPLAY_DAYS)).timestamp()
             for extra in self.replay_dirs()[:-self.REPLAY_KEEP]:
-                import shutil as _shutil
-                _shutil.rmtree(extra, ignore_errors=True)
+                try:
+                    if extra.stat().st_mtime < cut:
+                        _shutil.rmtree(extra, ignore_errors=True)
+                except Exception:
+                    pass
         except Exception:
             pass
 

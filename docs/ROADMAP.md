@@ -196,12 +196,16 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 ## Open questions
 
-- **Should `write` be gated for typed commands?** It is gated for model-proposed ones. A typed `tidy`
-  runs immediately and is undoable. That is a judgement call, not a settled one.
-- **How long should a reconstruction live?** `replay` keeps five. Nobody has asked for a sixth.
+None. Every question this file used to carry is now answered, and each answer is recorded where the
+code lives:
 
-Settled since: a failing job is recorded, notified, shown by `doctor`, and switches itself off after
-three consecutive failures (1.32.0); aliases move to their own file past fifty (1.32.0).
+| Question | Answer | Where |
+| --- | --- | --- |
+| Should a typed `write` be gated? | No — a typed command is the intent, and a confirmation in front of it teaches the reflex that makes the `danger` gate worthless | `docs/ARCHITECTURE.md` |
+| How loud should a failing job be? | Recorded, notified, shown by `doctor`, switched off after three consecutive failures | 1.32.0 |
+| How long should a reconstruction live? | Five, or seven days, whichever keeps more — the same rule as the ledger | 1.34.0 |
+| Where does the alias store live? | `state.json` below fifty, `aliases.json` above it | 1.32.0 |
+| Are command names limited to English? | No — `alias P -> CMD` binds any phrase in any script | 1.33.0 |
 
 ## Gates that hold the line
 

@@ -2,6 +2,31 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.34.0 — 2026-11-15
+
+### Decided
+
+Two questions the roadmap had carried since 1.18, answered rather than deferred.
+
+- **A typed `write` is not gated.** The gate exists to stop a command the user did not ask for; a typed
+  `tidy` *is* the ask. A confirmation in front of the user's own sentence buys no safety, and the
+  pressure it creates is to type `confirm` reflexively — the exact habit that makes the `danger` gate
+  worthless when it matters. A typed write gets an inverse instead, so `undo` reverses it, and the
+  quarantine, so a deletion is recoverable afterwards. Recorded in `docs/ARCHITECTURE.md`.
+- **A reconstruction lives for five runs or seven days, whichever keeps more.** `replay` used a bare
+  count of five; the ledger already uses count-or-age, and two different retention rules in one home is
+  a thing to explain rather than a thing to have.
+
+### Docs
+
+- **The roadmap has no open questions left.** Every one it carried is answered, and the table says
+  where each answer lives. The "worth the complexity" list holds one item — the journal.
+
+### Tests
+
+382 checks. T87 now covers both halves of the retention rule: nothing inside the floor or the window is
+lost, and an aged one past the floor goes on the next replay.
+
 ## 1.33.0 — 2026-11-15
 
 ### Added
