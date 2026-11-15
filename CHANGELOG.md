@@ -2,6 +2,32 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.36.0 — 2026-11-15
+
+Another probe round, another three defects. The first one was the worst failure mode this project has
+produced.
+
+### Fixed
+
+- **`chain a: chain a` then `chain a` hung the process forever.** Not slow, not an error — no output, no
+  prompt, a dead REPL until Ctrl-C. A saved sequence re-enters `handle()`, and nothing limited how deep.
+  Two budgets now stop it: nesting depth (8) and total actions per top-level command (500). Both refuse
+  with a sentence that says which budget ran out. Mutual recursion (`b: chain c`, `c: chain b`) is
+  covered by the same depth count, a legitimate nested chain still runs, and a `danger`-tier action
+  inside a chain is still skipped by the existing gate.
+- **`importcsv` crashed on a ragged CSV** with `ProgrammingError: Incorrect number of bindings`, after
+  dropping the target table — so the table was gone and the data never arrived. A row *wider* than the
+  header is now refused with the row number, because importing it would silently drop columns; a row
+  *narrower* is padded with empty strings, because refusing that would be pedantry.
+- **`journal show -1` wrote a journal entry** instead of showing one. The `show N` rule required digits,
+  so `-1` fell through to the "journal this text" rule and a request to *read* became a write. The rule
+  takes a signed number now and refuses anything not positive, and `journal show 0` says the same.
+
+### Tests
+
+411 checks, up from 399. T99 the chain budgets in four directions, T100 the CSV arity and the journal
+bounds.
+
 ## 1.35.1 — 2026-11-15
 
 ### Fixed

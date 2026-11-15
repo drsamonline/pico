@@ -47,6 +47,14 @@ def importcsv(m):
         return "Needs a header row and at least one data row."
     header = _unique([re.sub(r"\W", "_", h.strip().lstrip("\ufeff").lower()) or ("c%d" % i)
                       for i, h in enumerate(rows[0])])
+    width = len(header)
+    # a row wider than the header would lose data, so refuse; a narrow one only needs
+    # padding, and refusing it would be pedantry
+    for n, row in enumerate(rows[1:], start=2):
+        if len(row) > width:
+            return ("Row %d has %d columns but the header has %d. Widen the header or "
+                    "fix the file; importing it would drop data." % (n, len(row), width))
+    rows = [rows[0]] + [r + [""] * (width - len(r)) for r in rows[1:]]
     with _conn() as c:
         c.execute('DROP TABLE IF EXISTS "%s"' % table)
         c.execute('CREATE TABLE "%s" (%s)' % (

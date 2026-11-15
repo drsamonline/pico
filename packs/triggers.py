@@ -43,12 +43,35 @@ def save():
 
 
 # ------------------------------------------------------------------ running
+CHAIN_DEPTH = 8            # nested saved sequences before the engine refuses
+CHAIN_STEPS = 500          # actions one top-level command may run in total
+
+
 def run_actions(actions, ctx=None, retry=True, job=None, now=None):
     """Run a saved sequence. Refuses anything that sends or deletes.
 
     With a `job`, a failing action backs off on its own: the other actions in the
     same rule keep running.
+
+    A chain that names itself used to recurse until the process stopped answering —
+    no error, no prompt, just a dead REPL. Two budgets stop that: nesting depth and
+    total steps for the whole top-level command.
     """
+    depth = getattr(E, "_chain_depth", 0) + 1
+    if depth > CHAIN_DEPTH:
+        return ["[refused: saved sequences nested %d deep — a sequence that names "
+                "itself, directly or through another, is a loop]" % CHAIN_DEPTH]
+    spent = getattr(E, "_chain_steps", 0)
+    if spent >= CHAIN_STEPS:
+        return ["[refused: this command has already run %d actions]" % CHAIN_STEPS]
+    E._chain_depth = depth
+    try:
+        return _run_actions(actions, ctx, retry, job, now)
+    finally:
+        E._chain_depth = depth - 1
+
+
+def _run_actions(actions, ctx=None, retry=True, job=None, now=None):
     now = now or datetime.datetime.now()
     ab = job.setdefault("ab", {}) if job is not None else {}
     out = []
@@ -69,6 +92,7 @@ def run_actions(actions, ctx=None, retry=True, job=None, now=None):
             out.append("[skipped: backing off %dm after %d failure(s)]"
                        % (mins, state.get("fails", 0)))
             continue
+        E._chain_steps = getattr(E, "_chain_steps", 0) + 1
         res = E.handle(cmd)
         if retry and isinstance(res, str) and res.startswith("Command failed"):
             time.sleep(0.2)

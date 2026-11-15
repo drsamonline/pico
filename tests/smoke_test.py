@@ -2006,6 +2006,53 @@ def t98_py38_gate():
     check("T98 py38: it reports what it scanned", "paths" in r.stdout, r.stdout.strip()[:60])
 
 
+def t99_chain_budgets():
+    e, d = fresh("t99")
+    e.handle("chain a: chain a")
+    out = e.handle("chain a")
+    check("T99 chain: a self-naming chain is refused, not spun forever",
+          "refused" in out, out[:70])
+    e.handle("chain b: chain c")
+    e.handle("chain c: chain b")
+    check("T99 chain: mutual recursion is refused too",
+          "refused" in e.handle("chain b"), e.handle("chain b")[:60])
+    e.handle("chain inner: add one")
+    e.handle("chain outer: chain inner ; add two")
+    check("T99 chain: a legitimate nested chain still runs",
+          e.handle("chain outer").count("Added.") == 2, e.handle("chain outer")[:40])
+    e.handle("chain d: safe delete %s/state.json" % d)
+    check("T99 chain: a danger action inside a chain is still skipped",
+          "skipped" in e.handle("chain d"), e.handle("chain d")[:60])
+    check("T99 chain: the state file survived", (d / "state.json").exists())
+    shutil.rmtree(d, True)
+
+
+def t100_csv_arity_and_journal():
+    e, d = fresh("t100")
+    (d / "ragged.csv").write_text("a,b,c\n1,2\n3,4,5,6\n", "utf-8")
+    out = e.handle("importcsv %s/ragged.csv t1" % d)
+    check("T100 csv: a row wider than the header is refused, not inserted",
+          "columns but the header" in out, out[:70])
+    check("T100 csv: and no table was created", e.handle("tables") == "No data yet.",
+          e.handle("tables")[:40])
+    (d / "short.csv").write_text("a,b,c\n1,2\n", "utf-8")
+    check("T100 csv: a narrow row is padded, not refused",
+          "Loaded 1 row" in e.handle("importcsv %s/short.csv t2" % d))
+    check("T100 csv: the padded value is empty", "|  |" in e.handle("sql SELECT * FROM t2")
+          or e.handle("sql SELECT * FROM t2").count("|") >= 3,
+          e.handle("sql SELECT * FROM t2")[:40])
+
+    e.handle("journal hello")
+    check("T100 journal: show 0 is refused", "positive" in e.handle("journal show 0"),
+          e.handle("journal show 0"))
+    check("T100 journal: show -1 is refused, not journaled",
+          "positive" in e.handle("journal show -1"), e.handle("journal show -1"))
+    check("T100 journal: the refusal did not write an entry",
+          len(e.handle("journal show 99").splitlines()) == 1,
+          e.handle("journal show 99"))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2036,7 +2083,8 @@ def main():
                t89_contrast_gate, t90_fill_output_dir, t91_job_errors,
                t92_probe_covers_fill, t93_alias_store, t94_job_switches_off,
                t95_aliases_any_script, t96_placeholder_guard,
-               t97_safe_delete_home, t98_py38_gate):
+               t97_safe_delete_home, t98_py38_gate,
+               t99_chain_budgets, t100_csv_arity_and_journal):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

@@ -15,6 +15,9 @@ from .base import DENY_LLM, PENDING_TTL
 class DispatchMixin:
     def handle(self, text):
         """Single entry point. Never raises (C9)."""
+        # a saved sequence is the only thing that can re-enter, so the budget is
+        # reset here, at the one place a user command begins
+        self._chain_steps = 0
         try:
             return self._handle(text)
         except Exception as ex:

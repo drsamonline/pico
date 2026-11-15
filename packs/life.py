@@ -34,6 +34,8 @@ def jadd(m):
 
 def jshow(m):
     n = int(m["n"]) if m["n"] else 5
+    if n <= 0:
+        return "Give a positive number: journal show 3"
     return "\n".join("%s  %s" % (e["d"], e["t"]) for e in J[-n:]) or "Empty."
 
 
@@ -68,7 +70,7 @@ def mail(m):
 
 
 RULES = [
-    (r"^journal(?: show(?: (?P<n>\d+))?)?$", jshow),
+    (r"^journal(?: show(?: (?P<n>-?\d+))?)?$", jshow),
     (r"^journal (?P<t>.+)$", jadd),
     (r"^contact (?P<name>[^\s=]+)=(?P<num>\S+)$", cadd),
     (r"^contacts$", cshow),
