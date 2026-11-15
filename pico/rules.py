@@ -103,7 +103,7 @@ def register(engine):
         (r"^backup\s+(?P<path>.+)$", backup),
         (r"^find\s+(?P<q>.+)$", find),
         (r"^templates$", tpl_list),
-        (r"^fill\s+(?P<tpl>\w+)\s+(?P<args>.+)$", fill),
+        (r"^fill\s+(?P<tpl>\w+)(?:\s+to\s+(?P<dir>\S+))?\s+(?P<args>.+)$", fill),
         (r"^site\s+(?P<name>[^\s=]+)\s*=\s*(?P<url>\S+)$", site_set),
         (r"^open\s+(?P<t>.+)$", open_any),
         (r"^search\s+(?P<q>.+)$", search),

@@ -31,6 +31,10 @@ PAIRS = [
     # --acc2 is never text on the page: it is a border and a filled button, so the
     # pair that matters is the white label on it
     ("#ffffff", "--acc2", 4.5, "white label on the accent fill"),
+    # non-text: a focus ring or a meaningful border is UI, and AA asks 3:1
+    ("--line2", "--bg",   3.0, "border on the page"),
+    ("--acc",   "--panel", 3.0, "accent outline on a panel"),
+    ("--tx3",   "--panel", 3.0, "tertiary ink on a panel (large only)"),
 ]
 
 

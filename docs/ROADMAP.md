@@ -3,6 +3,65 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.31 — shipped
+
+Four small items in one release: `fill` takes an output directory and is now covered by `doctor probe
+write`; a scheduled job that throws is recorded, notified and shown by `doctor`; the console palette
+gained fourteen measured pairs including control borders, and `--line2` was raised from 1.72:1 to
+3.45:1 because it draws the boundary of every button and input. 354 checks.
+
+## 1.30 — shipped
+
+The console palette is measured by `tools/contrast.py` in CI, following an a11y fix committed straight
+to the console.
+
+## 1.29 — shipped
+
+Backups keep a rolling window of 20 and no longer overwrite each other; `doctor` warns when the
+quarantine grows.
+
+## 1.28 — shipped
+
+`replay` keeps five reconstructions instead of leaking one per call.
+
+## 1.27 — shipped
+
+A Devanagari answer no longer crashes the CLI on a cp1252 console.
+
+## 1.26 — shipped
+
+`replay` reconstructs exactly: the window counts ledger lines, not clock ticks.
+
+## 1.25 — shipped
+
+The size budget became a recorded baseline with a 10% tolerance; ledger retention is by age as well as
+count.
+
+## 1.24 — shipped
+
+`tools/doc_consistency.py` checks every number the docs quote. It found fifteen stale ones on its first
+run.
+
+## 1.23 — shipped
+
+The ledger keeps five dated generations instead of overwriting one.
+
+## 1.22 — shipped
+
+`timeline` and `report` read the rotated ledger, so history stops halving.
+
+## 1.21 — shipped
+
+The parity gate takes hostile input; the demo's Unicode, date and arithmetic bugs fixed.
+
+## 1.20 — shipped
+
+The parity gate covers every handler the demo implements.
+
+## 1.19 — shipped
+
+`tools/demo_parity.py`: the demo is checked against the engine, and six ways it lied were fixed.
+
 ## 1.18 — shipped
 
 A performance pass: compact `state.json` (7× faster to write), a capped task listing, and the scale
@@ -112,26 +171,16 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 | Item | Why | Exit test |
 | --- | --- | --- |
-| **`fill` is the one path no probe touches** | it writes a dated file into the home, so a diagnostic must not run it | a `fill` that takes an output directory |
-| **Devanagari in command *arguments* is fine, in command *names* it is not** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
-| **The ledger keeps one generation** | `ledger.1.jsonl` is overwritten on each rotation, so the oldest history is dropped | a dated generation name, kept for N days |
-| **Writes still rewrite the whole state file** | 9.5 ms at 5,000 tasks, against a 5 ms budget | an append-only journal with periodic compaction |
-| **Package headroom is finite** | the package sits at 76.8 KB of a 96 KB ceiling | 17.3 KB left; the next subsystem fits without a decision |
-
-## Next — cheap and useful
-
-| Item | Why | Exit test |
-| --- | --- | --- |
-| `net worth` / `debt snowball` | one screen that answers "am I okay" | given a debt list, returns a payoff order and total interest |
-| `subs audit` | recurring charges found in `spend` | flags same-amount repeats |
-| Every `csv` verb now takes a type hint | nothing left to add here | — |
+| **Writes rewrite the whole state file** | 9.5 ms at 5,000 tasks, 0.45 ms empty. The 5 ms figure was this project's own spec, not a measured complaint, and an append-only journal puts the write path — the one that holds the user's tasks — at risk | a journal that survives a kill -9 mid-write, with a test that proves it |
+| **Devanagari in command *names* is not supported** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
+| **The alias store lives in `state.json`** | fine below a few hundred aliases, then it dominates the file | its own file past a threshold |
 
 ## Deliberately not built
 
 | Tempting | Why not |
 | --- | --- |
 | Abstractive summarising | That is the model's job. With the model off, an extractive summary must be labelled extractive — and a worse summary than a `grep` is not worth the code |
-| OCR, speech, QR rendering | Pure stdlib cannot. Shipping a dependency contradicts C1 |
+| OCR, speech, QR rendering | Pure stdlib cannot. Shipping a dependency contradicts the whole premise |
 | Two-way WhatsApp | Needs Meta's Cloud API and a public webhook. Telegram already works and needs nothing |
 | A plugin marketplace | Every pack is a file you can read in one sitting. A registry would be a supply-chain risk in a tool that promises no network |
 | Cloud sync | The point is that there is no server. Export/import a JSON file and use whatever you already trust |
@@ -139,9 +188,18 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 
 ## Open questions
 
-- **Where does the alias store live?** Currently in `state.json`. If aliases grow past a few hundred,
-  they deserve their own file so `state.json` stays readable.
-- **Should `write` be gated for typed commands?** It is gated for model-proposed ones. Typed `tidy`
+- **Should `write` be gated for typed commands?** It is gated for model-proposed ones. A typed `tidy`
   runs immediately and is undoable. That is a judgement call, not a settled one.
-- **How loud should the scheduler be?** Today a job that throws is logged and forgotten. Silent failure
-  is the wrong default for a reminder, but noisy failure is worse.
+- **How loud should a failing job be?** Since 1.31.0 a job that throws is recorded, notified and shown
+  by `doctor`. Whether it should also stop the loop is unsettled.
+- **How long should a reconstruction live?** `replay` keeps five. Nobody has asked for a sixth.
+
+## Gates that hold the line
+
+| Gate | What it protects |
+| --- | --- |
+| `tests/smoke_test.py` | 354 acceptance checks |
+| `tools/demo_parity.py` | the console answers what the engine answers, 193 commands |
+| `tools/doc_consistency.py` | every number quoted in the docs |
+| `tools/budget.py` | growth against a recorded baseline, 10% tolerance |
+| `tools/contrast.py` | the console palette against WCAG AA, 14 pairs |

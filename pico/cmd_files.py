@@ -144,7 +144,12 @@ def fill(m):
     # one pass: a value that contains {{something}} is data, not a template
     text = re.sub(r"\{\{(\w+)\}\}",
                   lambda mo: pairs.get(mo.group(1), mo.group(0)).strip(), text)
-    out = E.home / ("%s_%s.txt" % (m["tpl"], datetime.date.today()))
+    where = E.home
+    if m["dir"]:
+        where = pathlib.Path(unquote(m["dir"])).expanduser()
+        if not where.is_dir():
+            return "No such directory: %s" % where
+    out = where / ("%s_%s.txt" % (m["tpl"], datetime.date.today()))
     out.write_text(text, "utf-8")
     E.set_inverse("file_rm", {"path": str(out)})
     return "Written: %s" % out

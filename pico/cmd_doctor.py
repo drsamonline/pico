@@ -75,14 +75,15 @@ WRITE_PROBES = [
     ("safe delete", "safe delete {dir}/throwaway.txt", {"throwaway.txt": "x"}),
     ("restore", "restore 1", {}),
     ("sweep", "quarantine sweep 1d", {}),
+    ("fill", "fill probe to {dir} name=Asha body=hi", {}),
 ]
 
 
 def probe_write(m):
     """Exercise the write paths inside a scratch directory, then clean up.
 
-    `fill` is deliberately absent: it writes a dated file into the user's home and a
-    diagnostic must not be able to overwrite real output.
+    `fill` writes to `{dir}` now that it takes an output directory, so it is covered
+    here too — into a scratch directory, never the user's home.
     """
     import shutil as _sh
     import tempfile
@@ -172,6 +173,14 @@ def doctor(m):
     if corrupt:
         rows.append(_line(WARN, "quarantined state",
                           "%d old file(s) kept" % len(corrupt)))
+
+    # scheduled jobs that threw
+    errs = E.S.get("job_errors") or []
+    if errs:
+        last = errs[-1]
+        rows.append(_line(WARN, "job errors",
+                          "%d recorded, newest %s: %s" % (len(errs), last.get("at", ""),
+                                                          last.get("error", "")[:48])))
 
     # reconstructions left by `replay`
     reps = E.replay_dirs() if hasattr(E, "replay_dirs") else []

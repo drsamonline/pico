@@ -2,6 +2,43 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.31.0 — 2026-11-15
+
+Four small items, one release.
+
+### Changed
+
+- **`fill` takes an output directory.** `fill letter to ~/out name=Asha body=hi` writes there; without
+  `to` it still writes to the home. A directory that does not exist is refused, not created.
+- **`fill` is now covered by `doctor probe write`.** It was the one write path no probe touched, because
+  it could only write into the user's home. With a target directory it runs into the probe's scratch
+  directory like everything else, and the probe still leaves the home clean.
+- **A scheduled job that throws is recorded, not printed into the void.** The loop used to
+  `print("[job error]", ex)`, which in `--serve` goes to a console nobody is watching. Failures are now
+  appended to `job_errors` (capped at 20), notified through the same channel as the job, and shown by
+  `doctor` as `job errors  3 recorded, newest 09:00: ValueError: …`.
+- **The contrast gate covers non-text pairs.** Three more at 3:1: a border on the page, an accent
+  outline on a panel, and tertiary ink on a panel.
+
+### Fixed
+
+- **`--line2` failed WCAG AA and drew the boundary of every control.** At `#2b3d4d` on `#0b0f14` it
+  measured 1.72:1, and it is the only visible edge on a button, the input, the suggestion popup and the
+  install bar — their fills are 1.17:1 against the page. It is now `#4e6b85`, 3.45:1 on the page and
+  3.15:1 on a panel. The palette gate found this the moment it was given a non-text pair to check.
+
+### Docs
+
+- **The roadmap was rewritten.** It still claimed the ledger kept one generation (five since 1.23.0), a
+  96 KB ceiling (a baseline since 1.25.0), and listed `net worth`, `debt snowball` and `subs audit` as
+  future work when all three had shipped. The shipped list stopped at 1.18; it now runs to 1.31. The
+  gate table is in it too.
+
+### Tests
+
+354 checks, up from 340. T90 the `fill` target directory and its refusal, T91 the job-error record and
+its cap, T92 that the write probe covers `fill` and still leaves the home clean.
+
 ## 1.30.0 — 2026-11-15
 
 ### Added

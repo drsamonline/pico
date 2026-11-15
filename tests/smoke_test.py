@@ -1786,6 +1786,69 @@ def t89_contrast_gate():
           round(mod.ratio("#ffffff", "#000000"), 4) == round(mod.ratio("#000000", "#ffffff"), 4))
 
 
+def t90_fill_output_dir():
+    e, d = fresh("t90")
+    (e.home / "templates").mkdir(exist_ok=True)
+    (e.home / "templates" / "letter.txt").write_text("Dear {{name}},\n{{body}}\n", "utf-8")
+    out = d / "out"
+    out.mkdir()
+
+    r = e.handle("fill letter name=Asha body=hi")
+    check("T90 fill: without `to` it lands in the home",
+          str(e.home) in r and (e.home / ("letter_%s.txt" % datetime.date.today())).exists(),
+          r[:60])
+    r = e.handle("fill letter to %s name=Asha body=hi" % out)
+    check("T90 fill: with `to DIR` it lands there", str(out) in r, r[:70])
+    written = list(out.glob("letter_*.txt"))
+    check("T90 fill: the file is written and substituted",
+          written and "Dear Asha," in written[0].read_text("utf-8"), str(written))
+    check("T90 fill: a missing directory is refused, not created",
+          e.handle("fill letter to /nonexistent/x name=A body=b").startswith("No such directory"),
+          e.handle("fill letter to /nonexistent/x name=A body=b")[:50])
+    shutil.rmtree(d, True)
+
+
+def t91_job_errors():
+    e, d = fresh("t91")
+    mod = next((m for n, m in sys.modules.items() if n.startswith("pico_pack_schedule")), None)
+    if mod is None:
+        check("T91 jobs: the schedule pack is loaded", False, "not loaded")
+        shutil.rmtree(d, True)
+        return
+    mod.NOTIFY = lambda message: None
+    for k in range(25):
+        mod.record_failure({"cmd": "brief"}, ValueError("boom %d" % k), "09:00")
+    errs = e.S.get("job_errors") or []
+    check("T91 jobs: failures are recorded", bool(errs), str(len(errs)))
+    check("T91 jobs: the list is capped", len(errs) == mod.FAILURE_CAP, str(len(errs)))
+    check("T91 jobs: the newest is kept, not the oldest",
+          "boom 24" in errs[-1]["error"], errs[-1]["error"])
+    check("T91 jobs: the error names its type",
+          errs[-1]["error"].startswith("ValueError:"), errs[-1]["error"])
+    check("T91 jobs: doctor reports them",
+          any("job errors" in l for l in e.handle("doctor").splitlines()),
+          e.handle("doctor")[:60])
+    check("T91 jobs: a clean home has no such line",
+          not any("job errors" in l
+                  for l in Engine(home=tempfile.mkdtemp(), quiet=True).handle("doctor").splitlines()))
+    shutil.rmtree(d, True)
+
+
+def t92_probe_covers_fill():
+    e, d = fresh("t92")
+    (e.home / "templates").mkdir(exist_ok=True)
+    (e.home / "templates" / "probe.txt").write_text("{{name}} {{body}}", "utf-8")
+    out = e.handle("doctor probe write")
+    check("T92 probe: fill is exercised", "fill" in out, out[-200:])
+    check("T92 probe: fill reports ok", any(l.startswith("ok    fill") for l in out.splitlines()),
+          [l for l in out.splitlines() if "fill" in l][:1])
+    check("T92 probe: nothing was written into the home",
+          not list(e.home.glob("probe_*")), str(list(e.home.glob("probe_*"))))
+    check("T92 probe: every write path reports",
+          "0 fail" in out, out.splitlines()[-1])
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1813,7 +1876,8 @@ def main():
                t82_ledger_generations_dated, t83_retention_policy,
                t84_budget_tool, t85_replay_reconstructs, t86_console_encoding,
                t87_replay_dirs_are_pruned, t88_backups_window,
-               t89_contrast_gate):
+               t89_contrast_gate, t90_fill_output_dir, t91_job_errors,
+               t92_probe_covers_fill):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

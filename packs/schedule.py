@@ -28,6 +28,22 @@ def save():
     P.write_text(json.dumps(J, indent=2), "utf-8")
 
 
+FAILURE_CAP = 20
+
+
+def record_failure(job, ex, at=""):
+    errs = E.S.setdefault("job_errors", [])
+    errs.append({"at": at or datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),
+                 "cmd": job.get("cmd", ""), "error": "%s: %s" % (type(ex).__name__, ex)})
+    del errs[:-FAILURE_CAP]
+    save()
+    try:
+        NOTIFY("[job failed] %s\n%s: %s" % (job.get("cmd", ""), type(ex).__name__, ex))
+    except Exception:
+        pass
+    return errs[-1]
+
+
 def tick(now=None):
     """Return the jobs due at this minute, marking each as run for the day."""
     now = now or datetime.datetime.now()
@@ -53,7 +69,9 @@ def loop():
                 try:
                     NOTIFY("[%s] %s\n%s" % (hm, job["cmd"], REPLY(job["cmd"])))
                 except Exception as ex:
-                    print("[job error]", ex)
+                    # a reminder that fails silently is the worst outcome: the user
+                    # believes it ran. Record it, notify it, and let `doctor` show it.
+                    record_failure(job, ex, hm)
         time.sleep(15)
 
 
