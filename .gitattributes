@@ -1,0 +1,9 @@
+# LF everywhere, so a byte count measured on Linux is true on Windows too and the
+# console demo hashes the same on every platform.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
+*.exe binary
