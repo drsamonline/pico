@@ -73,9 +73,11 @@ def js_results(commands):
         json.dump(commands, f)
         path = f.name
     try:
+        # node writes UTF-8; decoding with the platform default (cp1252 on Windows)
+        # turns an em dash into mojibake and invents a divergence
         r = subprocess.run(["node", str(ROOT / "tools" / "demo_run.js"),
                             str(ROOT / "web" / "index.html"), path],
-                           capture_output=True, text=True, timeout=120)
+                           capture_output=True, encoding="utf-8", timeout=120)
     finally:
         pathlib.Path(path).unlink(missing_ok=True)
     if r.returncode != 0:
