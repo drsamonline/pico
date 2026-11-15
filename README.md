@@ -6,7 +6,7 @@
   <img alt="tests: 137 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.17.1" src="docs/assets/badge-version.svg">
+  <img alt="version 1.18.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -97,18 +97,22 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | dependencies | 0 — Python standard library only |
 | rules / catalogue / slot rules | 106 / 110 / 6 |
 | packs | 12 |
-| python source | 149,480 bytes across 29 files |
-| package / packs / console | 78,412 / 70,792 / 64,665 B |
+| python source | 149,402 bytes across 29 files |
+| package / packs / console | 78,683 / 70,719 / 65,119 B |
 | console | 65,119 bytes, one HTML file, no external assets |
-| rule-path latency (read) | 0.71 ms/call, 4,000 calls |
-| rule-path latency (write) | 4.03 ms/call, 300 calls |
+| rule-path latency (read) | 0.45 ms/call empty, 1.45 ms at 5,000 tasks |
+| rule-path latency (write) | 1.7 ms empty, 9.5 ms at 5,000 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 294 passing, stdlib `unittest`-free runner |
+| acceptance tests | 300 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
-roughly six times more — and why state is only persisted when something actually changed.
+more — and why state is only persisted when something actually changed. Both stay inside the 5 ms
+budget up to roughly 2,000 tasks; at 5,000 the write reaches 9.5 ms, because the whole file is
+rewritten. An append-only journal is the fix, and it is on the roadmap.
 
-Both latencies are inside the 5 ms budget. Writes pay for durability twice — `state.json` on
+`state.json` is compact JSON. It is still valid and still yours; `python3 -m json.tool ~/.pico/state.json`
+prints it indented when you want to read it. Indenting it on every write cost 34 ms at 5,000 tasks —
+seven times the compact form — which is why it is not the default. Writes pay for durability twice — `state.json` on
 every change and a snapshot every 25 changes so `replay` has a starting point — and still land at
 4.03 ms. Making the temp filename thread-unique removed the contention that had cost 1.5 ms.
 
@@ -116,7 +120,7 @@ every change and a snapshot every 25 changes so `replay` has a starting point �
 
 | Part | Ceiling | Actual | Headroom |
 | --- | --- | --- | --- |
-| package (`pico/` + launcher, 18 files) | 96 KB | 78,412 B | 17.6 KB |
+| package (`pico/` + launcher, 18 files) | 96 KB | 78,683 B | 17.3 KB |
 | packs (12 files) | 96 KB | 70,719 B | 25.3 KB |
 | console (one HTML file) | 96 KB | 65,119 B | 31.2 KB |
 | rule-path latency | 5 ms | 0.7 ms read, 4.0 ms write | 4.3 ms / 1.0 ms |

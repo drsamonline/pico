@@ -22,10 +22,16 @@ def _mark(t):
 
 
 def tasks_list(m):
-    if not _S()["tasks"]:
+    items = _S()["tasks"]
+    if not items:
         return "Nothing pending."
-    return "\n".join("[%s] %d. %s%s" % ("x" if t["done"] else " ", i + 1, t["text"], _mark(t))
-                     for i, t in enumerate(_S()["tasks"]))
+    shown = items[:40]
+    lines = ["[%s] %d. %s%s" % ("x" if t["done"] else " ", i + 1, t["text"], _mark(t))
+             for i, t in enumerate(shown)]
+    if len(items) > len(shown):
+        lines.append("... and %d more. `done N` still addresses any index."
+                     % (len(items) - len(shown)))
+    return "\n".join(lines)
 
 
 def task_add(m):

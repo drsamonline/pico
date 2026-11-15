@@ -3,6 +3,11 @@
 Ordered by what a user feels first, not by what is interesting to build. Every item has an exit test,
 because "done" without a test is an opinion.
 
+## 1.18 — shipped
+
+A performance pass: compact `state.json` (7× faster to write), a capped task listing, and the scale
+numbers in the README. 300 acceptance tests.
+
 ## 1.17 — shipped
 
 A third hardening pass, aimed at the parts no test had touched: file triggers, name arguments in
@@ -110,7 +115,8 @@ translator, 52 acceptance tests. Measured in the [README](../README.md#measured)
 | **`fill` is the one path no probe touches** | it writes a dated file into the home, so a diagnostic must not run it | a `fill` that takes an output directory |
 | **Devanagari in command *arguments* is fine, in command *names* it is not** | the rules are English; only the data is multilingual | transliterated command aliases, opt-in |
 | **The ledger keeps one generation** | `ledger.1.jsonl` is overwritten on each rotation, so the oldest history is dropped | a dated generation name, kept for N days |
-| **Package headroom is finite** | the package sits at 76.6 KB of a 96 KB ceiling, the same ceiling as packs and console | 17.6 KB left; the next subsystem fits without a decision |
+| **Writes still rewrite the whole state file** | 9.5 ms at 5,000 tasks, against a 5 ms budget | an append-only journal with periodic compaction |
+| **Package headroom is finite** | the package sits at 76.8 KB of a 96 KB ceiling | 17.3 KB left; the next subsystem fits without a decision |
 
 ## Next — cheap and useful
 

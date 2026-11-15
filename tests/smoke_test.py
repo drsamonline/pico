@@ -1547,6 +1547,34 @@ def t77_sm2():
     shutil.rmtree(d, True)
 
 
+def t79_scale():
+    e, d = fresh("t79")
+    for i in range(1200):
+        e.S["tasks"].append({"text": "task %d" % i, "done": False})
+    e.save()
+    start = time.perf_counter()
+    out = e.handle("tasks")
+    read_ms = (time.perf_counter() - start) * 1000
+    check("T79 scale: a long list is capped, not printed in full",
+          len(out.splitlines()) <= 41, str(len(out.splitlines())))
+    check("T79 scale: the cap says how many were withheld",
+          "and 1160 more" in out, out.splitlines()[-1][:60])
+    check("T79 scale: reading 1,200 tasks stays under 5 ms", read_ms < 5.0,
+          "%.2f ms" % read_ms)
+
+    start = time.perf_counter()
+    e.handle("add one more")
+    write_ms = (time.perf_counter() - start) * 1000
+    check("T79 scale: writing at 1,200 tasks stays under 5 ms", write_ms < 5.0,
+          "%.2f ms" % write_ms)
+
+    raw = e.state_file.read_text("utf-8")
+    check("T79 scale: the state file is compact JSON, not indented",
+          "\n" not in raw.strip()[:200], raw[:40])
+    check("T79 scale: compact JSON still parses", bool(json.loads(raw)))
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1569,7 +1597,8 @@ def main():
                t65_bounds, t66_fill_single_pass, t67_quoted_paths,
                t68_sql_pragma, t69_dates, t70_fuzzy_template, t71_expired_confirm,
                t72_ledger_rotation, t73_web_routes, t74_indic_names,
-               t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper):
+               t75_file_trigger, t76_noop_gate, t77_sm2, t78_glob_helper,
+               t79_scale):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

@@ -2,6 +2,41 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.18.0 — 2026-11-15
+
+A performance pass, aimed at what happens after a year of use.
+
+### Changed
+
+- **`state.json` is compact JSON.** `indent=1` cost 28 ms of serialisation at 5,000 tasks and made the
+  file 229 KB; compact is 3.9 ms and 149 KB. End to end a write at 5,000 tasks went from **30.8 ms to
+  9.5 ms**, and the file shrank by 35%. It is still valid JSON and still yours —
+  `python3 -m json.tool ~/.pico/state.json` prints it indented.
+- **`tasks` caps its listing at 40 lines** and says how many it withheld. Printing 5,000 lines cost
+  6.5 ms and was useless to read; the read path at 5,000 tasks is now 1.45 ms. `done N` still
+  addresses any index, including the hidden ones.
+
+### Fixed
+
+- The capped listing dropped `t["text"]` in its first version, so every task printed as `[ ] 1. `
+  with no text. T27 and T63 caught it immediately; the tests were right and the code was wrong.
+
+### Measured
+
+| Tasks | read before | read after | write before | write after | state before | state after |
+| --- | --- | --- | --- | --- | --- | --- |
+| 100 | 0.52 ms | 1.22 ms | 1.70 ms | 1.81 ms | 7 KB | 5 KB |
+| 1,000 | 2.50 ms | 0.35 ms | 7.85 ms | 3.62 ms | 49 KB | 32 KB |
+| 5,000 | 6.48 ms | 1.45 ms | 30.77 ms | 9.46 ms | 229 KB | 150 KB |
+
+Both budgets hold to roughly 2,000 tasks. Beyond that the write exceeds 5 ms because the whole file is
+rewritten; an append-only journal is the fix and is on the roadmap.
+
+### Tests
+
+300 checks, up from 294. T79 covers the cap, both latencies at 1,200 tasks, and that the state file is
+compact and still parses.
+
 ## 1.17.1 — 2026-11-15
 
 ### Changed
