@@ -1,7 +1,7 @@
 """pico base — constants and pure helpers shared by every module."""
 import ast, operator, re, sys
 
-__version__ = "1.15.0"
+__version__ = "1.16.0"
 
 
 STATE_DEFAULT = {
@@ -34,6 +34,9 @@ def mask_cmd(cmd):
 
 
 PENDING_TTL = 120  # seconds
+
+# a catalogue entry containing one of these is a template, not a command
+PLACEHOLDER = re.compile(r"[A-Z]{2,}|\bX\b|\bN\b|\b[A-Z]\b")
 
 
 def unquote(p):

@@ -12,7 +12,11 @@ CATALOG = ["importcsv PATH TABLE - load a CSV into the local db",
            "csv join KEY[:number|:text] A.csv B.csv - inner join",
            "csv pivot COL[:number] sum AMT PATH [having sum>100] - group and aggregate"]
 E = DB = None
-WRITE = re.compile(r"^\s*(insert|update|delete|drop|alter|create|replace|attach|pragma)\b", re.I)
+WRITE = re.compile(r"^\s*(insert|update|delete|drop|alter|create|replace|attach|detach|vacuum|reindex)\b", re.I)
+# pragmas that only describe the database; everything else can change it
+SAFE_PRAGMA = re.compile(
+    r"^\s*pragma\s+(table_info|table_xinfo|index_list|index_info|foreign_key_list|"
+    r"database_list|compile_options)\s*[({]", re.I)
 
 
 def setup(api):
@@ -57,8 +61,11 @@ def sql(m):
     q = m["q"].strip()
     if WRITE.match(q):
         return "Read-only: SELECT, WITH and PRAGMA table_info only."
+    if re.match(r"^\s*pragma\b", q, re.I) and not SAFE_PRAGMA.match(q):
+        return ("That pragma can change the database. Read-only pragmas: "
+                "table_info, index_list, foreign_key_list, database_list.")
     if not re.match(r"^\s*(select|with|pragma)\b", q, re.I):
-        return "Read-only: SELECT, WITH and PRAGMA table_info only."
+        return "Read-only: SELECT, WITH and the read-only pragmas only."
     if not DB.exists():
         return "No data yet. Try: importcsv ~/clients.csv clients"
     try:

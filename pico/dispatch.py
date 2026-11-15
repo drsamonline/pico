@@ -24,9 +24,14 @@ class DispatchMixin:
         t = (text or "").strip()
         low = t.lower()
         p = self.pending
+        expired = False
         if p and p.get("at") and time.time() - p["at"] > PENDING_TTL:
             self.pending = {}
             p = self.pending
+            expired = True
+        if expired and low.split(" ")[0] in ("confirm", "cancel", "approve"):
+            return ("That confirmation expired after %d seconds. Nothing was run.\n"
+                    "Type the command again." % PENDING_TTL)
         if low == "confirm" and p.get("confirm"):
             held = p["confirm"]
             if held.get("code"):

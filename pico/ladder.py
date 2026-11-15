@@ -2,7 +2,7 @@
 import difflib
 import re
 
-from .base import DENY_LLM, RISK_RULES, normalize
+from .base import DENY_LLM, PLACEHOLDER, RISK_RULES, normalize
 
 
 class LadderMixin:
@@ -52,7 +52,8 @@ class LadderMixin:
         near = difflib.get_close_matches(normalize(t), [normalize(e) for e in ex], 3, 0.72)
         cands = [e for e in ex if normalize(e) in near]
         for c in cands:
-            if self.match_rule(c)[0] and not re.search(r"[A-Z]{2,}|\bX\b|\bN\b", c):
+            # a catalogue entry is a template: `decide A|B|C` must not run itself
+            if self.match_rule(c)[0] and not PLACEHOLDER.search(c):
                 return {"cmd": c, "src": "fuzzy"}
         low = t.lower()
         if any(tag and tag.lower() in low for tag in self.privacy.get("never_send") or []):

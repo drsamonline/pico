@@ -46,6 +46,7 @@ class Engine(StoreMixin, LadderMixin, LedgerMixin, DispatchMixin):
         self._dirty = False
         self.inverse_handlers = {}
         self.pack_modules = []
+        self._ledger_lines = 0
         self.core_modules = ()
         self.privacy = {"never_send": []}
         self.slot_rules = []

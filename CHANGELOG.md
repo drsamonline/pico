@@ -2,6 +2,44 @@
 
 All notable changes. Dates are ISO. Versions follow [semver](https://semver.org/).
 
+## 1.16.0 — 2026-11-14
+
+A second hardening pass, this one aimed at the web surface and at long-running state. Again every fix
+came from a probe, not a feature list.
+
+### Fixed
+
+- **`sql PRAGMA table_info(t1)` was refused while the error message promised it worked.** `pragma` was
+  in the write-blocking regex, so *every* pragma was refused, including the describing ones. There is
+  now an allowlist — `table_info`, `table_xinfo`, `index_list`, `index_info`, `foreign_key_list`,
+  `database_list`, `compile_options` — and `PRAGMA writable_schema` is refused with a message that
+  names the safe set.
+- **`on 13-45 bad` was accepted.** Neither `on` nor `due` validated the date. Both now check the
+  month and day, allow `02-29` as a recurring date, and reject `2026-02-29` because 2026 is not a leap
+  year.
+- **`decide a` silently picked from `A|B|C`.** The fuzzy tier matched the catalogue *template*
+  `decide A|B|C`, whose placeholders are single uppercase letters, and ran it. The placeholder guard
+  now catches `\b[A-Z]\b` as well as `X`, `N` and multi-letter words.
+- **An expired confirmation answered "No rule matched".** After 120 seconds the pending request is
+  dropped, and a later `confirm` fell through to the resolver. It now says the confirmation expired
+  and that nothing ran.
+- **The ledger grew without bound.** 2,000 commands produced 256 KB and nothing ever removed it. It
+  now rotates at 5,000 lines to `ledger.1.jsonl`, keeping one generation.
+- **A cache-busting query string turned a known route into a 404.** `/sw.js?cache=1` failed because
+  routes matched the raw path. The query string is stripped before routing, and `/app.html` serves the
+  console as well as `/`.
+
+### Verified, not changed
+
+The web surface held up under a deliberate probe: `GET /../../etc/passwd` and its percent-encoded
+form are 404, `PUT /cmd` is 501, a 70 KB body is 413, malformed JSON is 400, and 60 concurrent POSTs
+from four threads produced 60 tasks with no errors.
+
+### Tests
+
+272 checks, up from 246. T68 the pragma allowlist, T69 the dates, T70 the fuzzy template, T71 the
+expired confirmation, T72 ledger rotation, T73 the web routes including traversal.
+
 ## 1.15.0 — 2026-11-14
 
 A hardening release. Every fix below came from an adversarial probe — quoted commas, CRLF, a BOM, a

@@ -16,6 +16,39 @@ class LedgerMixin:
     def register_inverse(self, name, fn):
         self.inverse_handlers[name] = fn
 
+    LEDGER_CAP = 5000          # lines before the file is rotated
+    LEDGER_KEEP = 1            # generations kept beside it
+
+    def _append_ledger(self, line):
+        """Append one line, rotating at the cap so the file cannot grow forever.
+
+        `ledger.1.jsonl` is the previous generation; older ones are dropped. The
+        audit trail stays bounded without a background job.
+        """
+        f = self.ledger_file
+        try:
+            with f.open("a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except Exception:
+            return
+        self._ledger_lines = getattr(self, "_ledger_lines", 0) + 1
+        if self._ledger_lines < self.LEDGER_CAP:
+            return
+        self._ledger_lines = 0
+        try:
+            target = f.with_name("%s.1.jsonl" % f.stem)
+            if target.exists():
+                target.unlink()
+            f.rename(target)
+            for extra in sorted(f.parent.glob("%s.*.jsonl" % f.stem)):
+                try:
+                    if int(extra.name.split(".")[-2]) > self.LEDGER_KEEP:
+                        extra.unlink()
+                except (ValueError, IndexError):
+                    pass
+        except Exception:
+            pass
+
     def _apply_inverse(self, op):
         kind, a = op.get("op"), op.get("args") or {}
         S = self.S
@@ -81,11 +114,7 @@ class LedgerMixin:
         logged["cmd"] = mask_cmd(cmd)
         if SECRET_OUT.match(cmd):
             logged["out"] = "<redacted: stored personal data>"
-        try:
-            with self.ledger_file.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(logged, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
+        self._append_ledger(json.dumps(logged, ensure_ascii=False))
         if self._dirty:
             self.save()
             self._maybe_snapshot()

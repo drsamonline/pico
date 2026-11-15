@@ -73,6 +73,8 @@ def task_recur(m):
 
 
 def task_due(m):
+    if not _valid_date(m["date"]) or len(m["date"].split("-")) != 3:
+        return "That is not a date. Use due N 2026-12-25"
     i = int(m["n"]) - 1
     ts = _S()["tasks"]
     if not (0 <= i < len(ts)):
@@ -136,7 +138,33 @@ def bought(m):
     return "No such item."
 
 
+def _valid_date(text):
+    """MM-DD or YYYY-MM-DD, with 02-29 allowed as a recurring date."""
+    parts = text.split("-")
+    if len(parts) == 3:
+        try:
+            y, mo, d = int(parts[0]), int(parts[1]), int(parts[2])
+        except ValueError:
+            return False
+        if not (1 <= mo <= 12):
+            return False
+        if mo == 2 and d == 29:
+            return y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)
+        return 1 <= d <= [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1]
+    if len(parts) == 2:
+        try:
+            mo, d = int(parts[0]), int(parts[1])
+        except ValueError:
+            return False
+        if not (1 <= mo <= 12):
+            return False
+        return 1 <= d <= [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1]
+    return False
+
+
 def event_add(m):
+    if not _valid_date(m["date"]):
+        return "That is not a date. Use on 12-25 text or on 2026-12-25 text"
     i = len(_S()["events"])
     _S()["events"].append({"date": m["date"], "text": m["text"].strip()})
     E.set_inverse("list_rm", {"key": "events", "i": i})

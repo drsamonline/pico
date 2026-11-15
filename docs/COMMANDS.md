@@ -15,7 +15,7 @@
 | `recall k` · `what is k` | safe | output redacted in the ledger |
 | `forget k` | safe | reversible |
 | `buy X` · `shop` · `bought N` | safe | shopping list |
-| `on YYYY-MM-DD text` · `on MM-DD text` | safe | appears in `brief` on that date |
+| `on YYYY-MM-DD text` · `on MM-DD text` | safe | appears in `brief` on that date. The date is validated; `02-29` is accepted as a recurring date, and `2026-02-29` is not |
 | `recur daily\|weekly\|monthly X` | safe | reopens itself when the day turns over |
 | `due N YYYY-MM-DD` | safe | sets a due date on task N; reversible |
 | `overdue` | safe | tasks past their date |
@@ -119,7 +119,7 @@ the seven arithmetic operators, with size caps on powers and results.
 | Command | Tier | Notes |
 | --- | --- | --- |
 | `importcsv PATH TABLE` | safe | loads a CSV into `~/.pico/pico.db` (sqlite3), reversible |
-| `sql SELECT …` | safe | read-only: SELECT, WITH and PRAGMA only. 50-row cap |
+| `sql SELECT …` | safe | read-only: SELECT, WITH and the describing pragmas only (`table_info`, `index_list`, `foreign_key_list`, `database_list`). `PRAGMA writable_schema` is refused. 50-row cap |
 | `tables` | safe | what is loaded, and how many rows |
 | `csv filter COL[:number\|:text]OP VAL PATH` | safe | `age>30`, `name=Asha`, `>= <= !=`. `:number` drops non-numeric rows, `:text` compares lexicographically |
 | `csv sort COL[:number\|:text] [asc\|desc] PATH` | safe | auto compares numbers numerically and text after them; `:number` and `:text` force one reading |

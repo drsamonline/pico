@@ -11,6 +11,7 @@ import pathlib
 import shutil
 import sys
 import tempfile
+import time
 import traceback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -1311,6 +1312,122 @@ def t67_quoted_paths():
     shutil.rmtree(d, True)
 
 
+def t68_sql_pragma():
+    e, d = fresh("t68")
+    p = d / "x.csv"
+    p.write_text("id,v\n1,2\n", "utf-8")
+    e.handle("importcsv %s t1" % p)
+    out = e.handle("sql PRAGMA table_info(t1)")
+    check("T68 pragma: table_info works, as the message promises",
+          "name" in out and "cid" in out, out[:70])
+    check("T68 pragma: a schema-changing pragma is refused",
+          "can change the database" in e.handle("sql PRAGMA writable_schema=ON"))
+    check("T68 pragma: index_list is allowed",
+          "Read-only" not in e.handle("sql PRAGMA index_list(t1)"))
+    check("T68 pragma: a write statement is still refused",
+          "Read-only" in e.handle("sql DELETE FROM t1"))
+    shutil.rmtree(d, True)
+
+
+def t69_dates():
+    e, d = fresh("t69")
+    check("T69 dates: a bad MM-DD is refused",
+          "not a date" in e.handle("on 13-45 bad"))
+    check("T69 dates: 02-29 is a legitimate recurring date",
+          e.handle("on 02-29 leap") == "Saved.")
+    check("T69 dates: a non-leap 29 February is refused",
+          "not a date" in e.handle("on 2026-02-29 nope"))
+    check("T69 dates: a leap 29 February is accepted",
+          e.handle("on 2028-02-29 leap") == "Saved.")
+    check("T69 dates: a bad due date is refused",
+          "not a date" in e.handle("due 1 2026-13-45"))
+    shutil.rmtree(d, True)
+
+
+def t70_fuzzy_template():
+    e, d = fresh("t70")
+    e.handle("add one")
+    out = e.handle("decide a")
+    check("T70 fuzzy: a catalogue template is offered, not run",
+          "Did you mean" in out and "decide A|B|C" in out, out.replace("\n", " | ")[:80])
+    check("T70 fuzzy: a real decide still runs",
+          "options" in e.handle("decide tea|coffee|water"))
+    shutil.rmtree(d, True)
+
+
+def t71_expired_confirm():
+    e, d = fresh("t71")
+    e.handle("wa bob hi")
+    check("T71 expiry: the request is pending", "confirm" in e.pending)
+    e.pending["at"] -= 200
+    out = e.handle("confirm")
+    check("T71 expiry: an expired confirmation says so, not 'no rule matched'",
+          "expired" in out and "Nothing was run" in out, out[:70])
+    check("T71 expiry: the pending request is cleared", "confirm" not in e.pending)
+    e.handle("wa bob hi")
+    e.pending["at"] -= 200
+    check("T71 expiry: cancel after expiry is also clear",
+          "expired" in e.handle("cancel"))
+    shutil.rmtree(d, True)
+
+
+def t72_ledger_rotation():
+    e, d = fresh("t72")
+    e.LEDGER_CAP = 120
+    for i in range(260):
+        e.handle("add item %d" % i)
+    live = e.ledger_file
+    prev = live.with_name("%s.1.jsonl" % live.stem)
+    check("T72 ledger: the file rotates at the cap", prev.exists(),
+          str(sorted(p.name for p in d.glob("ledger*"))))
+    check("T72 ledger: the live file is under the cap",
+          len(live.read_text("utf-8").splitlines()) < 120,
+          str(len(live.read_text("utf-8").splitlines())))
+    check("T72 ledger: only one generation is kept",
+          len(list(d.glob("ledger.*.jsonl"))) == 1)
+    check("T72 ledger: log still reads the live file",
+          "item" in e.handle("log"))
+    shutil.rmtree(d, True)
+
+
+def t73_web_routes():
+    import threading
+    import urllib.request
+    from http.server import ThreadingHTTPServer
+
+    import pico.ui as UI
+    from pico.engine import Engine
+    e = Engine(home=tempfile.mkdtemp(prefix="pico-t73-"), quiet=True)
+    tok = UI.token_for(e)
+    html = UI.PAGE.read_text().replace("/*__PICO_TOKEN__*/null", json.dumps(tok))
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), UI.make_handler(e, tok, html))
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    time.sleep(0.3)
+
+    def get(path):
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:%d%s" % (port, path),
+                                        timeout=4) as r:
+                return r.status
+        except urllib.error.HTTPError as ex:
+            return ex.code
+
+    try:
+        check("T73 web: the page answers", get("/") == 200)
+        check("T73 web: /index.html answers", get("/index.html") == 200)
+        check("T73 web: /app.html answers", get("/app.html") == 200)
+        check("T73 web: a cache-busting query string is ignored",
+              get("/sw.js?cache=1") == 200)
+        check("T73 web: the manifest with a query string answers",
+              get("/manifest.webmanifest?v=2") == 200)
+        check("T73 web: traversal is refused", get("/../../etc/passwd") == 404)
+        check("T73 web: an unknown route is 404", get("/nope") == 404)
+    finally:
+        srv.shutdown()
+        shutil.rmtree(e.home, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -1330,7 +1447,9 @@ def main():
                t56_join_types, t57_android_doc, t58_thread_health,
                t59_repair_module, t60_doctor_probe, t61_probe_write,
                t62_path_arguments, t63_indic_keys, t64_csv_edge_cases,
-               t65_bounds, t66_fill_single_pass, t67_quoted_paths):
+               t65_bounds, t66_fill_single_pass, t67_quoted_paths,
+               t68_sql_pragma, t69_dates, t70_fuzzy_template, t71_expired_confirm,
+               t72_ledger_rotation, t73_web_routes):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()
