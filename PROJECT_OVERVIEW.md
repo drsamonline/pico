@@ -11,7 +11,7 @@ may only ever propose a command.
 ## The problem it solves
 
 Asking a model to *do* something on your machine means handing it your machine. pico inverts that: the
-rule engine owns every action, and a model — if you enable one — can only suggest which rule to run.
+rule engine owns every action, and a model, if you enable one, can only suggest which rule to run.
 Delete the model and nothing stops working.
 
 ## What it does
@@ -25,7 +25,7 @@ Delete the model and nothing stops working.
 | Life | habit streaks, journal, contacts, WhatsApp and mail deep links |
 | Automation | daily jobs, triggers on time/file/absence, chains, CSV loops, a ledger, universal undo, alias learning, slot dialogue, two-key approval, `dry` / `why` / `log` / `timeline` / `replay` |
 | Data | CSV into sqlite3, read-only SQL out, `csv filter/sort/join`, `chart` |
-| Faces | CLI, REPL, local web console, Telegram bridge — all through one `handle()` |
+| Faces | CLI, REPL, local web console, Telegram bridge, all through one `handle()` |
 
 ## What makes it different
 
@@ -56,7 +56,7 @@ network call at runtime except the one you ask for.
 | read latency | 0.71 ms/call |
 | write latency | 4.03 ms/call |
 | engine heap | 0.1 MB |
-| tests | 481 passing |
+| tests | 491 passing |
 
 ## Shape of the repository
 

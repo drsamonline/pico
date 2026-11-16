@@ -3,13 +3,13 @@
 <p>
   <img alt="licence: PolyForm Noncommercial 1.0.0" src="docs/assets/badge-licence.svg">
   <img alt="python 3.8+" src="docs/assets/badge-python.svg">
-  <img alt="tests: 481 passed" src="docs/assets/badge-tests.svg">
+  <img alt="tests: 491 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.42.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.43.0" src="docs/assets/badge-version.svg">
 </p>
 
-**A personal automation engine that runs on the Python standard library alone.**
+A personal automation engine that runs on the Python standard library alone.
 114 rules, four risk tiers, universal undo, slot dialogue, replay from snapshots, a trigger DSL,
 and an optional language model that is only ever allowed to *propose* a command. No account, no telemetry, no network.
 
@@ -22,13 +22,13 @@ python3 pico.py --ui                       # the console, on 127.0.0.1:8765
 
 ![The pico console](docs/screenshot.png)
 
-**[Open the console demo →](https://drsamonline.github.io/pico/app.html)** — the resolver, the risk
+**[Open the console demo →](https://drsamonline.github.io/pico/app.html)**. The resolver, the risk
 gate and every calculation run in the browser; file and network commands need the local engine.
 
-## The thesis
+## How it is built
 
 The rule engine is the spine; the model is a plug-in translator. Deleting `packs/llm.py` leaves a
-100% offline system with **zero capabilities lost** — only free-form phrasing convenience.
+100% offline system with no capability lost, and free-form phrasing gone.
 
 | Claim | How it is enforced | Test |
 | --- | --- | --- |
@@ -94,7 +94,7 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 
 | Property | Value |
 | --- | --- |
-| dependencies | 0 — Python standard library only |
+| dependencies | 0, Python standard library only |
 | rules / catalogue / slot rules | 114 / 122 / 6 |
 | packs | 12 |
 | python source | 171,894 bytes across 29 files |
@@ -103,14 +103,13 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
-| acceptance tests | 481 passing, stdlib `unittest`-free runner |
+| acceptance tests | 491 passing, stdlib `unittest`-free runner |
 
 Reads do a regex match plus one ledger line. Writes also rewrite `state.json`, which is why they cost
-more — and why state is only persisted when something actually changed. The suite prints its own
-timings rather than asserting them: a wall-clock bound in a test measures the CI runner, not the code.
+more, and why state is only persisted when something actually changed. The suite prints its own timings
+instead of asserting them: a wall-clock bound in a test measures the CI runner, not the code.
 
-The write path was measured to the top of its range rather than argued about. Median of 10–25 runs, one
-machine:
+The write path was measured at four sizes. Median of 10 to 25 runs, one machine:
 
 | Tasks | state.json | read | write |
 | --- | --- | --- | --- |
@@ -122,18 +121,18 @@ machine:
 Reads are flat because the listing is capped. Writes are linear in state size, which is the whole file
 being serialised and replaced.
 
-The threshold this decides: **25 ms at 20,000 tasks**. Twenty thousand tasks is five a day for eleven
-years, so the realistic ceiling sits where a typed command still returns before the next keystroke. The
-append-only journal that would flatten this curve was **not built**: it puts the file holding the user's
-tasks at risk to fix a latency no user has felt, and the original 5 ms figure was this project's own
-spec rather than a complaint. The measurement is here so the decision can be revisited with numbers
-instead of opinion.
+That sets the threshold at 25 ms for 20,000 tasks. Twenty thousand tasks is five a day for eleven years,
+so the realistic ceiling sits where a typed command still returns before the next keystroke. The
+append-only journal that would flatten this curve was not built. It puts the file holding your tasks at
+risk to fix a latency nobody has felt, and the original 5 ms figure was this project's own spec, not a
+complaint. The numbers are here so the decision can be reopened with measurements.
 
 `state.json` is compact JSON. It is still valid and still yours; `python3 -m json.tool ~/.pico/state.json`
-prints it indented when you want to read it. Indenting it on every write cost 34 ms at 5,000 tasks —
-seven times the compact form — which is why it is not the default. Writes pay for durability twice — `state.json` on
-every change and a snapshot every 25 changes so `replay` has a starting point — and still land at
-4.03 ms. Making the temp filename thread-unique removed the contention that had cost 1.5 ms.
+prints it indented when you want to read it. Indenting on every write cost 34 ms at 5,000 tasks, seven
+times the compact form, which is why it is not the default. Writes pay for durability twice: `state.json`
+on every change, and a snapshot every 25 changes so `replay` has a starting point. Both still land at
+2.07 ms for 1,000 tasks. Making the temp filename thread-unique removed the contention that had cost
+1.5 ms.
 
 ## Budgets
 
@@ -180,7 +179,7 @@ The package is split by responsibility, so no single file has to be small:
 ```bash
 git clone https://github.com/drsamonline/pico
 cd pico
-sh install.sh            # Linux, macOS, Termux — or: powershell -File install.ps1
+sh install.sh            # Linux, macOS, Termux; or: powershell -File install.ps1
 python3 ~/pico.py --ui
 ```
 
@@ -219,7 +218,7 @@ pico/engine.py           state, resolution ladder, risk gate, ledger, inverses, 
 pico/rules.py            the core rule set
 pico/ui.py               local web server (http.server, token-gated)
 packs/*.py               drop-in capabilities, deletable one at a time
-web/index.html           the console — one file, no external assets
+web/index.html           the console: one file, no external assets
 templates/*.txt          {{placeholder}} templates
 tests/smoke_test.py      30 acceptance checks
 docs/                    landing page, console demo, architecture, commands, roadmap
@@ -237,7 +236,7 @@ Runtime data lives in `~/.pico/` (`PICO_HOME` overrides it): `state.json`, `ledg
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | what is next, with the exit test for each item |
 | [`docs/REVIEW.md`](docs/REVIEW.md) | the last code review: findings, verdict, what it cannot see |
 | [`TERMS.md`](TERMS.md) | what you agree to when you use it, and what is not promised |
-| [`docs/SETUP.md`](docs/SETUP.md) | what you have to do — install, Telegram, model, phone |
+| [`docs/SETUP.md`](docs/SETUP.md) | what you have to do: install, Telegram, model, phone |
 | [`docs/ANDROID.md`](docs/ANDROID.md) | why there is no APK, and the three routes that work |
 | [`tools/demo_parity.py`](tools/demo_parity.py) | checks the console demo against the engine, 145 commands |
 | [`PRIVACY.md`](PRIVACY.md) | exactly what is stored and what can leave the machine |
@@ -249,11 +248,11 @@ Runtime data lives in `~/.pico/` (`PICO_HOME` overrides it): `state.json`, `ledg
 
 <img src="docs/assets/support-portrait.jpg" width="72" height="72" alt="Dr. Sohil Momin" align="left" style="border-radius:50%;margin-right:1rem">
 
-Free, offline, accountless — and staying that way. If it earned its keep:
+Free, offline, accountless, and staying that way. If it earned its keep:
 
 | | |
 | --- | --- |
-| UPI (India) | `drsohilboi@ybl` — payee Dr. Sohil Momin, open amount |
+| UPI (India) | `drsohilboi@ybl`, payee Dr. Sohil Momin, open amount |
 | GitHub Sponsors | [github.com/sponsors/drsamonline](https://github.com/sponsors/drsamonline) |
 | Ko-fi | [ko-fi.com/matneo](https://ko-fi.com/matneo) |
 | PayPal | [paypal.me/drsohilmomin](https://paypal.me/drsohilmomin?locale.x=en_GB&country.x=IN) |
@@ -265,13 +264,13 @@ Nothing is gated behind it: no accounts, no tracking, no network requests.
 
 ## Author
 
-**Dr. Sohil Momin** — homeopathic physician, poet, and builder of offline-first open-source software.
+**Dr. Sohil Momin**: homeopathic physician, poet, and builder of offline-first open-source software.
 [pico](https://github.com/drsamonline/pico) is one of a family of single-file and zero-dependency
 tools at [drsamonline.github.io](https://drsamonline.github.io/).
 
 ## Licence
 
-**PolyForm Noncommercial 1.0.0.** Read it, run it, change it, share it — for any noncommercial
+**PolyForm Noncommercial 1.0.0.** Read it, run it, change it, share it, for any noncommercial
 purpose. Commercial use requires a separate licence. See [LICENSE](LICENSE).
 
 Required Notice: Copyright 2026 Dr. Sohil Momin (https://github.com/drsamonline/pico)

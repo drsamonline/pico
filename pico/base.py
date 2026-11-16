@@ -1,7 +1,7 @@
 """pico base — constants and pure helpers shared by every module."""
 import ast, operator, pathlib, re, sys
 
-__version__ = "1.42.0"
+__version__ = "1.43.0"
 
 
 STATE_DEFAULT = {

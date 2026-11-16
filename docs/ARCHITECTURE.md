@@ -12,6 +12,9 @@ Three layers, one entry point.
                             Engine.handle(text)
                                     │
               resolve → risk gate → confirm → handler → inverse → ledger
+
+Open [`architecture.excalidraw`](architecture.excalidraw) in Excalidraw to move the boxes around;
+it is a scene, not a picture.
 ```
 
 `Engine.handle()` is the only way in. The CLI, the console and the Telegram bridge all call it and

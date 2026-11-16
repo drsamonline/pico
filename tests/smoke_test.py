@@ -2323,6 +2323,37 @@ def t109_open_scheme_guard():
     shutil.rmtree(d, True)
 
 
+def t110_prose_has_no_machine_tells():
+    """The docs are read by people. Keep the cadence human."""
+    import re as _re
+    prose_files = ["README.md", "PROJECT_OVERVIEW.md", "docs/SETUP.md"]
+    for name in prose_files:
+        text = (ROOT / name).read_text(encoding="utf-8")
+        prose = [l for l in text.splitlines()
+                 if "\u2014" in l and "| \u2014" not in l and not l.startswith("#")]
+        check("T110 prose: %s uses no em dash as a connector" % name, not prose,
+              prose[:1])
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    for phrase in ("The thesis", "zero capabilities lost", "**A personal automation engine"):
+        check("T110 prose: the README dropped %r" % phrase, phrase not in readme)
+
+
+def t111_diagram_is_valid():
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "diagram_check.py")],
+                       capture_output=True, encoding="utf-8", timeout=120)
+    check("T111 diagram: the scene parses and binds", r.returncode == 0,
+          (r.stdout or r.stderr)[-140:])
+    import json as _json
+    scene = _json.loads((ROOT / "docs" / "architecture.excalidraw").read_text(encoding="utf-8"))
+    check("T111 diagram: it is an excalidraw scene", scene["type"] == "excalidraw")
+    check("T111 diagram: it has boxes and arrows",
+          any(e["type"] == "rectangle" for e in scene["elements"])
+          and any(e["type"] == "arrow" for e in scene["elements"]))
+    check("T111 diagram: ARCHITECTURE.md points at it",
+          "architecture.excalidraw" in (ROOT / "docs" / "ARCHITECTURE.md").read_text(encoding="utf-8"))
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2359,7 +2390,8 @@ def main():
                t102_quarantine_keeps_every_copy, t103_undo_of_a_swept_file,
                t104_redaction_patterns, t105_secrets_are_entered_not_built,
                t106_no_secret_in_the_build, t107_privacy_names_every_file,
-               t108_legal_documents_exist, t109_open_scheme_guard):
+               t108_legal_documents_exist, t109_open_scheme_guard,
+               t110_prose_has_no_machine_tells, t111_diagram_is_valid):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

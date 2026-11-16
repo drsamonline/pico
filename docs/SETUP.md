@@ -11,7 +11,7 @@ Everything else is already done. These are the steps only you can take.
 | Linux | download `pico-linux-x86_64`, `chmod +x`, run it |
 | Any, from source | `git clone https://github.com/drsamonline/pico && cd pico && python3 pico.py` |
 
-No installer, no admin rights, no dependencies. Python is only needed for the source route — the
+No installer, no admin rights, no dependencies. Python is only needed for the source route; the
 binaries carry their own.
 
 ## 2. Say hello
@@ -25,7 +25,7 @@ brief
 
 If those three work, the tool works. Nothing is sent anywhere; there is no account.
 
-## 3. Optional — the Telegram bridge
+## 3. Optional: the Telegram bridge
 
 1. In Telegram, message **@BotFather**, send `/newbot`, answer two questions.
 2. It replies with a token shaped like `123456789:AAH...`.
@@ -42,7 +42,7 @@ removes it.
 
 Nothing happens until you set the token, so the bridge costs nothing if you never want it.
 
-## 4. Optional — the model
+## 4. Optional: the model
 
 pico works with the model off. Turn it on only if you want to type sentences the rules do not cover.
 
@@ -57,7 +57,7 @@ llm status
 
 `llm key forget` removes it. `privacy never TAG` blocks a word from ever reaching the model.
 
-## 5. Optional — the phone
+## 5. Optional: the phone
 
 Open <https://drsamonline.github.io/pico/app.html> and use **Add to Home Screen**. It is the same
 console, one HTML file, and it works offline once loaded.

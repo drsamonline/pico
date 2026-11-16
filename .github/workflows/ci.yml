@@ -43,6 +43,9 @@ jobs:
       - name: Privacy policy names every file the code writes
         run: python tools/privacy_files.py
 
+      - name: The diagram is still a valid scene
+        run: python tools/diagram_check.py
+
       - name: Console palette meets WCAG AA
         run: python tools/contrast.py
 
