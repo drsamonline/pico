@@ -20,10 +20,28 @@ def site_set(m):
     return "Shortcut saved."
 
 
+SAFE_SCHEMES = ("http://", "https://", "mailto:")
+
+
+def _openable(url):
+    """A shortcut may only hold a scheme the browser should treat as a document.
+
+    `open` validated what you typed but not what a saved shortcut held, so
+    `site bad=javascript:...` then `open bad` handed the OS a script URL. The check
+    belongs on the resolved target, not on the input.
+    """
+    low = (url or "").strip().lower()
+    return low.startswith(SAFE_SCHEMES)
+
+
 def open_any(m):
     t = m["t"].strip()
     if t in _S()["sites"]:
-        webbrowser.open(_S()["sites"][t])
+        url = _S()["sites"][t]
+        if not _openable(url):
+            return ("Shortcut %r holds %r, which is not an http, https or mailto link. "
+                    "Refusing to open it." % (t, url))
+        webbrowser.open(url)
         return "Opened " + t
     p = pathlib.Path(t).expanduser()
     if p.exists():

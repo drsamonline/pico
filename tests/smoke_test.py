@@ -2258,6 +2258,71 @@ def t106_no_secret_in_the_build():
           "token" not in spec.lower() and ".key" not in spec.lower(), spec[:60])
 
 
+def t107_privacy_names_every_file():
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "privacy_files.py")],
+                       capture_output=True, encoding="utf-8", timeout=120)
+    check("T107 privacy: every state file the code writes is named in PRIVACY.md",
+          r.returncode == 0, (r.stdout or r.stderr)[-160:])
+    check("T107 privacy: the gate reports what it found", "names all" in r.stdout,
+          r.stdout.strip()[:70])
+
+    policy = (ROOT / "PRIVACY.md").read_text(encoding="utf-8")
+    for needle in ("llm.key", "telegram.token", "aliases.json", "cards.json",
+                   "quarantine/", "snapshots/"):
+        check("T107 privacy: the policy names %s" % needle, needle in policy)
+    check("T107 privacy: it says the ledger redacts a token",
+          "telegram token <redacted>" in policy, "missing")
+    check("T107 privacy: and that nothing is encrypted, rather than implying it is",
+          "Nothing is encrypted" in policy)
+
+
+def t108_legal_documents_exist():
+    for name in ("LICENSE", "PRIVACY.md", "SECURITY.md", "TERMS.md"):
+        check("T108 legal: %s exists and is not a stub" % name,
+              (ROOT / name).exists() and len((ROOT / name).read_text(encoding="utf-8")) > 500,
+              name)
+    terms = (ROOT / "TERMS.md").read_text(encoding="utf-8")
+    check("T108 legal: the terms name the licence they defer to",
+          "PolyForm" in terms and "LICENSE" in terms)
+    check("T108 legal: the terms carry a grievance contact and a response window",
+          "sohilmomin2000@gmail.com" in terms and "30 days" in terms)
+    check("T108 legal: the terms say they are not legal advice",
+          "not legal advice" in terms.lower())
+    check("T108 legal: the privacy policy names the DPDP Act for complaints",
+          "Data Protection Board" in (ROOT / "PRIVACY.md").read_text(encoding="utf-8")
+          or "Data Protection Board" in terms)
+
+
+def t109_open_scheme_guard():
+    e, d = fresh("t109")
+    import pico.cmd_web as web
+    opened = []
+    saved_browser = web.webbrowser
+    web.webbrowser = type("B", (), {"open": staticmethod(lambda u: opened.append(u))})
+    try:
+        e.handle("site bad=javascript:alert(1)")
+        out = e.handle("open bad")
+        check("T109 open: a javascript: shortcut is refused", "Refusing" in out, out[:70])
+        check("T109 open: and nothing was handed to the browser", opened == [], str(opened))
+
+        e.handle("site f=file:///etc/passwd")
+        check("T109 open: a file: shortcut is refused",
+              "Refusing" in e.handle("open f"), e.handle("open f")[:60])
+
+        e.handle("site g=https://example.com")
+        check("T109 open: an https shortcut still opens",
+              e.handle("open g") == "Opened g" and opened == ["https://example.com"],
+              str(opened))
+
+        e.handle("site m=mailto:a@b.c")
+        check("T109 open: mailto is allowed", "Opened m" in e.handle("open m"), str(opened))
+        check("T109 open: a typed javascript: URL is still refused",
+              "Unknown target" in e.handle("open javascript:alert(1)"))
+    finally:
+        web.webbrowser = saved_browser
+    shutil.rmtree(d, True)
+
+
 def main():
     print("pico acceptance tests")
     for fn in (t1_parity, t2_firewall, t3_degradation, t4_consent, t5_undo,
@@ -2293,7 +2358,8 @@ def main():
                t101_undo_of_a_chain,
                t102_quarantine_keeps_every_copy, t103_undo_of_a_swept_file,
                t104_redaction_patterns, t105_secrets_are_entered_not_built,
-               t106_no_secret_in_the_build):
+               t106_no_secret_in_the_build, t107_privacy_names_every_file,
+               t108_legal_documents_exist, t109_open_scheme_guard):
         print("\n%s" % fn.__name__.upper())
         try:
             fn()

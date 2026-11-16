@@ -9,16 +9,25 @@ Everything lives under `~/.pico/` (override with `PICO_HOME`).
 
 | File | Contents | Encrypted |
 | --- | --- | --- |
-| `state.json` | tasks, notes (including anything you `remember`), expenses, events, shopping, site shortcuts, aliases, undo stack | no |
+| `state.json` | tasks, notes (including anything you `remember`), expenses, events, shopping, site shortcuts, undo stack, chains, job errors | no |
+| `aliases.json` | your own phrasings, once there are more than fifty of them | no |
 | `ledger.jsonl` | one line per executed command, append-only | no |
+| `ledger-*.jsonl` | rotated ledger generations, five kept | no |
 | `jobs.json` | daily jobs | no |
 | `habits.json` | habit names and ISO dates | no |
 | `life.json` | contacts and journal entries | no |
-| `llm.json` | translator config, including the blocklist | no |
+| `cards.json` | spaced-repetition cards, ease, interval and due date | no |
+| `triggers.json` | saved triggers and chains | no |
+| `llm.json` | translator config, including the blocklist and the path to the key | no |
 | `llm_cache.json` | sentence → command translations | no |
+| `llm.key` | your provider API key, mode 600, only if you run `llm key` | no |
+| `telegram.token` | your bot token, mode 600, only if you run `telegram token` | no |
 | `web.token` | the console's shared secret, mode 600 | n/a |
-| `telegram.token` | bot token, if you provide one | no |
-| `backups/` | zips you asked for | no |
+| `snapshots/` | state snapshots, twelve kept, for `replay`, plus `index.json` recording which ledger line each was taken at | no |
+| `replay-*/` | reconstructions, five kept, seven days | no |
+| `quarantine/` | files you deleted with `safe delete`, until you sweep them | no |
+| `backups/` | zips you asked for, twenty kept | no |
+| `rules/`, `templates/` | anything you taught or wrote yourself | no |
 
 Nothing is encrypted. Use full-disk encryption if that matters — it is a better answer than a
 hand-rolled cipher in a stdlib program.
@@ -32,6 +41,20 @@ The ledger records the **command** and a 200-character preview of its **output**
 
 `why` shows the unredacted last action in your terminal, because you just typed it. The file on disk
 does not get it.
+
+## Secrets you enter
+
+Nothing is baked into the program. Two commands write a secret to a file only you can read, and neither
+value is ever echoed, logged or sent anywhere except to the service it belongs to:
+
+| Command | Writes | Sent to |
+| --- | --- | --- |
+| `telegram token <TOKEN>` | `telegram.token` | `api.telegram.org`, only when the bridge runs |
+| `llm key <KEY>` | `llm.key` | your chosen provider, only when the model is on |
+
+The ledger records `telegram token <redacted>` and `llm key <redacted>`. `doctor` reports that a secret
+exists and whether its file is still owner-only — never the value. `telegram token forget` and
+`llm key forget` delete them.
 
 ## What can leave the machine
 

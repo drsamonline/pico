@@ -38,6 +38,9 @@ jobs:
       - name: Nothing newer than Python 3.8
         run: python tools/py38.py
 
+      - name: Privacy policy names every file the code writes
+        run: python tools/privacy_files.py
+
       - name: Console palette meets WCAG AA
         run: python tools/contrast.py
 
