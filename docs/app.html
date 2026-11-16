@@ -169,6 +169,16 @@ button{background:none;border:0;cursor:pointer;text-align:left}
 .b-write{color:var(--write);border-color:#5c4a15;background:rgba(227,179,65,.09)}
 .b-send{color:var(--send);border-color:#6b3a15;background:rgba(240,136,62,.1)}
 .b-danger{color:var(--danger);border-color:#6e2a26;background:rgba(248,81,73,.1)}
+.chart{display:flex;flex-direction:column;gap:6px;padding:14px 0 6px}
+.barrow{display:flex;align-items:center;gap:10px}
+.barlabel{font-family:var(--mono);font-size:12px;color:var(--tx2);width:56px;
+  text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.bartrack{position:relative;flex:1;height:14px}
+.bartrack::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;
+  background:var(--line2)}
+.bar{position:absolute;top:0;height:14px;border-radius:3px;background:var(--acc);
+  min-width:2px}
+.bar.neg{background:var(--danger)}
 .out{font-family:var(--mono);font-size:13px;line-height:1.58;white-space:pre-wrap;word-break:break-word;
   padding:11px 12px;color:var(--tx);max-height:44vh;overflow:auto}
 .out.short{font-size:14px;padding:13px 12px}
@@ -199,7 +209,7 @@ button{background:none;border:0;cursor:pointer;text-align:left}
   padding:5px 8px;border-radius:6px;background:var(--panel);border:1px solid transparent}
 .row.done{opacity:.5;text-decoration:line-through}
 .row .n{color:var(--tx3);font-family:var(--mono);font-size:11px;flex:none;min-width:14px}
-.kv{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--tx2);
+.kv{font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--tx2);
   border-bottom:1px dashed rgba(43,61,77,.55)}
 .kv b{color:var(--tx);font-family:var(--mono);font-weight:600}
 .muted{color:var(--tx3);font-size:12px}
@@ -246,7 +256,7 @@ pre,pre *{color:#ffffff!important}
   <header class="top">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#3ecf8e" stroke-width="1.7"/><path d="M8 16V8h3.2a2.4 2.4 0 0 1 0 4.8H8" stroke="#3ecf8e" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.2" cy="15.6" r="1.2" fill="#3ecf8e"/></svg>
-      pico <small id="ver">v1.41.0</small>
+      pico <small id="ver">v1.42.0</small>
     </div>
     <div class="chips">
       <span class="chip"><i class="dot" id="dot"></i><span id="mode">engine</span></span>
@@ -1003,6 +1013,28 @@ const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[
 const stream=$("#stream"), histEl=$("#hist");
 let pendingConfirm=null, pendingChoice=null, history=[];
 
+/* A web console should not draw a bar chart in hashes. The answer text is still
+   produced by the same code and still compared by the parity gate; this only
+   changes how a `chart` answer is painted. */
+function chartBlock(cmd, out){
+  if(!/^chart\s/i.test(cmd||""))return "";
+  const nums=(cmd.match(/-?[\d.]+/g)||[]).map(Number).filter(n=>!isNaN(n));
+  if(nums.length<2||nums.length>40)return "";
+  const top=Math.max(...nums.map(Math.abs))||1;
+  // negatives grow left from a zero axis, so the sign is a direction and not only a
+  // colour — colour alone must never carry meaning
+  const bars=nums.map(n=>{
+    if(n===0)return `<div class="barrow"><span class="barlabel">0</span>`+
+      `<span class="bartrack"></span></div>`;
+    const w=Math.max(2,Math.round(Math.abs(n)/top*50));
+    const left=n<0?`${50-w}%`:"50%";
+    return `<div class="barrow"><span class="barlabel">${esc(String(n))}</span>`+
+           `<span class="bartrack"><span class="bar ${n<0?"neg":""}" `+
+           `style="left:${left};width:${w}%"></span></span></div>`;
+  }).join("");
+  return `<div class="chart">${bars}</div>`;
+}
+
 function render(cmd,src,tier,out,typed){
   const el=document.createElement("article");
   el.className="card"; el.dataset.tier=tier;
@@ -1011,17 +1043,19 @@ function render(cmd,src,tier,out,typed){
       ${src?`<span class="badge b-${esc(src)}">${esc(src)}</span>`:""}
       <span class="badge b-${esc(tier)}">${esc(tier)}</span>
     </div>
-    <pre class="out${out.indexOf("\n")===-1?" short":""}">${esc(out)}</pre>
-    <div class="foot">
+    ${chartBlock(cmd, out)||`<pre class="out${out.indexOf("\n")===-1?" short":""}">${esc(out)}</pre>`}
+    ${cmd?`<div class="foot">
       <button class="mini" data-copy>copy</button>
       <button class="mini" data-again="${esc(cmd)}">run again</button>
       ${tier!=="safe"?`<button class="mini" data-dry="${esc(cmd)}">dry run</button>`:""}
-    </div>`;
+    </div>`:""}`;
   stream.prepend(el);
   while(stream.children.length>25)stream.lastChild.remove();
   history.unshift({cmd:typed||cmd,t:new Date()});
   renderHistory();
-  el.querySelector("[data-copy]").onclick=e=>{
+  const copyBtn=el.querySelector("[data-copy]");
+  if(!copyBtn)return;              // the boot message has no footer
+  copyBtn.onclick=e=>{
     navigator.clipboard.writeText(out).then(()=>{e.target.textContent="copied";
       setTimeout(()=>e.target.textContent="copy",1200);});
   };
@@ -1064,7 +1098,7 @@ function applyState(st){
   $("#pShop").textContent=(st.shop||[]).length;
   $("#pNotes").textContent=(st.notes||[]).length;
   $("#pAlias").textContent=st.aliases||0;
-  $("#pJobs").textContent=(st.jobs||[]).length||"—";
+  $("#pJobs").textContent=(st.jobs||[]).length;
 }
 function renderPanels(){
   applyState({tasks:S.tasks,spend:S.spend,shop:S.shop,notes:Object.keys(S.notes),
@@ -1214,7 +1248,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
 if(window.innerWidth<760){
   $("#cmd").placeholder="tasks · spend 250 food";
 }
-$("#ver").textContent="v1.41.0";
+$("#ver").textContent="v1.42.0";
 $("#mode").textContent=SERVER?"engine":"demo";
 $("#dot").className=SERVER?"dot":"dot off";
 if(SERVER){

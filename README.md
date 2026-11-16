@@ -6,7 +6,7 @@
   <img alt="tests: 481 passed" src="docs/assets/badge-tests.svg">
   <img alt="dependencies: zero" src="docs/assets/badge-deps.svg">
   <img alt="no network at runtime" src="docs/assets/badge-offline.svg">
-  <img alt="version 1.41.0" src="docs/assets/badge-version.svg">
+  <img alt="version 1.42.0" src="docs/assets/badge-version.svg">
 </p>
 
 **A personal automation engine that runs on the Python standard library alone.**
@@ -98,8 +98,8 @@ Full reference with argument shapes: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 | rules / catalogue / slot rules | 114 / 122 / 6 |
 | packs | 12 |
 | python source | 171,894 bytes across 29 files |
-| package / packs / console | 94,234 / 77,660 / 70,278 B |
-| console | 70,278 bytes, one HTML file, no external assets |
+| package / packs / console | 94,234 / 77,660 / 72,112 B |
+| console | 72,112 bytes, one HTML file, no external assets |
 | rule-path latency (read) | 0.45 ms/call empty, 0.88 ms at 1,200 tasks |
 | rule-path latency (write) | 1.7 ms empty, 2.3 ms at 1,200 tasks |
 | engine heap | 0.1 MB |
@@ -146,7 +146,7 @@ decision.
 | --- | --- | --- | --- |
 | package (`pico/` + launcher, 18 files) | 94,234 B | 103,657 B | 94,234 B |
 | packs (12 files) | 77,660 B | 85,426 B | 77,660 B |
-| console (one HTML file) | 70,278 B | 77,305 B | 70,278 B |
+| console (one HTML file) | 72,112 B | 79,323 B | 72,112 B |
 | rule-path latency | — | 5 ms | 0.45 ms read, 1.7 ms write empty |
 | idle heap | — | 15 MB | 0.1 MB |
 | dependencies | — | 0 | 0 |
