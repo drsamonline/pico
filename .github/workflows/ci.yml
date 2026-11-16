@@ -8,6 +8,8 @@ on:
 
 jobs:
   test:
+    # a hung step should fail in minutes, not sit until the runner cancels it
+    timeout-minutes: 20
     name: py${{ matrix.python }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -167,6 +169,7 @@ jobs:
           PY
 
   smoke-cli:
+    timeout-minutes: 10
     name: end to end
     runs-on: ubuntu-latest
     steps:
